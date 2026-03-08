@@ -980,7 +980,7 @@
         licenseIndicator.style.display = 'flex';
         licenseIndicator.className = 'license-indicator';
         
-        const balance = licenseData.balance;
+        const balance = licenseData.balance || 0;
         const currency = licenseData.currency || 'usd';
         const symbol = currency === 'cny' ? '¥' : '$';
         
@@ -1631,7 +1631,7 @@
           licenseStatusText.textContent = '∞';
           licenseRemainingText.textContent = 'Thank you for your support!';
         } else {
-          licenseStatusText.textContent = `${symbol}${licenseData.balance}`;
+          licenseStatusText.textContent = `${symbol}${licenseData.balance || 0}`;
           licenseRemainingText.textContent = 'Balance';
         }
       }
