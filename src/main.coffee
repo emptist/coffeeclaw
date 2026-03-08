@@ -794,9 +794,14 @@ ipcMain.handle 'export-bots', ->
         bots: botsData.bots
         activeBotId: botsData.activeBotId
         settings:
+          token: settings.token
+          apiKey: settings.apiKey
+          provider: settings.provider
+          model: settings.model
           feishu: settings.feishu
         exportedAt: new Date().toISOString()
         version: '1.0'
+        instructions: 'To restore: Click Edit Bot button → Import → Select this file'
     }
   catch e
     { success: false, error: e.message }
@@ -820,9 +825,18 @@ ipcMain.handle 'import-bots', (event, data) ->
     
     saveBots botsData
     
-    if data.settings?.feishu
+    if data.settings
       settings = loadSettings()
-      settings.feishu = data.settings.feishu
+      if data.settings.token
+        settings.token = data.settings.token
+      if data.settings.apiKey
+        settings.apiKey = data.settings.apiKey
+      if data.settings.provider
+        settings.provider = data.settings.provider
+      if data.settings.model
+        settings.model = data.settings.model
+      if data.settings.feishu
+        settings.feishu = data.settings.feishu
       saveSettings settings
     
     { success: true, imported: imported, total: botsData.bots.length }

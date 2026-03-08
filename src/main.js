@@ -1225,10 +1225,15 @@ You are a helpful AI assistant running on the user's local machine. You are powe
           bots: botsData.bots,
           activeBotId: botsData.activeBotId,
           settings: {
+            token: settings.token,
+            apiKey: settings.apiKey,
+            provider: settings.provider,
+            model: settings.model,
             feishu: settings.feishu
           },
           exportedAt: new Date().toISOString(),
-          version: '1.0'
+          version: '1.0',
+          instructions: 'To restore: Click Edit Bot button → Import → Select this file'
         }
       };
     } catch (error) {
@@ -1241,7 +1246,7 @@ You are a helpful AI assistant running on the user's local machine. You are powe
   });
 
   ipcMain.handle('import-bots', function(event, data) {
-    var bot, botsData, e, existing, i, imported, len, ref, ref1, settings;
+    var bot, botsData, e, existing, i, imported, len, ref, settings;
     try {
       if (!(data.bots && Array.isArray(data.bots))) {
         return {
@@ -1267,9 +1272,23 @@ You are a helpful AI assistant running on the user's local machine. You are powe
         }
       }
       saveBots(botsData);
-      if ((ref1 = data.settings) != null ? ref1.feishu : void 0) {
+      if (data.settings) {
         settings = loadSettings();
-        settings.feishu = data.settings.feishu;
+        if (data.settings.token) {
+          settings.token = data.settings.token;
+        }
+        if (data.settings.apiKey) {
+          settings.apiKey = data.settings.apiKey;
+        }
+        if (data.settings.provider) {
+          settings.provider = data.settings.provider;
+        }
+        if (data.settings.model) {
+          settings.model = data.settings.model;
+        }
+        if (data.settings.feishu) {
+          settings.feishu = data.settings.feishu;
+        }
         saveSettings(settings);
       }
       return {
