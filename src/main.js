@@ -1577,6 +1577,47 @@ You are a helpful AI assistant running on the user's local machine. You are powe
     return getLicenseStatus();
   });
 
+  ipcMain.handle('add-payment', function(event, paymentData) {
+    var amount, e, email, license, method;
+    try {
+      license = loadLicense();
+      if (!license) {
+        license = initLicense();
+      }
+      ({amount, method, email} = paymentData);
+      if (!(amount && amount > 0)) {
+        return {
+          success: false,
+          error: 'Invalid amount'
+        };
+      }
+      license.balance = (license.balance || 0) + amount;
+      license.paid = true;
+      if (amount >= 36) {
+        license.plan = 'lifetime';
+      }
+      license.paymentInfo = license.paymentInfo || [];
+      license.paymentInfo.push({
+        amount: amount,
+        method: method,
+        email: email,
+        timestamp: new Date().toISOString()
+      });
+      saveLicense(license);
+      return {
+        success: true,
+        balance: license.balance
+      };
+    } catch (error) {
+      e = error;
+      console.error('Error adding payment:', e);
+      return {
+        success: false,
+        error: e.message
+      };
+    }
+  });
+
   ipcMain.handle('get-models', function() {
     return MODELS;
   });

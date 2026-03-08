@@ -1058,6 +1058,37 @@ ipcMain.handle 'activate-license', (event, plan, paymentInfo) ->
   saveLicense license
   getLicenseStatus()
 
+ipcMain.handle 'add-payment', (event, paymentData) ->
+  try
+    license = loadLicense()
+    unless license
+      license = initLicense()
+    
+    { amount, method, email } = paymentData
+    
+    unless amount and amount > 0
+      return { success: false, error: 'Invalid amount' }
+    
+    license.balance = (license.balance or 0) + amount
+    license.paid = true
+    
+    if amount >= 36
+      license.plan = 'lifetime'
+    
+    license.paymentInfo = license.paymentInfo or []
+    license.paymentInfo.push {
+      amount: amount
+      method: method
+      email: email
+      timestamp: new Date().toISOString()
+    }
+    
+    saveLicense license
+    { success: true, balance: license.balance }
+  catch e
+    console.error 'Error adding payment:', e
+    { success: false, error: e.message }
+
 ipcMain.handle 'get-models', ->
   MODELS
 

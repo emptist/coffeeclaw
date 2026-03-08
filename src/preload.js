@@ -92,6 +92,9 @@
     },
     activateLicense: function(plan, paymentInfo) {
       return ipcRenderer.invoke('activate-license', plan, paymentInfo);
+    },
+    addPayment: function(paymentData) {
+      return ipcRenderer.invoke('add-payment', paymentData);
     }
   });
 

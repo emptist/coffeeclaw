@@ -785,80 +785,36 @@
         </div>
       </div>
       
-      <h3 style="font-size:16px;margin-bottom:15px;">Choose Your Plan</h3>
+      <h3 style="font-size:16px;margin-bottom:15px;">Support CoffeeClaw</h3>
       
-      <div class="plan-options">
-        <div class="plan-option" data-plan="yearly" data-currency="usd">
-          <div class="plan-header">
-            <span class="plan-name">Yearly</span>
-            <span class="plan-price">$12/year</span>
-          </div>
-          <div class="plan-desc">¥72/year • Auto-renew</div>
-        </div>
-        
-        <div class="plan-option" data-plan="lifetime" data-currency="usd">
-          <div class="plan-header">
-            <span class="plan-name">Lifetime</span>
-            <span class="plan-price">$36</span>
-          </div>
-          <div class="plan-desc">¥216 • One-time payment</div>
-          <div class="plan-badge">Best Value</div>
-        </div>
-      </div>
+      <label style="font-size:13px;margin-bottom:5px;display:block;">Your Email (optional):</label>
+      <input type="email" id="userEmailInput" placeholder="your@email.com" style="width:100%;padding:10px;background:#1a1a2e;color:#eee;border:1px solid #0f3460;border-radius:8px;margin-bottom:15px;">
       
-      <div style="margin:20px 0;padding:15px;background:#1a1a2e;border-radius:8px;">
-        <h4 style="font-size:14px;margin-bottom:10px;">Payment Methods</h4>
-        <div style="display:flex;flex-wrap:wrap;gap:8px;">
-          <button class="payment-method-btn" data-method="btc">
-            ₿ Bitcoin
-          </button>
-          <button class="payment-method-btn" data-method="alipay">
-            支付宝 Alipay
-          </button>
-          <button class="payment-method-btn" data-method="wise">
-            💸 Wise
-          </button>
-          <button class="payment-method-btn" data-method="stripe" style="display:none;" disabled>
-            � Card (Stripe)
-          </button>
-        </div>
-      </div>
-      
-      <div id="btcPaymentSection" style="display:none;margin:20px 0;padding:15px;background:#1a1a2e;border-radius:8px;">
-        <h4 style="font-size:14px;margin-bottom:10px;">Bitcoin Payment</h4>
-        <div style="font-family:monospace;font-size:12px;word-break:break-all;background:#0f3460;padding:10px;border-radius:4px;margin-bottom:10px;">
-          <span id="btcAddress">bc1qym7whe3q3puupxg475ds6kyusl7g6wn7ewa9jn</span>
-        </div>
-        <p style="font-size:12px;color:#888;">
-          Send the equivalent amount to activate your license.<br>
-          Open an issue with your TX ID: <a href="https://github.com/emptist/coffeeclaw/issues" target="_blank" style="color:#e94560;">GitHub Issues</a>
-        </p>
-      </div>
-      
-      <div id="wisePaymentSection" style="display:none;margin:20px 0;padding:15px;background:#1a1a2e;border-radius:8px;">
-        <h4 style="font-size:14px;margin-bottom:10px;">💸 Wise Payment</h4>
-        <p style="font-size:13px;margin-bottom:10px;">
-          Send payment to: <strong style="color:#00bfa5;">yourname@wise.com</strong>
-        </p>
-        <p style="font-size:12px;color:#888;">
-          Supports USD, CNY, and 50+ currencies with low fees.<br>
-          Open an issue with payment details: <a href="https://github.com/emptist/coffeeclaw/issues" target="_blank" style="color:#e94560;">GitHub Issues</a>
-        </p>
-      </div>
-      
-      <div id="alipayPaymentSection" style="display:none;margin:20px 0;padding:15px;background:#1a1a2e;border-radius:8px;text-align:center;">
-        <h4 style="font-size:14px;margin-bottom:10px;">支付宝 Alipay</h4>
-        <img src="assets/alipay-qr.jpg" style="max-width:200px;border-radius:8px;margin-bottom:10px;">
-        <p style="font-size:12px;color:#888;">
-          扫码付款后，截图发送到 GitHub Issues 确认<br>
-          <a href="https://github.com/emptist/coffeeclaw/issues" target="_blank" style="color:#e94560;">github.com/emptist/coffeeclaw/issues</a>
-        </p>
-      </div>
-      
-      <p style="font-size:12px;color:#888;text-align:center;margin-top:15px;">
-        No feature restrictions • Just a gentle reminder<br>
-        <a href="#" id="remindLaterLink" style="color:#e94560;">Remind me later</a>
+      <label style="font-size:13px;margin-bottom:5px;display:block;">Payment Amount (USD):</label>
+      <input type="number" id="paymentAmountInput" placeholder="12" min="1" max="1000" step="1" style="width:100%;padding:10px;background:#1a1a2e;color:#eee;border:1px solid #0f3460;border-radius:8px;margin-bottom:15px;">
+      <p style="font-size:11px;color:#888;margin-top:-10px;margin-bottom:15px;">
+        Suggested: $12/year or $36 lifetime (¥72/¥216)
       </p>
+      
+      <label style="font-size:13px;margin-bottom:5px;display:block;">Payment Method:</label>
+      <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:15px;">
+        <button class="payment-method-btn active" data-method="alipay">支付宝</button>
+        <button class="payment-method-btn" data-method="btc">₿ Bitcoin</button>
+        <button class="payment-method-btn" data-method="paypal">� PayPal</button>
+      </div>
+      
+      <div id="paymentQrSection" style="text-align:center;margin:15px 0;padding:15px;background:#1a1a2e;border-radius:8px;">
+        <img id="paymentQrImage" src="assets/alipay-qr.jpg" style="max-width:180px;border-radius:8px;margin-bottom:10px;">
+        <p id="paymentAddressText" style="font-family:monospace;font-size:11px;word-break:break-all;color:#888;display:none;">bc1qym7whe3q3puupxg475ds6kyusl7g6wn7ewa9jn</p>
+      </div>
+      
+      <button id="paymentCompleteBtn" style="width:100%;padding:12px;background:#00bfa5;color:white;border:none;border-radius:8px;font-size:14px;cursor:pointer;margin-bottom:10px;">
+        ✓ Payment Complete
+      </button>
+      
+      <button id="sendPaymentEmailBtn" style="width:100%;padding:10px;background:transparent;color:#e94560;border:1px solid #e94560;border-radius:8px;font-size:12px;cursor:pointer;">
+        📧 Send Payment Notification (optional)
+      </button>
       
       <div class="btn-group">
         <button class="btn-secondary" id="closeLicenseModalBtn">Close</button>
@@ -881,13 +837,13 @@
     const licenseModal = document.getElementById('licenseModal');
     const licenseStatusText = document.getElementById('licenseStatusText');
     const licenseRemainingText = document.getElementById('licenseRemainingText');
-    const btcPaymentSection = document.getElementById('btcPaymentSection');
-    const btcAddress = document.getElementById('btcAddress');
-    const wisePaymentSection = document.getElementById('wisePaymentSection');
-    const alipayPaymentSection = document.getElementById('alipayPaymentSection');
+    const paymentQrImage = document.getElementById('paymentQrImage');
+    const paymentAddressText = document.getElementById('paymentAddressText');
+    const paymentQrSection = document.getElementById('paymentQrSection');
     
     let selectedPlan = 'lifetime';
     let licenseData = null;
+    let currentPaymentMethod = 'alipay';
     
     const translations = {
       en: {
@@ -1704,11 +1660,6 @@
       licenseModal.style.display = 'none';
     });
     
-    document.getElementById('remindLaterLink').addEventListener('click', (e) => {
-      e.preventDefault();
-      licenseModal.style.display = 'none';
-    });
-    
     document.querySelectorAll('.plan-option').forEach(option => {
       option.addEventListener('click', () => {
         document.querySelectorAll('.plan-option').forEach(o => o.classList.remove('selected'));
@@ -1720,31 +1671,73 @@
     document.querySelectorAll('.payment-method-btn').forEach(btn => {
       btn.addEventListener('click', async () => {
         const method = btn.dataset.method;
+        currentPaymentMethod = method;
         
-        btcPaymentSection.style.display = 'none';
-        wisePaymentSection.style.display = 'none';
-        alipayPaymentSection.style.display = 'none';
+        document.querySelectorAll('.payment-method-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
         
-        if (method === 'btc') {
-          btcPaymentSection.style.display = 'block';
-          return;
-        }
+        const prices = await window.api.getLicensePrices();
         
         if (method === 'alipay') {
-          alipayPaymentSection.style.display = 'block';
-          return;
-        }
-        
-        if (method === 'wise') {
-          wisePaymentSection.style.display = 'block';
-          return;
-        }
-        
-        if (method === 'stripe' || method === 'alipay') {
-          alert('Payment integration coming soon!\n\nFor now, please:\n1. Email support@coffeeclaw.app\n2. Or use Bitcoin/Wise payment\n\nThank you for your support! ☕');
-          return;
+          paymentQrImage.src = 'assets/alipay-qr.jpg';
+          paymentQrImage.style.display = 'block';
+          paymentAddressText.style.display = 'none';
+        } else if (method === 'btc') {
+          paymentQrImage.src = 'assets/btc-qr.png';
+          paymentQrImage.style.display = 'block';
+          paymentAddressText.textContent = prices.btc_address || 'bc1qym7whe3q3puupxg475ds6kyusl7g6wn7ewa9jn';
+          paymentAddressText.style.display = 'block';
+        } else if (method === 'wise') {
+          paymentQrImage.style.display = 'none';
+          paymentAddressText.innerHTML = 'Wise: support@coffeeclaw.app<br><small style="color:#666;">Or contact for bank details</small>';
+          paymentAddressText.style.display = 'block';
+        } else if (method === 'paypal') {
+          paymentQrImage.style.display = 'none';
+          paymentAddressText.innerHTML = 'PayPal: support@coffeeclaw.app<br><small style="color:#666;">Can link to your bank account</small>';
+          paymentAddressText.style.display = 'block';
         }
       });
+    });
+    
+    document.getElementById('paymentCompleteBtn').addEventListener('click', async () => {
+      const amount = parseFloat(document.getElementById('paymentAmountInput').value) || 0;
+      const email = document.getElementById('userEmailInput').value.trim();
+      
+      if (amount <= 0) {
+        alert('Please enter a payment amount');
+        return;
+      }
+      
+      if (amount > 100) {
+        const confirm = window.confirm(`You entered $${amount}. This seems higher than our suggested amounts.\n\nDid you mean to donate this amount? Click OK to confirm.`);
+        if (!confirm) return;
+      }
+      
+      try {
+        const result = await window.api.addPayment({
+          amount: amount,
+          method: currentPaymentMethod,
+          email: email
+        });
+        
+        if (result.success) {
+          alert(`Thank you! $${amount} has been added to your balance.\n\nWe appreciate your support! ☕`);
+          await updateLicenseIndicator();
+          licenseModal.style.display = 'none';
+        } else {
+          alert('Error: ' + result.error);
+        }
+      } catch (e) {
+        alert('Error processing payment: ' + e.message);
+      }
+    });
+    
+    document.getElementById('sendPaymentEmailBtn').addEventListener('click', () => {
+      const amount = document.getElementById('paymentAmountInput').value || '0';
+      const email = document.getElementById('userEmailInput').value.trim();
+      const subject = encodeURIComponent(`CoffeeClaw Payment Notification - $${amount}`);
+      const body = encodeURIComponent(`Hi,\n\nI have sent $${amount} via ${currentPaymentMethod}.\n\nMy email: ${email || 'Not provided'}\n\nThank you for CoffeeClaw!`);
+      window.location.href = `mailto:support@coffeeclaw.app?subject=${subject}&body=${body}`;
     });
     
     document.getElementById('exportBotsBtn').addEventListener('click', async () => {
