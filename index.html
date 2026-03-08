@@ -801,6 +801,9 @@
           <button class="payment-method-btn" data-method="btc">
             ₿ Bitcoin
           </button>
+          <button class="payment-method-btn" data-method="wise">
+            💸 Wise
+          </button>
         </div>
       </div>
       
@@ -812,6 +815,17 @@
         <p style="font-size:12px;color:#888;">
           Send the equivalent amount to activate your license.<br>
           Email <a href="mailto:support@coffeeclaw.app" style="color:#e94560;">support@coffeeclaw.app</a> with your TX ID.
+        </p>
+      </div>
+      
+      <div id="wisePaymentSection" style="display:none;margin:20px 0;padding:15px;background:#1a1a2e;border-radius:8px;">
+        <h4 style="font-size:14px;margin-bottom:10px;">💸 Wise Payment</h4>
+        <p style="font-size:13px;margin-bottom:10px;">
+          Send payment to: <strong style="color:#00bfa5;">yourname@wise.com</strong>
+        </p>
+        <p style="font-size:12px;color:#888;">
+          Supports USD, CNY, and 50+ currencies with low fees.<br>
+          Email <a href="mailto:support@coffeeclaw.app" style="color:#e94560;">support@coffeeclaw.app</a> with your Wise email and amount.
         </p>
       </div>
       
@@ -843,6 +857,7 @@
     const licenseRemainingText = document.getElementById('licenseRemainingText');
     const btcPaymentSection = document.getElementById('btcPaymentSection');
     const btcAddress = document.getElementById('btcAddress');
+    const wisePaymentSection = document.getElementById('wisePaymentSection');
     
     let selectedPlan = 'lifetime';
     let licenseData = null;
@@ -1610,13 +1625,21 @@
       btn.addEventListener('click', async () => {
         const method = btn.dataset.method;
         
+        btcPaymentSection.style.display = 'none';
+        wisePaymentSection.style.display = 'none';
+        
         if (method === 'btc') {
           btcPaymentSection.style.display = 'block';
           return;
         }
         
+        if (method === 'wise') {
+          wisePaymentSection.style.display = 'block';
+          return;
+        }
+        
         if (method === 'stripe' || method === 'alipay') {
-          alert('Payment integration coming soon!\n\nFor now, please:\n1. Email support@coffeeclaw.app\n2. Or use Bitcoin payment\n\nThank you for your support! ☕');
+          alert('Payment integration coming soon!\n\nFor now, please:\n1. Email support@coffeeclaw.app\n2. Or use Bitcoin/Wise payment\n\nThank you for your support! ☕');
           return;
         }
       });
