@@ -28,8 +28,11 @@ LICENSE_PRICES =
   lifetime_usd: 36
   lifetime_cny: 108
   btc_address: null
+  monthly_usd: 1
+  monthly_cny: 3
 
-FREE_TRIAL_DAYS = 30
+INITIAL_BALANCE_USD = 1
+INITIAL_BALANCE_CNY = 3
 MAX_HISTORY = 100
 MAX_SESSIONS = 50
 
@@ -84,11 +87,11 @@ initLicense = ->
   newLicense =
     deviceId: generateId()
     createdAt: new Date().toISOString()
-    trialEndsAt: new Date(Date.now() + FREE_TRIAL_DAYS * 24 * 60 * 60 * 1000).toISOString()
-    status: 'trial'
+    balance: INITIAL_BALANCE_USD
+    currency: 'usd'
     paid: false
     plan: null
-    expiresAt: null
+    lastDeduction: null
   
   saveLicense newLicense
   newLicense
@@ -98,41 +101,43 @@ getLicenseStatus = ->
   unless license
     license = initLicense()
   
-  now = Date.now()
-  
   if license.paid and license.plan == 'lifetime'
     return
       status: 'lifetime'
-      remaining: -1
+      balance: 0
       paid: true
       plan: 'lifetime'
+      showIndicator: false
   
-  if license.paid and license.plan == 'yearly' and license.expiresAt
-    expiresAt = new Date(license.expiresAt).getTime()
-    if now < expiresAt
-      remaining = Math.ceil (expiresAt - now) / (24 * 60 * 60 * 1000)
-      return
-        status: 'yearly'
-        remaining: remaining
-        paid: true
-        plan: 'yearly'
-        expiresAt: license.expiresAt
+  now = new Date()
+  createdAt = new Date(license.createdAt)
   
-  trialEndsAt = new Date(license.trialEndsAt).getTime()
-  if now < trialEndsAt
-    remaining = Math.ceil (trialEndsAt - now) / (24 * 60 * 60 * 1000)
-    return
-      status: 'trial'
-      remaining: remaining
-      paid: false
-      plan: null
-      trialEndsAt: license.trialEndsAt
+  monthsSinceCreation = (now.getFullYear() - createdAt.getFullYear()) * 12 + (now.getMonth() - createdAt.getMonth())
+  
+  if license.lastDeduction
+    lastDeduction = new Date(license.lastDeduction)
+    monthsSinceLastDeduction = (now.getFullYear() - lastDeduction.getFullYear()) * 12 + (now.getMonth() - lastDeduction.getMonth())
+  else
+    monthsSinceLastDeduction = monthsSinceCreation
+  
+  currentBalance = license.balance
+  
+  if monthsSinceLastDeduction >= 1
+    deduction = Math.floor(monthsSinceLastDeduction)
+    currentBalance = license.balance - deduction
+    
+    if currentBalance != license.balance
+      license.balance = currentBalance
+      license.lastDeduction = now.toISOString()
+      saveLicense(license)
   
   return
-    status: 'expired'
-    remaining: 0
-    paid: false
-    plan: null
+    status: if currentBalance > 0 then 'active' else 'overdue'
+    balance: currentBalance
+    paid: license.paid
+    plan: license.plan
+    showIndicator: true
+    currency: license.currency or 'usd'
 
 loadSessions = ->
   try
@@ -1028,10 +1033,12 @@ ipcMain.handle 'activate-license', (event, plan, paymentInfo) ->
   license.plan = plan
   license.activatedAt = new Date().toISOString()
   
-  if plan == 'yearly'
-    license.expiresAt = new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString()
-  else if plan == 'lifetime'
-    license.expiresAt = null
+  if plan == 'lifetime'
+    license.showIndicator = false
+  else if plan == 'yearly'
+    license.balance = (license.balance or 0) + 12
+  else if plan == 'monthly'
+    license.balance = (license.balance or 0) + 1
   
   license.paymentInfo = paymentInfo
   saveLicense license

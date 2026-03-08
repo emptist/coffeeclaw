@@ -2,7 +2,7 @@
 (function() {
   // CoffeeClaw - Main Process
   // Auto-configures OpenClaw on first run
-  var BOT_TEMPLATES, BrowserWindow, FREE_TRIAL_DAYS, LICENSE_PRICES, MAX_HISTORY, MAX_SESSIONS, MODELS, SKILLS, addToSession, agentDir, agentMdFile, agentModelsFile, app, botsFile, callAPI, callAPIWithMessages, checkNodeInstalled, checkNpmInstalled, checkOpenClaw, checkOpenClawInstalled, checkOpenClawPromise, checkWSLInstalled, configExists, configFile, configureFeishu, createAgentConfig, createBot, createDefaultConfig, createIdentity, createSession, createWindow, crypto, deleteBot, deleteSession, detectExistingFeishuConfig, exec, executeSkillFunction, fs, generateId, generateToken, getActiveBot, getBot, getBotTemplates, getLicenseStatus, getPlatform, getSession, getSkillFunctions, http, https, identityFile, initLicense, installOpenClaw, ipcMain, isConfigured, isMac, isWindows, licenseFile, listSessions, loadBots, loadLicense, loadSessions, loadSettings, mainWindow, openclawDir, path, saveBots, saveLicense, saveSession, saveSessions, saveSettings, secreteDir, sendToOpenClaw, sessionsFile, setActiveBot, settingsFile, spawn, startOpenClaw, syncFeishuConfigToOpenClaw, syncFeishuConfigToSettings, updateBot, workspaceDir;
+  var BOT_TEMPLATES, BrowserWindow, INITIAL_BALANCE_CNY, INITIAL_BALANCE_USD, LICENSE_PRICES, MAX_HISTORY, MAX_SESSIONS, MODELS, SKILLS, addToSession, agentDir, agentMdFile, agentModelsFile, app, botsFile, callAPI, callAPIWithMessages, checkNodeInstalled, checkNpmInstalled, checkOpenClaw, checkOpenClawInstalled, checkOpenClawPromise, checkWSLInstalled, configExists, configFile, configureFeishu, createAgentConfig, createBot, createDefaultConfig, createIdentity, createSession, createWindow, crypto, deleteBot, deleteSession, detectExistingFeishuConfig, exec, executeSkillFunction, fs, generateId, generateToken, getActiveBot, getBot, getBotTemplates, getLicenseStatus, getPlatform, getSession, getSkillFunctions, http, https, identityFile, initLicense, installOpenClaw, ipcMain, isConfigured, isMac, isWindows, licenseFile, listSessions, loadBots, loadLicense, loadSessions, loadSettings, mainWindow, openclawDir, path, saveBots, saveLicense, saveSession, saveSessions, saveSettings, secreteDir, sendToOpenClaw, sessionsFile, setActiveBot, settingsFile, spawn, startOpenClaw, syncFeishuConfigToOpenClaw, syncFeishuConfigToSettings, updateBot, workspaceDir;
 
   ({app, BrowserWindow, ipcMain} = require('electron'));
 
@@ -47,10 +47,14 @@
     yearly_cny: 36,
     lifetime_usd: 36,
     lifetime_cny: 108,
-    btc_address: null
+    btc_address: null,
+    monthly_usd: 1,
+    monthly_cny: 3
   };
 
-  FREE_TRIAL_DAYS = 30;
+  INITIAL_BALANCE_USD = 1;
+
+  INITIAL_BALANCE_CNY = 3;
 
   MAX_HISTORY = 100;
 
@@ -134,60 +138,57 @@
     newLicense = {
       deviceId: generateId(),
       createdAt: new Date().toISOString(),
-      trialEndsAt: new Date(Date.now() + FREE_TRIAL_DAYS * 24 * 60 * 60 * 1000).toISOString(),
-      status: 'trial',
+      balance: INITIAL_BALANCE_USD,
+      currency: 'usd',
       paid: false,
       plan: null,
-      expiresAt: null
+      lastDeduction: null
     };
     saveLicense(newLicense);
     return newLicense;
   };
 
   getLicenseStatus = function() {
-    var expiresAt, license, now, remaining, trialEndsAt;
+    var createdAt, currentBalance, deduction, lastDeduction, license, monthsSinceCreation, monthsSinceLastDeduction, now;
     license = loadLicense();
     if (!license) {
       license = initLicense();
     }
-    now = Date.now();
     if (license.paid && license.plan === 'lifetime') {
       return {
         status: 'lifetime',
-        remaining: -1,
+        balance: 0,
         paid: true,
-        plan: 'lifetime'
+        plan: 'lifetime',
+        showIndicator: false
       };
     }
-    if (license.paid && license.plan === 'yearly' && license.expiresAt) {
-      expiresAt = new Date(license.expiresAt).getTime();
-      if (now < expiresAt) {
-        remaining = Math.ceil((expiresAt - now) / (24 * 60 * 60 * 1000));
-        return {
-          status: 'yearly',
-          remaining: remaining,
-          paid: true,
-          plan: 'yearly',
-          expiresAt: license.expiresAt
-        };
+    now = new Date();
+    createdAt = new Date(license.createdAt);
+    monthsSinceCreation = (now.getFullYear() - createdAt.getFullYear()) * 12 + (now.getMonth() - createdAt.getMonth());
+    if (license.lastDeduction) {
+      lastDeduction = new Date(license.lastDeduction);
+      monthsSinceLastDeduction = (now.getFullYear() - lastDeduction.getFullYear()) * 12 + (now.getMonth() - lastDeduction.getMonth());
+    } else {
+      monthsSinceLastDeduction = monthsSinceCreation;
+    }
+    currentBalance = license.balance;
+    if (monthsSinceLastDeduction >= 1) {
+      deduction = Math.floor(monthsSinceLastDeduction);
+      currentBalance = license.balance - deduction;
+      if (currentBalance !== license.balance) {
+        license.balance = currentBalance;
+        license.lastDeduction = now.toISOString();
+        saveLicense(license);
       }
     }
-    trialEndsAt = new Date(license.trialEndsAt).getTime();
-    if (now < trialEndsAt) {
-      remaining = Math.ceil((trialEndsAt - now) / (24 * 60 * 60 * 1000));
-      return {
-        status: 'trial',
-        remaining: remaining,
-        paid: false,
-        plan: null,
-        trialEndsAt: license.trialEndsAt
-      };
-    }
     return {
-      status: 'expired',
-      remaining: 0,
-      paid: false,
-      plan: null
+      status: currentBalance > 0 ? 'active' : 'overdue',
+      balance: currentBalance,
+      paid: license.paid,
+      plan: license.plan,
+      showIndicator: true,
+      currency: license.currency || 'usd'
     };
   };
 
@@ -1551,10 +1552,12 @@ You are a helpful AI assistant running on the user's local machine. You are powe
     license.paid = true;
     license.plan = plan;
     license.activatedAt = new Date().toISOString();
-    if (plan === 'yearly') {
-      license.expiresAt = new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString();
-    } else if (plan === 'lifetime') {
-      license.expiresAt = null;
+    if (plan === 'lifetime') {
+      license.showIndicator = false;
+    } else if (plan === 'yearly') {
+      license.balance = (license.balance || 0) + 12;
+    } else if (plan === 'monthly') {
+      license.balance = (license.balance || 0) + 1;
     }
     license.paymentInfo = paymentInfo;
     saveLicense(license);

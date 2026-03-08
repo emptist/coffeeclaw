@@ -977,24 +977,26 @@
       try {
         licenseData = await window.api.getLicense();
         
+        if (!licenseData.showIndicator) {
+          licenseIndicator.style.display = 'none';
+          return;
+        }
+        
+        licenseIndicator.style.display = 'flex';
         licenseIndicator.className = 'license-indicator';
         
-        if (licenseData.status === 'lifetime') {
-          licenseIndicator.classList.add('lifetime');
-          licenseDays.textContent = '∞';
-          licenseIndicator.title = 'Lifetime License';
-        } else if (licenseData.status === 'yearly') {
-          licenseIndicator.classList.add('paid');
-          licenseDays.textContent = licenseData.remaining + 'd';
-          licenseIndicator.title = `${licenseData.remaining} days remaining (Yearly)`;
-        } else if (licenseData.status === 'trial') {
+        const balance = licenseData.balance;
+        const currency = licenseData.currency || 'usd';
+        const symbol = currency === 'cny' ? '¥' : '$';
+        
+        if (balance > 0) {
           licenseIndicator.classList.add('trial');
-          licenseDays.textContent = licenseData.remaining + 'd';
-          licenseIndicator.title = `${licenseData.remaining} days free trial`;
+          licenseDays.textContent = `${symbol}${balance}`;
+          licenseIndicator.title = `Balance: ${symbol}${balance} - Click to support`;
         } else {
           licenseIndicator.classList.add('expired');
-          licenseDays.textContent = '0d';
-          licenseIndicator.title = 'License expired - Click to renew';
+          licenseDays.textContent = `${symbol}${balance}`;
+          licenseIndicator.title = `Balance: ${symbol}${balance} - Consider supporting?`;
         }
       } catch (e) {
         console.error('Error updating license:', e);
@@ -1533,18 +1535,15 @@
       await updateLicenseIndicator();
       
       if (licenseData) {
+        const currency = licenseData.currency || 'usd';
+        const symbol = currency === 'cny' ? '¥' : '$';
+        
         if (licenseData.status === 'lifetime') {
           licenseStatusText.textContent = 'Lifetime ✓';
-          licenseRemainingText.textContent = 'Forever';
-        } else if (licenseData.status === 'yearly') {
-          licenseStatusText.textContent = 'Yearly';
-          licenseRemainingText.textContent = licenseData.remaining + ' days';
-        } else if (licenseData.status === 'trial') {
-          licenseStatusText.textContent = 'Free Trial';
-          licenseRemainingText.textContent = licenseData.remaining + ' days';
+          licenseRemainingText.textContent = 'Thank you!';
         } else {
-          licenseStatusText.textContent = 'Expired';
-          licenseRemainingText.textContent = '0 days';
+          licenseStatusText.textContent = licenseData.paid ? 'Supporter' : 'Free User';
+          licenseRemainingText.textContent = `Balance: ${symbol}${licenseData.balance}`;
         }
       }
       
