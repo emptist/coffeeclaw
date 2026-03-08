@@ -1297,8 +1297,8 @@
         updateModelSelect(settings.activeProvider);
         
         if (settings.providers && settings.providers[settings.activeProvider]) {
-          document.getElementById('apiKeyInput').value = settings.providers[settings.activeProvider].apiKey or '';
-          document.getElementById('modelSelect').value = settings.providers[settings.activeProvider].model or '';
+          document.getElementById('apiKeyInput').value = settings.providers[settings.activeProvider].apiKey || '';
+          document.getElementById('modelSelect').value = settings.providers[settings.activeProvider].model || '';
         }
       } else {
         updateModelSelect('zhipu');
@@ -1333,8 +1333,8 @@
       
       const settings = await window.api.getSettings();
       if (settings.providers && settings.providers[provider]) {
-        document.getElementById('apiKeyInput').value = settings.providers[provider].apiKey or '';
-        document.getElementById('modelSelect').value = settings.providers[provider].model or '';
+        document.getElementById('apiKeyInput').value = settings.providers[provider].apiKey || '';
+        document.getElementById('modelSelect').value = settings.providers[provider].model || '';
       } else {
         document.getElementById('apiKeyInput').value = '';
       }
@@ -1360,7 +1360,7 @@
       }
       
       const settings = await window.api.getSettings();
-      settings.providers = settings.providers or {};
+      settings.providers = settings.providers || {};
       settings.providers[provider] = { apiKey, model };
       settings.activeProvider = provider;
       await window.api.saveSettings(settings);
