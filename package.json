@@ -13,6 +13,7 @@
     "build:all": "npm run compile && electron-builder --mac --win --linux"
   },
   "author": "CoffeeClaw Team",
+  "homepage": "https://github.com/yourusername/coffeeclaw",
   "license": "MIT",
   "devDependencies": {
     "coffeescript": "^2.7.0",
@@ -41,13 +42,9 @@
       "!glm5.md"
     ],
     "mac": {
-      "target": [
-        {
-          "target": "dmg",
-          "arch": ["x64", "arm64"]
-        }
-      ],
-      "category": "public.app-category.productivity"
+      "target": ["zip"],
+      "category": "public.app-category.productivity",
+      "identity": null
     },
     "win": {
       "target": [
@@ -63,10 +60,10 @@
     },
     "linux": {
       "target": [
-        "AppImage",
-        "deb"
+        "AppImage"
       ],
-      "category": "Utility"
+      "category": "Utility",
+      "maintainer": "CoffeeClaw Team <coffeeclaw@example.com>"
     }
   }
 }
