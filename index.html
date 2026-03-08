@@ -633,6 +633,11 @@
       
       <div id="step2" class="hidden">
         <h2>🔑 API Configuration</h2>
+        <p style="font-size:13px;color:#888;margin-bottom:15px;">
+          Choose your AI provider and enter API key. 
+          <a href="https://github.com/emptist/openclaw" target="_blank" style="color:#e94560;">OpenClaw docs</a>
+        </p>
+        
         <label>AI Provider:</label>
         <select id="providerSelect" style="width:100%;padding:10px;background:#1a1a2e;color:#eee;border:1px solid #0f3460;border-radius:8px;margin-bottom:15px;">
           <option value="zhipu">Zhipu GLM (Free tier available)</option>
@@ -1285,7 +1290,19 @@
     
     async function loadModels() {
       availableModels = await window.api.getModels();
-      updateModelSelect('zhipu');
+      
+      const settings = await window.api.getSettings();
+      if (settings.activeProvider) {
+        document.getElementById('providerSelect').value = settings.activeProvider;
+        updateModelSelect(settings.activeProvider);
+        
+        if (settings.providers && settings.providers[settings.activeProvider]) {
+          document.getElementById('apiKeyInput').value = settings.providers[settings.activeProvider].apiKey or '';
+          document.getElementById('modelSelect').value = settings.providers[settings.activeProvider].model or '';
+        }
+      } else {
+        updateModelSelect('zhipu');
+      }
     }
     
     function updateModelSelect(provider) {
@@ -1310,8 +1327,17 @@
       }
     }
     
-    document.getElementById('providerSelect').addEventListener('change', (e) => {
-      updateModelSelect(e.target.value);
+    document.getElementById('providerSelect').addEventListener('change', async (e) => {
+      const provider = e.target.value;
+      updateModelSelect(provider);
+      
+      const settings = await window.api.getSettings();
+      if (settings.providers && settings.providers[provider]) {
+        document.getElementById('apiKeyInput').value = settings.providers[provider].apiKey or '';
+        document.getElementById('modelSelect').value = settings.providers[provider].model or '';
+      } else {
+        document.getElementById('apiKeyInput').value = '';
+      }
     });
     
     document.getElementById('continueBtn').addEventListener('click', async () => {
@@ -1333,7 +1359,11 @@
         return;
       }
       
-      await window.api.saveSettings({ apiKey, provider, model });
+      const settings = await window.api.getSettings();
+      settings.providers = settings.providers or {};
+      settings.providers[provider] = { apiKey, model };
+      settings.activeProvider = provider;
+      await window.api.saveSettings(settings);
       startInstallation(apiKey);
     });
     

@@ -1050,10 +1050,16 @@ You are a helpful AI assistant running on the user's local machine. You are powe
 
   callAPI = function(sessionId, message, settings, bot = null) {
     return new Promise(function(resolve, reject) {
-      var apiKey, config, functions, i, len, messages, model, msg, options, postData, provider, ref, req, session, systemPrompt;
-      ({apiKey, provider, model} = settings);
-      provider = provider || 'zhipu';
-      model = (bot != null ? bot.model : void 0) || model || 'glm-4-flash';
+      var apiKey, config, functions, i, len, messages, model, msg, options, postData, provider, providerConfig, ref, req, session, systemPrompt;
+      provider = settings.activeProvider || settings.provider || 'zhipu';
+      if (settings.providers && settings.providers[provider]) {
+        providerConfig = settings.providers[provider];
+        apiKey = providerConfig.apiKey;
+        model = (bot != null ? bot.model : void 0) || providerConfig.model || 'glm-4-flash';
+      } else {
+        apiKey = settings.apiKey;
+        model = (bot != null ? bot.model : void 0) || settings.model || 'glm-4-flash';
+      }
       config = MODELS[provider];
       if (!config) {
         return reject(new Error(`Unknown provider: ${provider}`));
@@ -1160,9 +1166,14 @@ You are a helpful AI assistant running on the user's local machine. You are powe
 
   callAPIWithMessages = function(sessionId, messages, settings, bot, apiKey) {
     return new Promise(function(resolve, reject) {
-      var config, model, options, postData, provider, req;
-      provider = settings.provider || 'zhipu';
-      model = (bot != null ? bot.model : void 0) || settings.model || 'glm-4-flash';
+      var config, model, options, postData, provider, providerConfig, req;
+      provider = settings.activeProvider || settings.provider || 'zhipu';
+      if (settings.providers && settings.providers[provider]) {
+        providerConfig = settings.providers[provider];
+        model = (bot != null ? bot.model : void 0) || providerConfig.model || 'glm-4-flash';
+      } else {
+        model = (bot != null ? bot.model : void 0) || settings.model || 'glm-4-flash';
+      }
       config = MODELS[provider];
       postData = {
         model: model,

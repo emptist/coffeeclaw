@@ -668,9 +668,15 @@ MODELS =
 
 callAPI = (sessionId, message, settings, bot = null) ->
   new Promise (resolve, reject) ->
-    { apiKey, provider, model } = settings
-    provider = provider or 'zhipu'
-    model = bot?.model or model or 'glm-4-flash'
+    provider = settings.activeProvider or settings.provider or 'zhipu'
+    
+    if settings.providers and settings.providers[provider]
+      providerConfig = settings.providers[provider]
+      apiKey = providerConfig.apiKey
+      model = bot?.model or providerConfig.model or 'glm-4-flash'
+    else
+      apiKey = settings.apiKey
+      model = bot?.model or settings.model or 'glm-4-flash'
     
     config = MODELS[provider]
     unless config
@@ -755,8 +761,14 @@ callAPI = (sessionId, message, settings, bot = null) ->
 
 callAPIWithMessages = (sessionId, messages, settings, bot, apiKey) ->
   new Promise (resolve, reject) ->
-    provider = settings.provider or 'zhipu'
-    model = bot?.model or settings.model or 'glm-4-flash'
+    provider = settings.activeProvider or settings.provider or 'zhipu'
+    
+    if settings.providers and settings.providers[provider]
+      providerConfig = settings.providers[provider]
+      model = bot?.model or providerConfig.model or 'glm-4-flash'
+    else
+      model = bot?.model or settings.model or 'glm-4-flash'
+    
     config = MODELS[provider]
     
     postData =
