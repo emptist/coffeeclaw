@@ -1,15 +1,18 @@
 {
   "name": "coffeeclaw",
   "version": "1.0.0",
-  "description": "OpenClaw Chat Desktop App",
+  "description": "OpenClaw Chat Desktop App - AI Assistant powered by Zhipu GLM",
   "main": "src/main.js",
   "scripts": {
     "start": "electron .",
-    "build": "electron-builder --mac",
-    "build:win": "electron-builder --win",
-    "build:linux": "electron-builder --linux"
+    "compile": "coffee -c src/",
+    "build": "npm run compile && electron-builder",
+    "build:mac": "npm run compile && electron-builder --mac",
+    "build:win": "npm run compile && electron-builder --win",
+    "build:linux": "npm run compile && electron-builder --linux",
+    "build:all": "npm run compile && electron-builder --mac --win --linux"
   },
-  "author": "You",
+  "author": "CoffeeClaw Team",
   "license": "MIT",
   "devDependencies": {
     "coffeescript": "^2.7.0",
@@ -23,18 +26,50 @@
   "build": {
     "appId": "com.coffeeclaw.app",
     "productName": "CoffeeClaw",
+    "copyright": "Copyright © 2025 CoffeeClaw Team",
     "directories": {
       "output": "dist"
     },
+    "files": [
+      "**/*",
+      "!**/*.coffee",
+      "!.secrete/**",
+      "!screen.png",
+      "!dist/**",
+      "!node_modules/.cache/**"
+    ],
     "mac": {
-      "target": "dmg"
+      "target": [
+        {
+          "target": "dmg",
+          "arch": ["x64", "arm64"]
+        }
+      ],
+      "category": "public.app-category.productivity",
+      "icon": "assets/icon.icns"
     },
     "win": {
-      "target": "nsis"
+      "target": [
+        {
+          "target": "nsis",
+          "arch": ["x64"]
+        }
+      ],
+      "icon": "assets/icon.ico"
     },
     "nsis": {
       "oneClick": false,
-      "allowToChangeInstallationDirectory": true
+      "allowToChangeInstallationDirectory": true,
+      "installerIcon": "assets/icon.ico",
+      "uninstallerIcon": "assets/icon.ico"
+    },
+    "linux": {
+      "target": [
+        "AppImage",
+        "deb"
+      ],
+      "category": "Utility",
+      "icon": "assets/icon.png"
     }
   }
 }

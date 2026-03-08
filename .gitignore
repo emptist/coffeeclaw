@@ -8,6 +8,9 @@ out/
 # Secret settings - NEVER commit this!
 .secrete/
 
+# Private files with API keys and secrets
+AI.md
+
 # IDE
 .idea/
 .vscode/
@@ -32,6 +35,12 @@ npm-debug.log*
 *.AppImage
 *.snap
 
+# Compiled JS from CoffeeScript
+src/*.js
+
 # Temp
 tmp/
 temp/
+
+# Screenshots
+screen.png

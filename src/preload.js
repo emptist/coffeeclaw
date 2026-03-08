@@ -6,11 +6,14 @@
   ({contextBridge, ipcRenderer} = require('electron'));
 
   contextBridge.exposeInMainWorld('api', {
-    sendMessage: function(message) {
-      return ipcRenderer.invoke('send-message', message);
+    sendMessage: function(sessionId, message) {
+      return ipcRenderer.invoke('send-message', sessionId, message);
     },
     checkStatus: function() {
       return ipcRenderer.invoke('check-status');
+    },
+    checkPrerequisites: function() {
+      return ipcRenderer.invoke('check-prerequisites');
     },
     runSetup: function(apiKey) {
       return ipcRenderer.invoke('run-setup', apiKey);
@@ -20,6 +23,18 @@
     },
     saveApiKey: function(apiKey) {
       return ipcRenderer.invoke('save-api-key', apiKey);
+    },
+    createSession: function() {
+      return ipcRenderer.invoke('create-session');
+    },
+    getSession: function(sessionId) {
+      return ipcRenderer.invoke('get-session', sessionId);
+    },
+    listSessions: function() {
+      return ipcRenderer.invoke('list-sessions');
+    },
+    deleteSession: function(sessionId) {
+      return ipcRenderer.invoke('delete-session', sessionId);
     },
     getHistory: function() {
       return ipcRenderer.invoke('get-history');

@@ -2,7 +2,7 @@
 (function() {
   // CoffeeClaw - Main Process
   // Auto-configures OpenClaw on first run
-  var BrowserWindow, MAX_HISTORY, addToHistory, agentDir, agentMdFile, agentModelsFile, app, callZhipuAPI, checkOpenClaw, checkOpenClawInstalled, checkOpenClawPromise, clearHistory, configExists, configFile, createAgentConfig, createDefaultConfig, createIdentity, createWindow, crypto, exec, fs, generateToken, historyFile, http, https, identityFile, installOpenClaw, ipcMain, isConfigured, loadHistory, loadSettings, mainWindow, openclawDir, path, saveHistory, saveSettings, secreteDir, sendToOpenClaw, settingsFile, spawn, startOpenClaw, workspaceDir;
+  var BrowserWindow, MAX_HISTORY, MAX_SESSIONS, addToSession, agentDir, agentMdFile, agentModelsFile, app, callZhipuAPI, checkNodeInstalled, checkNpmInstalled, checkOpenClaw, checkOpenClawInstalled, checkOpenClawPromise, checkWSLInstalled, configExists, configFile, createAgentConfig, createDefaultConfig, createIdentity, createSession, createWindow, crypto, deleteSession, exec, fs, generateId, generateToken, getPlatform, getSession, http, https, identityFile, installOpenClaw, ipcMain, isConfigured, isMac, isWindows, listSessions, loadSessions, loadSettings, mainWindow, openclawDir, path, saveSession, saveSessions, saveSettings, secreteDir, sendToOpenClaw, sessionsFile, settingsFile, spawn, startOpenClaw, workspaceDir;
 
   ({app, BrowserWindow, ipcMain} = require('electron'));
 
@@ -36,12 +36,22 @@
 
   settingsFile = path.join(secreteDir, 'settings.json');
 
-  historyFile = path.join(secreteDir, 'history.json');
+  sessionsFile = path.join(secreteDir, 'sessions.json');
 
   MAX_HISTORY = 100;
 
+  MAX_SESSIONS = 50;
+
+  isWindows = process.platform === 'win32';
+
+  isMac = process.platform === 'darwin';
+
   generateToken = function() {
     return crypto.randomBytes(24).toString('hex');
+  };
+
+  generateId = function() {
+    return Date.now().toString(36) + Math.random().toString(36).substr(2, 9);
   };
 
   loadSettings = function() {
@@ -74,48 +84,113 @@
     }
   };
 
-  loadHistory = function() {
+  loadSessions = function() {
     var data, e;
     try {
-      if (fs.existsSync(historyFile)) {
-        data = fs.readFileSync(historyFile, 'utf8');
+      if (fs.existsSync(sessionsFile)) {
+        data = fs.readFileSync(sessionsFile, 'utf8');
         return JSON.parse(data);
       }
     } catch (error) {
       e = error;
-      console.error('Error loading history:', e);
+      console.error('Error loading sessions:', e);
     }
-    return [];
+    return {};
   };
 
-  saveHistory = function(history) {
-    var e, trimmed;
+  saveSessions = function(sessions) {
+    var e;
     try {
       fs.mkdirSync(secreteDir, {
         recursive: true
       });
-      trimmed = history.slice(-MAX_HISTORY);
-      return fs.writeFileSync(historyFile, JSON.stringify(trimmed, null, 2));
+      return fs.writeFileSync(sessionsFile, JSON.stringify(sessions, null, 2));
     } catch (error) {
       e = error;
-      return console.error('Error saving history:', e);
+      return console.error('Error saving sessions:', e);
     }
   };
 
-  addToHistory = function(role, content) {
-    var history;
-    history = loadHistory();
-    history.push({
+  getSession = function(sessionId) {
+    var sessions;
+    sessions = loadSessions();
+    return sessions[sessionId] || {
+      id: sessionId,
+      messages: [],
+      createdAt: Date.now()
+    };
+  };
+
+  saveSession = function(sessionId, session) {
+    var oldest, sessionIds, sessions;
+    sessions = loadSessions();
+    session.messages = session.messages.slice(-MAX_HISTORY);
+    sessions[sessionId] = session;
+    sessionIds = Object.keys(sessions);
+    if (sessionIds.length > MAX_SESSIONS) {
+      oldest = sessionIds.sort(function(a, b) {
+        return sessions[a].createdAt - sessions[b].createdAt;
+      })[0];
+      delete sessions[oldest];
+    }
+    return saveSessions(sessions);
+  };
+
+  addToSession = function(sessionId, role, content) {
+    var session;
+    session = getSession(sessionId);
+    if (!session.messages) {
+      session.messages = [];
+    }
+    session.messages.push({
       role: role,
       content: content,
       timestamp: Date.now()
     });
-    saveHistory(history);
-    return history;
+    if (!session.title && role === 'user') {
+      session.title = content.substring(0, 50);
+    }
+    if (!session.createdAt) {
+      session.createdAt = Date.now();
+    }
+    session.updatedAt = Date.now();
+    saveSession(sessionId, session);
+    return session;
   };
 
-  clearHistory = function() {
-    return saveHistory([]);
+  createSession = function() {
+    var session, sessionId;
+    sessionId = generateId();
+    session = {
+      id: sessionId,
+      title: '',
+      messages: [],
+      createdAt: Date.now(),
+      updatedAt: Date.now()
+    };
+    saveSession(sessionId, session);
+    return session;
+  };
+
+  deleteSession = function(sessionId) {
+    var sessions;
+    sessions = loadSessions();
+    delete sessions[sessionId];
+    return saveSessions(sessions);
+  };
+
+  listSessions = function() {
+    var key, result, session, sessions;
+    sessions = loadSessions();
+    result = [];
+    for (key in sessions) {
+      session = sessions[key];
+      result.push(session);
+    }
+    result.sort(function(a, b) {
+      return (b.updatedAt || 0) - (a.updatedAt || 0);
+    });
+    return result;
   };
 
   checkOpenClaw = function(callback) {
@@ -357,10 +432,40 @@ You are a helpful AI assistant running on the user's local machine. You are powe
 
   checkOpenClawInstalled = function() {
     return new Promise(function(resolve) {
-      return exec('which openclaw', function(err) {
+      var cmd;
+      cmd = isWindows ? 'where openclaw' : 'which openclaw';
+      return exec(cmd, function(err) {
         return resolve(!err);
       });
     });
+  };
+
+  checkNodeInstalled = function() {
+    return new Promise(function(resolve) {
+      return exec('node --version', function(err, stdout) {
+        return resolve(!err);
+      });
+    });
+  };
+
+  checkNpmInstalled = function() {
+    return new Promise(function(resolve) {
+      return exec('npm --version', function(err, stdout) {
+        return resolve(!err);
+      });
+    });
+  };
+
+  checkWSLInstalled = function() {
+    return new Promise(function(resolve) {
+      return exec('wsl --list', function(err, stdout) {
+        return resolve(!err);
+      });
+    });
+  };
+
+  getPlatform = function() {
+    return process.platform;
   };
 
   installOpenClaw = function() {
@@ -378,22 +483,25 @@ You are a helpful AI assistant running on the user's local machine. You are powe
     });
   };
 
-  callZhipuAPI = function(message, apiKey) {
+  callZhipuAPI = function(sessionId, message, apiKey) {
     return new Promise(function(resolve, reject) {
-      var history, i, len, messages, msg, options, postData, req;
-      history = loadHistory();
+      var i, len, messages, msg, options, postData, ref, req, session;
+      session = getSession(sessionId);
       messages = [
         {
           role: 'system',
           content: 'You are CoffeeClaw, a helpful AI assistant. Respond in the same language the user uses. Be friendly and helpful.'
         }
       ];
-      for (i = 0, len = history.length; i < len; i++) {
-        msg = history[i];
-        messages.push({
-          role: msg.role,
-          content: msg.content
-        });
+      if (session.messages) {
+        ref = session.messages;
+        for (i = 0, len = ref.length; i < len; i++) {
+          msg = ref[i];
+          messages.push({
+            role: msg.role,
+            content: msg.content
+          });
+        }
       }
       messages.push({
         role: 'user',
@@ -448,16 +556,16 @@ You are a helpful AI assistant running on the user's local machine. You are powe
     });
   };
 
-  sendToOpenClaw = async function(message) {
+  sendToOpenClaw = async function(sessionId, message) {
     var apiKey, response, settings;
     settings = loadSettings();
     apiKey = settings.apiKey;
     if (!apiKey) {
       throw new Error('No API key configured');
     }
-    addToHistory('user', message);
-    response = (await callZhipuAPI(message, apiKey));
-    addToHistory('assistant', response);
+    addToSession(sessionId, 'user', message);
+    response = (await callZhipuAPI(sessionId, message, apiKey));
+    addToSession(sessionId, 'assistant', response);
     return response;
   };
 
@@ -465,9 +573,9 @@ You are a helpful AI assistant running on the user's local machine. You are powe
 
   createWindow = function() {
     mainWindow = new BrowserWindow({
-      width: 700,
+      width: 900,
       height: 800,
-      minWidth: 500,
+      minWidth: 600,
       minHeight: 600,
       webPreferences: {
         nodeIntegration: false,
@@ -496,10 +604,10 @@ You are a helpful AI assistant running on the user's local machine. You are powe
     }
   });
 
-  ipcMain.handle('send-message', async function(event, message) {
+  ipcMain.handle('send-message', async function(event, sessionId, message) {
     var e, result;
     try {
-      result = (await sendToOpenClaw(message));
+      result = (await sendToOpenClaw(sessionId, message));
       return result;
     } catch (error) {
       e = error;
@@ -527,6 +635,49 @@ You are a helpful AI assistant running on the user's local machine. You are powe
       configured,
       hasApiKey: !!settings.apiKey
     };
+  });
+
+  ipcMain.handle('check-prerequisites', async function() {
+    return {
+      platform: getPlatform(),
+      isWindows: isWindows,
+      isMac: isMac,
+      nodeInstalled: (await checkNodeInstalled()),
+      npmInstalled: (await checkNpmInstalled()),
+      openclawInstalled: (await checkOpenClawInstalled()),
+      wslInstalled: isWindows ? (await checkWSLInstalled()) : false
+    };
+  });
+
+  ipcMain.handle('create-session', function() {
+    return createSession();
+  });
+
+  ipcMain.handle('get-session', function(event, sessionId) {
+    return getSession(sessionId);
+  });
+
+  ipcMain.handle('list-sessions', function() {
+    return listSessions();
+  });
+
+  ipcMain.handle('delete-session', function(event, sessionId) {
+    deleteSession(sessionId);
+    return true;
+  });
+
+  ipcMain.handle('get-history', function() {
+    return listSessions();
+  });
+
+  ipcMain.handle('clear-history', function() {
+    var key, sessions;
+    sessions = loadSessions();
+    for (key in sessions) {
+      delete sessions[key];
+    }
+    saveSessions(sessions);
+    return true;
   });
 
   ipcMain.handle('run-setup', async function(event, apiKey) {
@@ -558,15 +709,6 @@ You are a helpful AI assistant running on the user's local machine. You are powe
 
   ipcMain.handle('get-settings', function() {
     return loadSettings();
-  });
-
-  ipcMain.handle('get-history', function() {
-    return loadHistory();
-  });
-
-  ipcMain.handle('clear-history', function() {
-    clearHistory();
-    return true;
   });
 
   ipcMain.handle('save-api-key', function(event, apiKey) {

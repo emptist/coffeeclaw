@@ -18,11 +18,18 @@ agentMdFile = path.join agentDir, 'agent.md'
 agentModelsFile = path.join agentDir, 'models.json'
 secreteDir = path.join path.dirname(__dirname), '.secrete'
 settingsFile = path.join secreteDir, 'settings.json'
-historyFile = path.join secreteDir, 'history.json'
+sessionsFile = path.join secreteDir, 'sessions.json'
 MAX_HISTORY = 100
+MAX_SESSIONS = 50
+
+isWindows = process.platform == 'win32'
+isMac = process.platform == 'darwin'
 
 generateToken = ->
   crypto.randomBytes(24).toString 'hex'
+
+generateId = ->
+  Date.now().toString(36) + Math.random().toString(36).substr(2, 9)
 
 loadSettings = ->
   try
@@ -42,34 +49,75 @@ saveSettings = (settings) ->
   catch e
     console.error 'Error saving settings:', e
 
-loadHistory = ->
+loadSessions = ->
   try
-    if fs.existsSync historyFile
-      data = fs.readFileSync historyFile, 'utf8'
+    if fs.existsSync sessionsFile
+      data = fs.readFileSync sessionsFile, 'utf8'
       return JSON.parse data
   catch e
-    console.error 'Error loading history:', e
-  []
+    console.error 'Error loading sessions:', e
+  {}
 
-saveHistory = (history) ->
+saveSessions = (sessions) ->
   try
     fs.mkdirSync secreteDir, { recursive: true }
-    trimmed = history.slice -MAX_HISTORY
-    fs.writeFileSync historyFile, JSON.stringify(trimmed, null, 2)
+    fs.writeFileSync sessionsFile, JSON.stringify(sessions, null, 2)
   catch e
-    console.error 'Error saving history:', e
+    console.error 'Error saving sessions:', e
 
-addToHistory = (role, content) ->
-  history = loadHistory()
-  history.push
+getSession = (sessionId) ->
+  sessions = loadSessions()
+  sessions[sessionId] or { id: sessionId, messages: [], createdAt: Date.now() }
+
+saveSession = (sessionId, session) ->
+  sessions = loadSessions()
+  session.messages = session.messages.slice -MAX_HISTORY
+  sessions[sessionId] = session
+  sessionIds = Object.keys(sessions)
+  if sessionIds.length > MAX_SESSIONS
+    oldest = sessionIds.sort((a, b) -> sessions[a].createdAt - sessions[b].createdAt)[0]
+    delete sessions[oldest]
+  saveSessions sessions
+
+addToSession = (sessionId, role, content) ->
+  session = getSession sessionId
+  unless session.messages
+    session.messages = []
+  session.messages.push
     role: role
     content: content
     timestamp: Date.now()
-  saveHistory history
-  history
+  if not session.title and role == 'user'
+    session.title = content.substring(0, 50)
+  unless session.createdAt
+    session.createdAt = Date.now()
+  session.updatedAt = Date.now()
+  saveSession sessionId, session
+  session
 
-clearHistory = ->
-  saveHistory []
+createSession = ->
+  sessionId = generateId()
+  session =
+    id: sessionId
+    title: ''
+    messages: []
+    createdAt: Date.now()
+    updatedAt: Date.now()
+  saveSession sessionId, session
+  session
+
+deleteSession = (sessionId) ->
+  sessions = loadSessions()
+  delete sessions[sessionId]
+  saveSessions sessions
+
+listSessions = ->
+  sessions = loadSessions()
+  result = []
+  for key, session of sessions
+    result.push session
+  result.sort (a, b) -> (b.updatedAt or 0) - (a.updatedAt or 0)
+  result
 
 checkOpenClaw = (callback) ->
   req = http.get 'http://127.0.0.1:18789/health', (res) ->
@@ -250,8 +298,27 @@ You are a helpful AI assistant running on the user's local machine. You are powe
 
 checkOpenClawInstalled = ->
   new Promise (resolve) ->
-    exec 'which openclaw', (err) ->
+    cmd = if isWindows then 'where openclaw' else 'which openclaw'
+    exec cmd, (err) ->
       resolve not err
+
+checkNodeInstalled = ->
+  new Promise (resolve) ->
+    exec 'node --version', (err, stdout) ->
+      resolve not err
+
+checkNpmInstalled = ->
+  new Promise (resolve) ->
+    exec 'npm --version', (err, stdout) ->
+      resolve not err
+
+checkWSLInstalled = ->
+  new Promise (resolve) ->
+    exec 'wsl --list', (err, stdout) ->
+      resolve not err
+
+getPlatform = ->
+  process.platform
 
 installOpenClaw = ->
   new Promise (resolve, reject) ->
@@ -264,17 +331,18 @@ installOpenClaw = ->
         console.log 'OpenClaw installed successfully'
         resolve true
 
-callZhipuAPI = (message, apiKey) ->
+callZhipuAPI = (sessionId, message, apiKey) ->
   new Promise (resolve, reject) ->
-    history = loadHistory()
+    session = getSession sessionId
     messages = [
       { role: 'system', content: 'You are CoffeeClaw, a helpful AI assistant. Respond in the same language the user uses. Be friendly and helpful.' }
     ]
     
-    for msg in history
-      messages.push
-        role: msg.role
-        content: msg.content
+    if session.messages
+      for msg in session.messages
+        messages.push
+          role: msg.role
+          content: msg.content
     
     messages.push
       role: 'user'
@@ -317,25 +385,25 @@ callZhipuAPI = (message, apiKey) ->
     req.write postData
     req.end()
 
-sendToOpenClaw = (message) ->
+sendToOpenClaw = (sessionId, message) ->
   settings = loadSettings()
   apiKey = settings.apiKey
   
   unless apiKey
     throw new Error 'No API key configured'
   
-  addToHistory 'user', message
-  response = await callZhipuAPI message, apiKey
-  addToHistory 'assistant', response
+  addToSession sessionId, 'user', message
+  response = await callZhipuAPI sessionId, message, apiKey
+  addToSession sessionId, 'assistant', response
   response
 
 mainWindow = null
 
 createWindow = ->
   mainWindow = new BrowserWindow
-    width: 700
+    width: 900
     height: 800
-    minWidth: 500
+    minWidth: 600
     minHeight: 600
     webPreferences:
       nodeIntegration: false
@@ -358,9 +426,9 @@ app.on 'window-all-closed', ->
   if process.platform != 'darwin'
     app.quit()
 
-ipcMain.handle 'send-message', (event, message) ->
+ipcMain.handle 'send-message', (event, sessionId, message) ->
   try
-    result = await sendToOpenClaw message
+    result = await sendToOpenClaw sessionId, message
     return result
   catch e
     throw e.message or e
@@ -375,6 +443,38 @@ ipcMain.handle 'check-status', ->
     return { running: false, starting: true, configured: true, hasApiKey: !!settings.apiKey }
   
   { running, starting: false, configured, hasApiKey: !!settings.apiKey }
+
+ipcMain.handle 'check-prerequisites', ->
+  platform: getPlatform()
+  isWindows: isWindows
+  isMac: isMac
+  nodeInstalled: await checkNodeInstalled()
+  npmInstalled: await checkNpmInstalled()
+  openclawInstalled: await checkOpenClawInstalled()
+  wslInstalled: if isWindows then await checkWSLInstalled() else false
+
+ipcMain.handle 'create-session', ->
+  createSession()
+
+ipcMain.handle 'get-session', (event, sessionId) ->
+  getSession sessionId
+
+ipcMain.handle 'list-sessions', ->
+  listSessions()
+
+ipcMain.handle 'delete-session', (event, sessionId) ->
+  deleteSession sessionId
+  true
+
+ipcMain.handle 'get-history', ->
+  listSessions()
+
+ipcMain.handle 'clear-history', ->
+  sessions = loadSessions()
+  for key of sessions
+    delete sessions[key]
+  saveSessions sessions
+  true
 
 ipcMain.handle 'run-setup', (event, apiKey) ->
   result =
@@ -402,13 +502,6 @@ ipcMain.handle 'run-setup', (event, apiKey) ->
 
 ipcMain.handle 'get-settings', ->
   loadSettings()
-
-ipcMain.handle 'get-history', ->
-  loadHistory()
-
-ipcMain.handle 'clear-history', ->
-  clearHistory()
-  true
 
 ipcMain.handle 'save-api-key', (event, apiKey) ->
   settings = loadSettings()

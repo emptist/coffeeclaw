@@ -173,6 +173,107 @@
       font-style: italic;
     }
     
+    .sidebar {
+      width: 250px;
+      background: #0f0f1a;
+      border-right: 1px solid #0f3460;
+      display: flex;
+      flex-direction: column;
+      transition: width 0.3s;
+    }
+    
+    .sidebar.collapsed {
+      width: 0;
+      border: none;
+    }
+    
+    .sidebar-header {
+      padding: 15px;
+      border-bottom: 1px solid #0f3460;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    
+    .sidebar-header h3 {
+      margin: 0;
+      font-size: 14px;
+      color: #888;
+    }
+    
+    .session-list {
+      flex: 1;
+      overflow-y: auto;
+      padding: 10px;
+    }
+    
+    .session-item {
+      padding: 12px;
+      border-radius: 8px;
+      cursor: pointer;
+      margin-bottom: 5px;
+      background: transparent;
+      border: 1px solid transparent;
+      transition: all 0.2s;
+    }
+    
+    .session-item:hover {
+      background: #16213e;
+    }
+    
+    .session-item.active {
+      background: #16213e;
+      border-color: #e94560;
+    }
+    
+    .session-item .title {
+      font-size: 13px;
+      color: #eee;
+      margin-bottom: 4px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    
+    .session-item .time {
+      font-size: 11px;
+      color: #666;
+    }
+    
+    .session-item .delete-btn {
+      float: right;
+      background: transparent;
+      border: none;
+      color: #666;
+      padding: 2px 6px;
+      cursor: pointer;
+      font-size: 12px;
+    }
+    
+    .session-item .delete-btn:hover {
+      color: #e94560;
+    }
+    
+    .main-content {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+    }
+    
+    .toggle-sidebar {
+      background: transparent;
+      border: none;
+      color: #888;
+      padding: 8px;
+      cursor: pointer;
+      font-size: 18px;
+    }
+    
+    .toggle-sidebar:hover {
+      color: #e94560;
+    }
+    
     .setup-overlay {
       position: fixed;
       top: 0;
@@ -289,65 +390,98 @@
   </style>
 </head>
 <body>
-  <div class="header">
-    <h1><span class="title-emoji">☕</span>CoffeeClaw</h1>
-    <div class="lang-select">
-      <button class="lang-btn active" data-lang="en">EN</button>
-      <button class="lang-btn" data-lang="zh">中文</button>
-      <button class="lang-btn" data-lang="eo">Espo</button>
+  <div style="display:flex;height:100vh;">
+    <div class="sidebar" id="sidebar">
+      <div class="sidebar-header">
+        <h3 data-i18n="conversations">Conversations</h3>
+        <button class="toggle-sidebar" id="toggleSidebarBtn">◀</button>
+      </div>
+      <div class="session-list" id="sessionList"></div>
     </div>
-    <div class="status">
-      <span class="status-dot" id="statusDot"></span>
-      <span id="statusText">Connecting...</span>
+    
+    <div class="main-content">
+      <div class="header">
+        <button class="toggle-sidebar" id="showSidebarBtn" style="display:none;">☰</button>
+        <h1><span class="title-emoji">☕</span>CoffeeClaw</h1>
+        <div class="lang-select">
+          <button class="lang-btn active" data-lang="en">EN</button>
+          <button class="lang-btn" data-lang="zh">中文</button>
+          <button class="lang-btn" data-lang="eo">Espo</button>
+        </div>
+        <div class="status">
+          <span class="status-dot" id="statusDot"></span>
+          <span id="statusText">Connecting...</span>
+        </div>
+      </div>
+      
+      <div class="chat-container" id="chatContainer">
+        <div class="message bot" id="welcomeMsg">
+          Hello! I'm CoffeeClaw, your OpenClaw assistant. How can I help you today?
+        </div>
+      </div>
+      
+      <div class="input-container">
+        <button id="newSessionBtn" title="New Chat / 新对话 / Nova Babilado" style="background:#0f3460;padding:12px 14px;font-size:16px;">➕</button>
+        <input type="text" id="messageInput" placeholder="Type your message..." autofocus>
+        <button id="sendButton">Send</button>
+      </div>
     </div>
-  </div>
-  
-  <div class="chat-container" id="chatContainer">
-    <div class="message bot" id="welcomeMsg">
-      Hello! I'm CoffeeClaw, your OpenClaw assistant. How can I help you today?
-    </div>
-  </div>
-  
-  <div class="input-container">
-    <input type="text" id="messageInput" placeholder="Type your message..." autofocus>
-    <button id="sendButton">Send</button>
-    <button id="clearBtn" title="Clear history" style="background:#0f3460;margin-left:5px;">🗑️</button>
   </div>
   
   <div class="setup-overlay hidden" id="setupOverlay">
-    <div class="setup-card">
+    <div class="setup-card" style="max-width:550px;">
       <div class="step-indicator" id="stepIndicator">
-        <div class="step-dot active"></div>
-        <div class="step-dot"></div>
-        <div class="step-dot"></div>
+        <div class="step-dot active" id="dot1"></div>
+        <div class="step-dot" id="dot2"></div>
+        <div class="step-dot" id="dot3"></div>
+        <div class="step-dot" id="dot4"></div>
       </div>
       
-      <div id="step1">
-        <h2>☕ <span data-i18n="setupTitle">Setup CoffeeClaw</span></h2>
-        <p data-i18n="setupDesc">CoffeeClaw needs to configure OpenClaw to work properly. This will only take a minute.</p>
+      <div id="step0">
+        <h2>☕ Welcome to CoffeeClaw</h2>
+        <p>Let's check your system and set everything up. This will only take a minute.</p>
         <div class="btn-group">
-          <button id="startSetupBtn" data-i18n="startSetup">Start Setup</button>
+          <button id="checkSystemBtn">Check System</button>
+        </div>
+      </div>
+      
+      <div id="step1" class="hidden">
+        <h2>📋 System Check</h2>
+        <div id="systemCheckList" style="margin:15px 0;"></div>
+        <div id="manualSteps" class="hidden" style="background:#0f3460;padding:15px;border-radius:8px;margin:15px 0;font-size:13px;line-height:1.8;"></div>
+        <div class="btn-group">
+          <button class="btn-secondary" id="recheckBtn">Recheck</button>
+          <button id="continueBtn">Continue</button>
         </div>
       </div>
       
       <div id="step2" class="hidden">
-        <h2>🔑 <span data-i18n="apiKeyTitle">API Key</span></h2>
-        <p data-i18n="apiKeyDesc">Enter your Zhipu AI API key. Get one free at <a href="https://open.bigmodel.cn" target="_blank" style="color:#e94560">open.bigmodel.cn</a></p>
-        <label data-i18n="apiKeyLabel">Zhipu API Key:</label>
+        <h2>🔑 API Key</h2>
+        <p>Enter your Zhipu AI API key to enable AI chat. Get one free at <a href="https://open.bigmodel.cn" target="_blank" style="color:#e94560">open.bigmodel.cn</a></p>
+        <label>Zhipu API Key:</label>
         <input type="text" id="apiKeyInput" placeholder="xxxxxxxx.xxxxxxxxxxxxxxxx">
+        <p style="font-size:11px;color:#666;margin-top:5px;">Format: alphanumeric.alphanumeric</p>
         <div class="btn-group">
-          <button class="btn-secondary" id="skipApiBtn" data-i18n="skip">Skip</button>
-          <button id="saveApiBtn" data-i18n="save">Save</button>
+          <button class="btn-secondary" id="skipApiBtn">Skip</button>
+          <button id="saveApiBtn">Save & Continue</button>
         </div>
       </div>
       
       <div id="step3" class="hidden">
-        <h2>⚙️ <span data-i18n="installTitle">Installing</span></h2>
-        <p data-i18n="installDesc">Setting up OpenClaw...</p>
+        <h2>⚙️ Setting Up</h2>
+        <p>Configuring CoffeeClaw...</p>
         <div class="progress-bar">
           <div class="progress" id="progressBar"></div>
         </div>
-        <p class="progress-text" id="progressText">Checking OpenClaw...</p>
+        <p class="progress-text" id="progressText">Initializing...</p>
+      </div>
+      
+      <div id="step4" class="hidden">
+        <h2>✅ Ready!</h2>
+        <p>CoffeeClaw is now configured and ready to use. You can start chatting!</p>
+        <div class="btn-group">
+          <button id="finishBtn">Start Chatting</button>
+        </div>
       </div>
     </div>
   </div>
@@ -388,7 +522,13 @@
         configuring: 'Configuring...',
         starting: 'Starting gateway...',
         done: 'Setup complete!',
-        ready: 'Ready to chat!'
+        ready: 'Ready to chat!',
+        newChat: 'Start new conversation?',
+        clearHistory: 'Clear all chat history?',
+        conversations: 'Conversations',
+        newChatBtn: 'New Chat',
+        untitled: 'New conversation',
+        deleteConfirm: 'Delete this conversation?'
       },
       zh: {
         welcome: '你好！我是 CoffeeClaw，你的 OpenClaw 助手。今天有什么可以帮你的吗？',
@@ -415,7 +555,13 @@
         configuring: '配置中...',
         starting: '启动网关...',
         done: '设置完成！',
-        ready: '准备聊天！'
+        ready: '准备聊天！',
+        newChat: '开始新对话？',
+        clearHistory: '清空所有聊天记录？',
+        conversations: '对话列表',
+        newChatBtn: '新对话',
+        untitled: '新对话',
+        deleteConfirm: '删除这个对话？'
       },
       eo: {
         welcome: 'Saluton! Mi estas CoffeeClaw, via OpenClaw asistanto. Kiel mi povas helpi vin hodiaŭ?',
@@ -442,11 +588,18 @@
         configuring: 'Agordante...',
         starting: 'Startigante kluzon...',
         done: 'Agordado kompleta!',
-        ready: 'Preta babili!'
+        ready: 'Preta babili!',
+        newChat: 'Komenci novan konversacion?',
+        clearHistory: 'Forigi ĉiujn babilaĵojn?',
+        conversations: 'Konversacioj',
+        newChatBtn: 'Nova Babilado',
+        untitled: 'Nova konversacio',
+        deleteConfirm: 'Forigi ĉi tiun konversacion?'
       }
     };
     
     let currentLang = 'en';
+    let currentSessionId = null;
     
     function setLang(lang) {
       currentLang = lang;
@@ -511,6 +664,12 @@
       const text = messageInput.value.trim();
       if (!text) return;
       
+      if (!currentSessionId) {
+        const session = await window.api.createSession();
+        currentSessionId = session.id;
+        await loadSessionList();
+      }
+      
       addMessage(text, 'user');
       messageInput.value = '';
       sendButton.disabled = true;
@@ -522,9 +681,10 @@
       chatContainer.scrollTop = chatContainer.scrollHeight;
       
       try {
-        const response = await window.api.sendMessage(text);
+        const response = await window.api.sendMessage(currentSessionId, text);
         typingDiv.remove();
         addMessage(response, 'bot');
+        await loadSessionList();
       } catch (e) {
         typingDiv.remove();
         addMessage(translations[currentLang].error + e, 'error');
@@ -537,6 +697,94 @@
     sendButton.addEventListener('click', sendMessage);
     messageInput.addEventListener('keypress', (e) => {
       if (e.key === 'Enter') sendMessage();
+    });
+    
+    async function loadSessionList() {
+      const sessions = await window.api.listSessions();
+      const sessionList = document.getElementById('sessionList');
+      sessionList.innerHTML = '';
+      
+      sessions.forEach(session => {
+        const div = document.createElement('div');
+        div.className = `session-item ${session.id === currentSessionId ? 'active' : ''}`;
+        div.innerHTML = `
+          <button class="delete-btn" data-id="${session.id}">×</button>
+          <div class="title">${session.title || translations[currentLang].untitled}</div>
+          <div class="time">${formatTime(session.updatedAt)}</div>
+        `;
+        div.addEventListener('click', (e) => {
+          if (!e.target.classList.contains('delete-btn')) {
+            loadSession(session.id);
+          }
+        });
+        sessionList.appendChild(div);
+      });
+      
+      document.querySelectorAll('.delete-btn').forEach(btn => {
+        btn.addEventListener('click', async (e) => {
+          e.stopPropagation();
+          if (confirm(translations[currentLang].deleteConfirm)) {
+            await window.api.deleteSession(btn.dataset.id);
+            if (btn.dataset.id === currentSessionId) {
+              currentSessionId = null;
+              chatContainer.innerHTML = '';
+              welcomeMsg.style.display = 'block';
+              chatContainer.appendChild(welcomeMsg);
+            }
+            await loadSessionList();
+          }
+        });
+      });
+    }
+    
+    async function loadSession(sessionId) {
+      currentSessionId = sessionId;
+      const session = await window.api.getSession(sessionId);
+      
+      chatContainer.innerHTML = '';
+      welcomeMsg.style.display = 'none';
+      
+      if (session.messages && session.messages.length > 0) {
+        session.messages.forEach(msg => {
+          addMessage(msg.content, msg.role === 'user' ? 'user' : 'bot');
+        });
+      } else {
+        welcomeMsg.style.display = 'block';
+        chatContainer.appendChild(welcomeMsg);
+      }
+      
+      await loadSessionList();
+    }
+    
+    function formatTime(timestamp) {
+      if (!timestamp) return '';
+      const date = new Date(timestamp);
+      const now = new Date();
+      const diff = now - date;
+      
+      if (diff < 60000) return 'just now';
+      if (diff < 3600000) return Math.floor(diff / 60000) + 'm ago';
+      if (diff < 86400000) return Math.floor(diff / 3600000) + 'h ago';
+      return date.toLocaleDateString();
+    }
+    
+    document.getElementById('newSessionBtn').addEventListener('click', async () => {
+      currentSessionId = null;
+      chatContainer.innerHTML = '';
+      welcomeMsg.style.display = 'block';
+      welcomeMsg.textContent = translations[currentLang].welcome;
+      chatContainer.appendChild(welcomeMsg);
+      await loadSessionList();
+    });
+    
+    document.getElementById('toggleSidebarBtn').addEventListener('click', () => {
+      document.getElementById('sidebar').classList.add('collapsed');
+      document.getElementById('showSidebarBtn').style.display = 'block';
+    });
+    
+    document.getElementById('showSidebarBtn').addEventListener('click', () => {
+      document.getElementById('sidebar').classList.remove('collapsed');
+      document.getElementById('showSidebarBtn').style.display = 'none';
     });
     
     async function initApp() {
@@ -553,94 +801,173 @@
         statusText.textContent = translations[currentLang].starting;
       }
       
-      await loadHistory();
+      await loadSessionList();
     }
     
-    async function loadHistory() {
-      try {
-        const history = await window.api.getHistory();
-        if (history && history.length > 0) {
-          welcomeMsg.style.display = 'none';
-          for (const msg of history) {
-            const type = msg.role === 'user' ? 'user' : 'bot';
-            addMessage(msg.content, type);
-          }
-        }
-      } catch (e) {
-        console.error('Failed to load history:', e);
-      }
-    }
+    let prereqResult = null;
     
-    document.getElementById('clearBtn').addEventListener('click', async () => {
-      if (confirm('Clear all chat history?')) {
-        await window.api.clearHistory();
-        chatContainer.innerHTML = '';
-        welcomeMsg.style.display = 'block';
-        chatContainer.appendChild(welcomeMsg);
-      }
+    document.getElementById('checkSystemBtn').addEventListener('click', async () => {
+      document.getElementById('step0').classList.add('hidden');
+      document.getElementById('step1').classList.remove('hidden');
+      document.getElementById('dot1').classList.add('done');
+      document.getElementById('dot2').classList.add('active');
+      await checkPrerequisites();
     });
     
-    document.getElementById('startSetupBtn').addEventListener('click', () => {
+    async function checkPrerequisites() {
+      const checkList = document.getElementById('systemCheckList');
+      const manualSteps = document.getElementById('manualSteps');
+      checkList.innerHTML = '<p style="color:#888;">Checking system...</p>';
+      
+      prereqResult = await window.api.checkPrerequisites();
+      const { platform, isWindows, isMac, nodeInstalled, npmInstalled, openclawInstalled, wslInstalled } = prereqResult;
+      
+      let html = '';
+      let needsManual = [];
+      
+      html += `<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid #0f3460;">
+        <span style="font-size:18px;">${isMac ? '🍎' : isWindows ? '🪟' : '🐧'}</span>
+        <span style="flex:1;">Platform: ${isMac ? 'macOS' : isWindows ? 'Windows' : 'Linux'}</span>
+        <span style="color:#00ff88;">✓</span>
+      </div>`;
+      
+      html += `<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid #0f3460;">
+        <span style="font-size:18px;">📦</span>
+        <span style="flex:1;">Node.js</span>
+        <span style="color:${nodeInstalled ? '#00ff88' : '#e94560'};">${nodeInstalled ? '✓ Installed' : '✗ Missing'}</span>
+      </div>`;
+      
+      html += `<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid #0f3460;">
+        <span style="font-size:18px;">📦</span>
+        <span style="flex:1;">npm</span>
+        <span style="color:${npmInstalled ? '#00ff88' : '#e94560'};">${npmInstalled ? '✓ Installed' : '✗ Missing'}</span>
+      </div>`;
+      
+      if (isWindows) {
+        html += `<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid #0f3460;">
+          <span style="font-size:18px;">🐧</span>
+          <span style="flex:1;">WSL2 (Windows Subsystem for Linux)</span>
+          <span style="color:${wslInstalled ? '#00ff88' : '#ffa500'};">${wslInstalled ? '✓ Installed' : '⚠ Recommended'}</span>
+        </div>`;
+      }
+      
+      html += `<div style="display:flex;align-items:center;gap:10px;padding:8px 0;">
+        <span style="font-size:18px;">🦞</span>
+        <span style="flex:1;">OpenClaw</span>
+        <span style="color:${openclawInstalled ? '#00ff88' : '#ffa500'};">${openclawInstalled ? '✓ Installed' : '⚠ Will install'}</span>
+      </div>`;
+      
+      checkList.innerHTML = html;
+      
+      if (!nodeInstalled || !npmInstalled) {
+        let manual = '<h4 style="margin:0 0 10px 0;color:#e94560;">Manual Steps Required:</h4>';
+        
+        if (!nodeInstalled || !npmInstalled) {
+          if (isMac) {
+            manual += `<p><strong>Install Node.js on macOS:</strong></p>
+            <p style="background:#000;padding:10px;border-radius:4px;margin:5px 0;font-family:monospace;">
+              brew install node
+            </p>
+            <p style="font-size:12px;color:#888;">Or download from <a href="https://nodejs.org" target="_blank" style="color:#e94560">nodejs.org</a></p>`;
+          } else if (isWindows) {
+            manual += `<p><strong>Install Node.js on Windows:</strong></p>
+            <p>1. Download from <a href="https://nodejs.org" target="_blank" style="color:#e94560">nodejs.org</a></p>
+            <p>2. Run the installer and follow the prompts</p>
+            <p>3. Restart CoffeeClaw after installation</p>`;
+          } else {
+            manual += `<p><strong>Install Node.js on Linux:</strong></p>
+            <p style="background:#000;padding:10px;border-radius:4px;margin:5px 0;font-family:monospace;">
+              curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -<br>
+              sudo apt-get install -y nodejs
+            </p>`;
+          }
+        }
+        
+        if (isWindows && !wslInstalled) {
+          manual += `<p style="margin-top:15px;"><strong>Optional: Install WSL2 for better compatibility:</strong></p>
+          <p style="background:#000;padding:10px;border-radius:4px;margin:5px 0;font-family:monospace;">
+            wsl --install
+          </p>
+          <p style="font-size:12px;color:#888;">Then restart your computer and run the setup again.</p>`;
+        }
+        
+        manualSteps.innerHTML = manual;
+        manualSteps.classList.remove('hidden');
+        document.getElementById('continueBtn').disabled = true;
+        document.getElementById('continueBtn').style.opacity = '0.5';
+      } else {
+        manualSteps.classList.add('hidden');
+        document.getElementById('continueBtn').disabled = false;
+        document.getElementById('continueBtn').style.opacity = '1';
+      }
+    }
+    
+    document.getElementById('recheckBtn').addEventListener('click', checkPrerequisites);
+    
+    document.getElementById('continueBtn').addEventListener('click', () => {
       document.getElementById('step1').classList.add('hidden');
       document.getElementById('step2').classList.remove('hidden');
-      document.querySelectorAll('.step-dot')[0].classList.add('done');
-      document.querySelectorAll('.step-dot')[1].classList.add('active');
+      document.getElementById('dot2').classList.add('done');
+      document.getElementById('dot3').classList.add('active');
     });
     
     document.getElementById('skipApiBtn').addEventListener('click', () => startInstallation(null));
     document.getElementById('saveApiBtn').addEventListener('click', () => {
       const apiKey = document.getElementById('apiKeyInput').value.trim();
+      if (apiKey && !apiKey.includes('.')) {
+        alert('Invalid API key format. Expected: xxxxxxxx.xxxxxxxxxxxxxxxx');
+        return;
+      }
       startInstallation(apiKey || null);
     });
     
     async function startInstallation(apiKey) {
       document.getElementById('step2').classList.add('hidden');
       document.getElementById('step3').classList.remove('hidden');
-      document.querySelectorAll('.step-dot')[1].classList.add('done');
-      document.querySelectorAll('.step-dot')[2].classList.add('active');
+      document.getElementById('dot3').classList.add('done');
+      document.getElementById('dot4').classList.add('active');
       
       const progressBar = document.getElementById('progressBar');
       const progressText = document.getElementById('progressText');
       
       try {
-        progressText.textContent = translations[currentLang].checking;
-        progressBar.style.width = '20%';
+        progressText.textContent = 'Checking prerequisites...';
+        progressBar.style.width = '10%';
+        
+        if (!prereqResult.openclawInstalled) {
+          progressText.textContent = 'Installing OpenClaw...';
+          progressBar.style.width = '30%';
+        }
+        
+        progressText.textContent = 'Configuring...';
+        progressBar.style.width = '50%';
         
         const result = await window.api.runSetup(apiKey);
         
-        if (result.installing) {
-          progressText.textContent = translations[currentLang].installing;
-          progressBar.style.width = '50%';
-          await new Promise(r => setTimeout(r, 2000));
-        }
+        progressText.textContent = 'Starting services...';
+        progressBar.style.width = '80%';
         
-        progressText.textContent = translations[currentLang].configuring;
-        progressBar.style.width = '70%';
-        
-        if (result.configuring) {
-          await new Promise(r => setTimeout(r, 1000));
-        }
-        
-        progressText.textContent = translations[currentLang].starting;
-        progressBar.style.width = '90%';
-        
-        if (result.starting) {
-          await new Promise(r => setTimeout(r, 2000));
-        }
+        await new Promise(r => setTimeout(r, 1000));
         
         progressBar.style.width = '100%';
-        progressText.textContent = translations[currentLang].done;
+        progressText.textContent = 'Setup complete!';
         
         await new Promise(r => setTimeout(r, 500));
-        setupOverlay.classList.add('hidden');
         
-        addMessage(translations[currentLang].ready, 'success');
+        document.getElementById('step3').classList.add('hidden');
+        document.getElementById('step4').classList.remove('hidden');
         
       } catch (e) {
-        progressText.textContent = translations[currentLang].error + e.message;
+        progressText.textContent = 'Error: ' + e.message;
         progressBar.style.width = '0%';
+        progressBar.style.background = '#e94560';
       }
     }
+    
+    document.getElementById('finishBtn').addEventListener('click', () => {
+      setupOverlay.classList.add('hidden');
+      addMessage('Ready to chat! Ask me anything.', 'success');
+    });
     
     initApp();
     setInterval(checkStatus, 5000);
