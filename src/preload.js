@@ -72,6 +72,12 @@
     getBotTemplates: function() {
       return ipcRenderer.invoke('get-bot-templates');
     },
+    exportBots: function() {
+      return ipcRenderer.invoke('export-bots');
+    },
+    importBots: function(data) {
+      return ipcRenderer.invoke('import-bots', data);
+    },
     getFeishuStatus: function() {
       return ipcRenderer.invoke('get-feishu-status');
     },

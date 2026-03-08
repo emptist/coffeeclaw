@@ -1214,6 +1214,78 @@ You are a helpful AI assistant running on the user's local machine. You are powe
     return getBotTemplates();
   });
 
+  ipcMain.handle('export-bots', function() {
+    var botsData, e, settings;
+    try {
+      botsData = loadBots();
+      settings = loadSettings();
+      return {
+        success: true,
+        data: {
+          bots: botsData.bots,
+          activeBotId: botsData.activeBotId,
+          settings: {
+            feishu: settings.feishu
+          },
+          exportedAt: new Date().toISOString(),
+          version: '1.0'
+        }
+      };
+    } catch (error) {
+      e = error;
+      return {
+        success: false,
+        error: e.message
+      };
+    }
+  });
+
+  ipcMain.handle('import-bots', function(event, data) {
+    var bot, botsData, e, existing, i, imported, len, ref, ref1, settings;
+    try {
+      if (!(data.bots && Array.isArray(data.bots))) {
+        return {
+          success: false,
+          error: 'Invalid data: bots array required'
+        };
+      }
+      botsData = loadBots();
+      imported = 0;
+      ref = data.bots;
+      for (i = 0, len = ref.length; i < len; i++) {
+        bot = ref[i];
+        if (bot.id && bot.name) {
+          existing = botsData.bots.find(function(b) {
+            return b.id === bot.id;
+          });
+          if (existing) {
+            Object.assign(existing, bot);
+          } else {
+            botsData.bots.push(bot);
+          }
+          imported++;
+        }
+      }
+      saveBots(botsData);
+      if ((ref1 = data.settings) != null ? ref1.feishu : void 0) {
+        settings = loadSettings();
+        settings.feishu = data.settings.feishu;
+        saveSettings(settings);
+      }
+      return {
+        success: true,
+        imported: imported,
+        total: botsData.bots.length
+      };
+    } catch (error) {
+      e = error;
+      return {
+        success: false,
+        error: e.message
+      };
+    }
+  });
+
   ipcMain.handle('get-feishu-status', function() {
     var existing, ref, ref1, settings;
     settings = loadSettings();

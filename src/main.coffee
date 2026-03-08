@@ -784,6 +784,51 @@ ipcMain.handle 'delete-bot', (event, botId) -> deleteBot botId
 ipcMain.handle 'set-active-bot', (event, botId) -> setActiveBot botId
 ipcMain.handle 'get-bot-templates', -> getBotTemplates()
 
+ipcMain.handle 'export-bots', ->
+  try
+    botsData = loadBots()
+    settings = loadSettings()
+    {
+      success: true
+      data:
+        bots: botsData.bots
+        activeBotId: botsData.activeBotId
+        settings:
+          feishu: settings.feishu
+        exportedAt: new Date().toISOString()
+        version: '1.0'
+    }
+  catch e
+    { success: false, error: e.message }
+
+ipcMain.handle 'import-bots', (event, data) ->
+  try
+    unless data.bots and Array.isArray data.bots
+      return { success: false, error: 'Invalid data: bots array required' }
+    
+    botsData = loadBots()
+    imported = 0
+    
+    for bot in data.bots
+      if bot.id and bot.name
+        existing = botsData.bots.find (b) -> b.id == bot.id
+        if existing
+          Object.assign existing, bot
+        else
+          botsData.bots.push bot
+        imported++
+    
+    saveBots botsData
+    
+    if data.settings?.feishu
+      settings = loadSettings()
+      settings.feishu = data.settings.feishu
+      saveSettings settings
+    
+    { success: true, imported: imported, total: botsData.bots.length }
+  catch e
+    { success: false, error: e.message }
+
 ipcMain.handle 'get-feishu-status', ->
   settings = loadSettings()
   existing = detectExistingFeishuConfig()

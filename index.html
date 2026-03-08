@@ -1298,6 +1298,53 @@
       document.getElementById('feishuPairingModal').style.display = 'none';
     });
     
+    document.getElementById('exportBotsBtn').addEventListener('click', async () => {
+      const result = await window.api.exportBots();
+      if (result.success) {
+        const blob = new Blob([JSON.stringify(result.data, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `coffeeclaw-backup-${new Date().toISOString().split('T')[0]}.json`;
+        a.click();
+        URL.revokeObjectURL(url);
+        document.getElementById('botEditorModal').style.display = 'none';
+        addMessage('Configuration exported successfully!', 'success');
+      } else {
+        document.getElementById('botEditorError').textContent = 'Export failed: ' + result.error;
+        document.getElementById('botEditorError').style.display = 'block';
+      }
+    });
+    
+    document.getElementById('importBotsBtn').addEventListener('click', () => {
+      document.getElementById('importBotsFile').click();
+    });
+    
+    document.getElementById('importBotsFile').addEventListener('change', async (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      
+      try {
+        const text = await file.text();
+        const data = JSON.parse(text);
+        const result = await window.api.importBots(data);
+        
+        if (result.success) {
+          await loadBots();
+          document.getElementById('botEditorModal').style.display = 'none';
+          addMessage(`Imported ${result.imported} bots. Total: ${result.total}`, 'success');
+        } else {
+          document.getElementById('botEditorError').textContent = 'Import failed: ' + result.error;
+          document.getElementById('botEditorError').style.display = 'block';
+        }
+      } catch (err) {
+        document.getElementById('botEditorError').textContent = 'Invalid JSON file: ' + err.message;
+        document.getElementById('botEditorError').style.display = 'block';
+      }
+      
+      e.target.value = '';
+    });
+    
     document.getElementById('feishuStatusBtn').addEventListener('click', async () => {
       const status = await window.api.getFeishuStatus();
       document.getElementById('feishuAppIdDisplay').textContent = status.appId || '-';
