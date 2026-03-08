@@ -45,8 +45,7 @@
           "arch": ["x64", "arm64"]
         }
       ],
-      "category": "public.app-category.productivity",
-      "icon": "assets/icon.icns"
+      "category": "public.app-category.productivity"
     },
     "win": {
       "target": [
@@ -54,22 +53,18 @@
           "target": "nsis",
           "arch": ["x64"]
         }
-      ],
-      "icon": "assets/icon.ico"
+      ]
     },
     "nsis": {
       "oneClick": false,
-      "allowToChangeInstallationDirectory": true,
-      "installerIcon": "assets/icon.ico",
-      "uninstallerIcon": "assets/icon.ico"
+      "allowToChangeInstallationDirectory": true
     },
     "linux": {
       "target": [
         "AppImage",
         "deb"
       ],
-      "category": "Utility",
-      "icon": "assets/icon.png"
+      "category": "Utility"
     }
   }
 }
