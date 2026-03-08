@@ -2,7 +2,7 @@
 (function() {
   // CoffeeClaw - Main Process
   // Auto-configures OpenClaw on first run
-  var BOT_TEMPLATES, BrowserWindow, INITIAL_BALANCE_CNY, INITIAL_BALANCE_USD, LICENSE_PRICES, MAX_HISTORY, MAX_SESSIONS, MODELS, SKILLS, addToSession, agentDir, agentMdFile, agentModelsFile, app, botsFile, callAPI, callAPIWithMessages, checkNodeInstalled, checkNpmInstalled, checkOpenClaw, checkOpenClawInstalled, checkOpenClawPromise, checkWSLInstalled, configExists, configFile, configureFeishu, createAgentConfig, createBot, createDefaultConfig, createIdentity, createSession, createWindow, crypto, deleteBot, deleteSession, detectExistingFeishuConfig, exec, executeSkillFunction, fs, generateId, generateToken, getActiveBot, getBot, getBotTemplates, getLicenseStatus, getPlatform, getSession, getSkillFunctions, http, https, identityFile, initLicense, installOpenClaw, ipcMain, isConfigured, isMac, isWindows, licenseFile, listSessions, loadBots, loadLicense, loadSessions, loadSettings, mainWindow, openclawDir, path, saveBots, saveLicense, saveSession, saveSessions, saveSettings, secreteDir, sendToOpenClaw, sessionsFile, setActiveBot, settingsFile, spawn, startOpenClaw, syncFeishuConfigToOpenClaw, syncFeishuConfigToSettings, updateBot, workspaceDir;
+  var BOT_TEMPLATES, BrowserWindow, INITIAL_BALANCE_CNY, INITIAL_BALANCE_USD, LICENSE_PRICES, MAX_HISTORY, MAX_SESSIONS, MODELS, SKILLS, USD_TO_CNY, addToSession, agentDir, agentMdFile, agentModelsFile, app, botsFile, callAPI, callAPIWithMessages, checkNodeInstalled, checkNpmInstalled, checkOpenClaw, checkOpenClawInstalled, checkOpenClawPromise, checkWSLInstalled, configExists, configFile, configureFeishu, createAgentConfig, createBot, createDefaultConfig, createIdentity, createSession, createWindow, crypto, deleteBot, deleteSession, detectExistingFeishuConfig, exec, executeSkillFunction, fs, generateId, generateToken, getActiveBot, getBot, getBotTemplates, getLicenseStatus, getPlatform, getSession, getSkillFunctions, http, https, identityFile, initLicense, installOpenClaw, ipcMain, isConfigured, isMac, isWindows, licenseFile, listSessions, loadBots, loadLicense, loadSessions, loadSettings, mainWindow, openclawDir, path, saveBots, saveLicense, saveSession, saveSessions, saveSettings, secreteDir, sendToOpenClaw, sessionsFile, setActiveBot, settingsFile, spawn, startOpenClaw, syncFeishuConfigToOpenClaw, syncFeishuConfigToSettings, updateBot, workspaceDir;
 
   ({app, BrowserWindow, ipcMain} = require('electron'));
 
@@ -42,19 +42,21 @@
 
   licenseFile = path.join(secreteDir, 'license.json');
 
+  USD_TO_CNY = 6;
+
   LICENSE_PRICES = {
     yearly_usd: 12,
-    yearly_cny: 36,
+    yearly_cny: 12 * USD_TO_CNY,
     lifetime_usd: 36,
-    lifetime_cny: 108,
+    lifetime_cny: 36 * USD_TO_CNY,
     btc_address: null,
     monthly_usd: 1,
-    monthly_cny: 3
+    monthly_cny: 1 * USD_TO_CNY
   };
 
   INITIAL_BALANCE_USD = 1;
 
-  INITIAL_BALANCE_CNY = 3;
+  INITIAL_BALANCE_CNY = 1 * USD_TO_CNY;
 
   MAX_HISTORY = 100;
 

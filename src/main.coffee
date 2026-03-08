@@ -22,17 +22,19 @@ sessionsFile = path.join secreteDir, 'sessions.json'
 botsFile = path.join secreteDir, 'bots.json'
 licenseFile = path.join secreteDir, 'license.json'
 
+USD_TO_CNY = 6
+
 LICENSE_PRICES =
   yearly_usd: 12
-  yearly_cny: 36
+  yearly_cny: 12 * USD_TO_CNY
   lifetime_usd: 36
-  lifetime_cny: 108
+  lifetime_cny: 36 * USD_TO_CNY
   btc_address: null
   monthly_usd: 1
-  monthly_cny: 3
+  monthly_cny: 1 * USD_TO_CNY
 
 INITIAL_BALANCE_USD = 1
-INITIAL_BALANCE_CNY = 3
+INITIAL_BALANCE_CNY = 1 * USD_TO_CNY
 MAX_HISTORY = 100
 MAX_SESSIONS = 50
 
