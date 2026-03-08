@@ -24,3 +24,5 @@ contextBridge.exposeInMainWorld 'api',
   deleteBot: (botId) -> ipcRenderer.invoke 'delete-bot', botId
   setActiveBot: (botId) -> ipcRenderer.invoke 'set-active-bot', botId
   getBotTemplates: -> ipcRenderer.invoke 'get-bot-templates'
+  getFeishuStatus: -> ipcRenderer.invoke 'get-feishu-status'
+  syncFeishuToOpenClaw: -> ipcRenderer.invoke 'sync-feishu-to-openclaw'

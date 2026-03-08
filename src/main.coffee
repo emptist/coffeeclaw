@@ -784,6 +784,17 @@ ipcMain.handle 'delete-bot', (event, botId) -> deleteBot botId
 ipcMain.handle 'set-active-bot', (event, botId) -> setActiveBot botId
 ipcMain.handle 'get-bot-templates', -> getBotTemplates()
 
+ipcMain.handle 'get-feishu-status', ->
+  settings = loadSettings()
+  existing = detectExistingFeishuConfig()
+  {
+    enabled: settings.feishu?.enabled or false
+    configured: existing?.enabled or false
+    appId: settings.feishu?.appId or null
+  }
+
+ipcMain.handle 'sync-feishu-to-openclaw', -> syncFeishuConfigToOpenClaw()
+
 ipcMain.handle 'get-session', (event, sessionId) ->
   getSession sessionId
 

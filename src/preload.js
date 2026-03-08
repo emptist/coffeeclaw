@@ -71,6 +71,12 @@
     },
     getBotTemplates: function() {
       return ipcRenderer.invoke('get-bot-templates');
+    },
+    getFeishuStatus: function() {
+      return ipcRenderer.invoke('get-feishu-status');
+    },
+    syncFeishuToOpenClaw: function() {
+      return ipcRenderer.invoke('sync-feishu-to-openclaw');
     }
   });
 

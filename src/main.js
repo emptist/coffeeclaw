@@ -1214,6 +1214,21 @@ You are a helpful AI assistant running on the user's local machine. You are powe
     return getBotTemplates();
   });
 
+  ipcMain.handle('get-feishu-status', function() {
+    var existing, ref, ref1, settings;
+    settings = loadSettings();
+    existing = detectExistingFeishuConfig();
+    return {
+      enabled: ((ref = settings.feishu) != null ? ref.enabled : void 0) || false,
+      configured: (existing != null ? existing.enabled : void 0) || false,
+      appId: ((ref1 = settings.feishu) != null ? ref1.appId : void 0) || null
+    };
+  });
+
+  ipcMain.handle('sync-feishu-to-openclaw', function() {
+    return syncFeishuConfigToOpenClaw();
+  });
+
   ipcMain.handle('get-session', function(event, sessionId) {
     return getSession(sessionId);
   });

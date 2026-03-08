@@ -1298,8 +1298,38 @@
       document.getElementById('feishuPairingModal').style.display = 'none';
     });
     
+    document.getElementById('feishuStatusBtn').addEventListener('click', async () => {
+      const status = await window.api.getFeishuStatus();
+      document.getElementById('feishuAppIdDisplay').textContent = status.appId || '-';
+      
+      if (status.enabled && status.configured) {
+        document.getElementById('feishuConnectionDot').style.background = '#00ff88';
+        document.getElementById('feishuConnectionText').textContent = 'Connected';
+      } else if (status.enabled) {
+        document.getElementById('feishuConnectionDot').style.background = '#e94560';
+        document.getElementById('feishuConnectionText').textContent = 'Not configured in OpenClaw';
+      } else {
+        document.getElementById('feishuConnectionDot').style.background = '#888';
+        document.getElementById('feishuConnectionText').textContent = 'Disabled';
+      }
+      
+      document.getElementById('feishuPairingModal').style.display = 'flex';
+    });
+    
+    async function checkFeishuStatus() {
+      const status = await window.api.getFeishuStatus();
+      const btn = document.getElementById('feishuStatusBtn');
+      if (status.enabled) {
+        btn.style.display = 'inline-block';
+        btn.style.background = status.configured ? '#00ff88' : '#e94560';
+      } else {
+        btn.style.display = 'none';
+      }
+    }
+    
     initApp();
     loadBots();
+    checkFeishuStatus();
     setInterval(checkStatus, 5000);
   </script>
 </body>
