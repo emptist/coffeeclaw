@@ -331,8 +331,44 @@ installOpenClaw = ->
         console.log 'OpenClaw installed successfully'
         resolve true
 
-callZhipuAPI = (sessionId, message, apiKey) ->
+MODELS =
+  zhipu:
+    name: 'Zhipu GLM'
+    models: [
+      { id: 'glm-4-flash', name: 'GLM-4-Flash (Free)', free: true }
+      { id: 'glm-4-plus', name: 'GLM-4-Plus' }
+      { id: 'glm-4-air', name: 'GLM-4-Air' }
+    ]
+    baseUrl: 'open.bigmodel.cn'
+    apiPath: '/api/paas/v4/chat/completions'
+  openai:
+    name: 'OpenAI'
+    models: [
+      { id: 'gpt-4o-mini', name: 'GPT-4o Mini' }
+      { id: 'gpt-4o', name: 'GPT-4o' }
+      { id: 'gpt-4-turbo', name: 'GPT-4 Turbo' }
+    ]
+    baseUrl: 'api.openai.com'
+    apiPath: '/v1/chat/completions'
+  deepseek:
+    name: 'DeepSeek'
+    models: [
+      { id: 'deepseek-chat', name: 'DeepSeek Chat' }
+      { id: 'deepseek-coder', name: 'DeepSeek Coder' }
+    ]
+    baseUrl: 'api.deepseek.com'
+    apiPath: '/v1/chat/completions'
+
+callAPI = (sessionId, message, settings) ->
   new Promise (resolve, reject) ->
+    { apiKey, provider, model } = settings
+    provider = provider or 'zhipu'
+    model = model or 'glm-4-flash'
+    
+    config = MODELS[provider]
+    unless config
+      return reject new Error "Unknown provider: #{provider}"
+    
     session = getSession sessionId
     messages = [
       { role: 'system', content: 'You are CoffeeClaw, a helpful AI assistant. Respond in the same language the user uses. Be friendly and helpful.' }
@@ -349,14 +385,14 @@ callZhipuAPI = (sessionId, message, apiKey) ->
       content: message
     
     postData = JSON.stringify
-      model: 'glm-4-flash'
+      model: model
       messages: messages
       stream: false
 
     options =
-      hostname: 'open.bigmodel.cn'
+      hostname: config.baseUrl
       port: 443
-      path: '/api/paas/v4/chat/completions'
+      path: config.apiPath
       method: 'POST'
       headers:
         'Content-Type': 'application/json'
@@ -393,7 +429,7 @@ sendToOpenClaw = (sessionId, message) ->
     throw new Error 'No API key configured'
   
   addToSession sessionId, 'user', message
-  response = await callZhipuAPI sessionId, message, apiKey
+  response = await callAPI sessionId, message, settings
   addToSession sessionId, 'assistant', response
   response
 
@@ -502,6 +538,16 @@ ipcMain.handle 'run-setup', (event, apiKey) ->
 
 ipcMain.handle 'get-settings', ->
   loadSettings()
+
+ipcMain.handle 'save-settings', (event, newSettings) ->
+  settings = loadSettings()
+  for key, value of newSettings
+    settings[key] = value
+  saveSettings settings
+  true
+
+ipcMain.handle 'get-models', ->
+  MODELS
 
 ipcMain.handle 'save-api-key', (event, apiKey) ->
   settings = loadSettings()

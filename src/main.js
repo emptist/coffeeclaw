@@ -2,7 +2,7 @@
 (function() {
   // CoffeeClaw - Main Process
   // Auto-configures OpenClaw on first run
-  var BrowserWindow, MAX_HISTORY, MAX_SESSIONS, addToSession, agentDir, agentMdFile, agentModelsFile, app, callZhipuAPI, checkNodeInstalled, checkNpmInstalled, checkOpenClaw, checkOpenClawInstalled, checkOpenClawPromise, checkWSLInstalled, configExists, configFile, createAgentConfig, createDefaultConfig, createIdentity, createSession, createWindow, crypto, deleteSession, exec, fs, generateId, generateToken, getPlatform, getSession, http, https, identityFile, installOpenClaw, ipcMain, isConfigured, isMac, isWindows, listSessions, loadSessions, loadSettings, mainWindow, openclawDir, path, saveSession, saveSessions, saveSettings, secreteDir, sendToOpenClaw, sessionsFile, settingsFile, spawn, startOpenClaw, workspaceDir;
+  var BrowserWindow, MAX_HISTORY, MAX_SESSIONS, MODELS, addToSession, agentDir, agentMdFile, agentModelsFile, app, callAPI, checkNodeInstalled, checkNpmInstalled, checkOpenClaw, checkOpenClawInstalled, checkOpenClawPromise, checkWSLInstalled, configExists, configFile, createAgentConfig, createDefaultConfig, createIdentity, createSession, createWindow, crypto, deleteSession, exec, fs, generateId, generateToken, getPlatform, getSession, http, https, identityFile, installOpenClaw, ipcMain, isConfigured, isMac, isWindows, listSessions, loadSessions, loadSettings, mainWindow, openclawDir, path, saveSession, saveSessions, saveSettings, secreteDir, sendToOpenClaw, sessionsFile, settingsFile, spawn, startOpenClaw, workspaceDir;
 
   ({app, BrowserWindow, ipcMain} = require('electron'));
 
@@ -483,9 +483,73 @@ You are a helpful AI assistant running on the user's local machine. You are powe
     });
   };
 
-  callZhipuAPI = function(sessionId, message, apiKey) {
+  MODELS = {
+    zhipu: {
+      name: 'Zhipu GLM',
+      models: [
+        {
+          id: 'glm-4-flash',
+          name: 'GLM-4-Flash (Free)',
+          free: true
+        },
+        {
+          id: 'glm-4-plus',
+          name: 'GLM-4-Plus'
+        },
+        {
+          id: 'glm-4-air',
+          name: 'GLM-4-Air'
+        }
+      ],
+      baseUrl: 'open.bigmodel.cn',
+      apiPath: '/api/paas/v4/chat/completions'
+    },
+    openai: {
+      name: 'OpenAI',
+      models: [
+        {
+          id: 'gpt-4o-mini',
+          name: 'GPT-4o Mini'
+        },
+        {
+          id: 'gpt-4o',
+          name: 'GPT-4o'
+        },
+        {
+          id: 'gpt-4-turbo',
+          name: 'GPT-4 Turbo'
+        }
+      ],
+      baseUrl: 'api.openai.com',
+      apiPath: '/v1/chat/completions'
+    },
+    deepseek: {
+      name: 'DeepSeek',
+      models: [
+        {
+          id: 'deepseek-chat',
+          name: 'DeepSeek Chat'
+        },
+        {
+          id: 'deepseek-coder',
+          name: 'DeepSeek Coder'
+        }
+      ],
+      baseUrl: 'api.deepseek.com',
+      apiPath: '/v1/chat/completions'
+    }
+  };
+
+  callAPI = function(sessionId, message, settings) {
     return new Promise(function(resolve, reject) {
-      var i, len, messages, msg, options, postData, ref, req, session;
+      var apiKey, config, i, len, messages, model, msg, options, postData, provider, ref, req, session;
+      ({apiKey, provider, model} = settings);
+      provider = provider || 'zhipu';
+      model = model || 'glm-4-flash';
+      config = MODELS[provider];
+      if (!config) {
+        return reject(new Error(`Unknown provider: ${provider}`));
+      }
       session = getSession(sessionId);
       messages = [
         {
@@ -508,14 +572,14 @@ You are a helpful AI assistant running on the user's local machine. You are powe
         content: message
       });
       postData = JSON.stringify({
-        model: 'glm-4-flash',
+        model: model,
         messages: messages,
         stream: false
       });
       options = {
-        hostname: 'open.bigmodel.cn',
+        hostname: config.baseUrl,
         port: 443,
-        path: '/api/paas/v4/chat/completions',
+        path: config.apiPath,
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -564,7 +628,7 @@ You are a helpful AI assistant running on the user's local machine. You are powe
       throw new Error('No API key configured');
     }
     addToSession(sessionId, 'user', message);
-    response = (await callZhipuAPI(sessionId, message, apiKey));
+    response = (await callAPI(sessionId, message, settings));
     addToSession(sessionId, 'assistant', response);
     return response;
   };
@@ -709,6 +773,21 @@ You are a helpful AI assistant running on the user's local machine. You are powe
 
   ipcMain.handle('get-settings', function() {
     return loadSettings();
+  });
+
+  ipcMain.handle('save-settings', function(event, newSettings) {
+    var key, settings, value;
+    settings = loadSettings();
+    for (key in newSettings) {
+      value = newSettings[key];
+      settings[key] = value;
+    }
+    saveSettings(settings);
+    return true;
+  });
+
+  ipcMain.handle('get-models', function() {
+    return MODELS;
   });
 
   ipcMain.handle('save-api-key', function(event, apiKey) {

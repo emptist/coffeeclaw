@@ -10,6 +10,7 @@ out/
 
 # Private files with API keys and secrets
 AI.md
+glm5.md
 
 # IDE
 .idea/

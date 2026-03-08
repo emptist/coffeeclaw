@@ -21,8 +21,14 @@
     getSettings: function() {
       return ipcRenderer.invoke('get-settings');
     },
+    saveSettings: function(settings) {
+      return ipcRenderer.invoke('save-settings', settings);
+    },
     saveApiKey: function(apiKey) {
       return ipcRenderer.invoke('save-api-key', apiKey);
+    },
+    getModels: function() {
+      return ipcRenderer.invoke('get-models');
     },
     createSession: function() {
       return ipcRenderer.invoke('create-session');

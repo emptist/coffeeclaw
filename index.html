@@ -456,11 +456,22 @@
       </div>
       
       <div id="step2" class="hidden">
-        <h2>🔑 API Key</h2>
-        <p>Enter your Zhipu AI API key to enable AI chat. Get one free at <a href="https://open.bigmodel.cn" target="_blank" style="color:#e94560">open.bigmodel.cn</a></p>
-        <label>Zhipu API Key:</label>
-        <input type="text" id="apiKeyInput" placeholder="xxxxxxxx.xxxxxxxxxxxxxxxx">
-        <p style="font-size:11px;color:#666;margin-top:5px;">Format: alphanumeric.alphanumeric</p>
+        <h2>🔑 API Configuration</h2>
+        <label>AI Provider:</label>
+        <select id="providerSelect" style="width:100%;padding:10px;background:#1a1a2e;color:#eee;border:1px solid #0f3460;border-radius:8px;margin-bottom:15px;">
+          <option value="zhipu">Zhipu GLM (Free tier available)</option>
+          <option value="openai">OpenAI</option>
+          <option value="deepseek">DeepSeek</option>
+        </select>
+        
+        <label>Model:</label>
+        <select id="modelSelect" style="width:100%;padding:10px;background:#1a1a2e;color:#eee;border:1px solid #0f3460;border-radius:8px;margin-bottom:15px;">
+        </select>
+        
+        <label>API Key:</label>
+        <input type="text" id="apiKeyInput" placeholder="Enter your API key">
+        <p id="apiKeyHint" style="font-size:11px;color:#666;margin-top:5px;">Get free API key at <a href="https://open.bigmodel.cn" target="_blank" style="color:#e94560">open.bigmodel.cn</a></p>
+        
         <div class="btn-group">
           <button class="btn-secondary" id="skipApiBtn">Skip</button>
           <button id="saveApiBtn">Save & Continue</button>
@@ -904,21 +915,60 @@
     
     document.getElementById('recheckBtn').addEventListener('click', checkPrerequisites);
     
-    document.getElementById('continueBtn').addEventListener('click', () => {
+    let availableModels = null;
+    
+    async function loadModels() {
+      availableModels = await window.api.getModels();
+      updateModelSelect('zhipu');
+    }
+    
+    function updateModelSelect(provider) {
+      const modelSelect = document.getElementById('modelSelect');
+      const models = availableModels[provider]?.models || [];
+      modelSelect.innerHTML = '';
+      models.forEach(m => {
+        const opt = document.createElement('option');
+        opt.value = m.id;
+        opt.textContent = m.name;
+        if (m.free) opt.textContent += ' ⭐';
+        modelSelect.appendChild(opt);
+      });
+      
+      const hint = document.getElementById('apiKeyHint');
+      if (provider === 'zhipu') {
+        hint.innerHTML = 'Get free API key at <a href="https://open.bigmodel.cn" target="_blank" style="color:#e94560">open.bigmodel.cn</a>';
+      } else if (provider === 'openai') {
+        hint.innerHTML = 'Get API key at <a href="https://platform.openai.com/api-keys" target="_blank" style="color:#e94560">platform.openai.com</a>';
+      } else if (provider === 'deepseek') {
+        hint.innerHTML = 'Get API key at <a href="https://platform.deepseek.com" target="_blank" style="color:#e94560">platform.deepseek.com</a>';
+      }
+    }
+    
+    document.getElementById('providerSelect').addEventListener('change', (e) => {
+      updateModelSelect(e.target.value);
+    });
+    
+    document.getElementById('continueBtn').addEventListener('click', async () => {
       document.getElementById('step1').classList.add('hidden');
       document.getElementById('step2').classList.remove('hidden');
       document.getElementById('dot2').classList.add('done');
       document.getElementById('dot3').classList.add('active');
+      await loadModels();
     });
     
     document.getElementById('skipApiBtn').addEventListener('click', () => startInstallation(null));
-    document.getElementById('saveApiBtn').addEventListener('click', () => {
+    document.getElementById('saveApiBtn').addEventListener('click', async () => {
       const apiKey = document.getElementById('apiKeyInput').value.trim();
-      if (apiKey && !apiKey.includes('.')) {
-        alert('Invalid API key format. Expected: xxxxxxxx.xxxxxxxxxxxxxxxx');
+      const provider = document.getElementById('providerSelect').value;
+      const model = document.getElementById('modelSelect').value;
+      
+      if (!apiKey) {
+        alert('Please enter an API key');
         return;
       }
-      startInstallation(apiKey || null);
+      
+      await window.api.saveSettings({ apiKey, provider, model });
+      startInstallation(apiKey);
     });
     
     async function startInstallation(apiKey) {

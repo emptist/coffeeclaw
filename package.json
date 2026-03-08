@@ -36,7 +36,9 @@
       "!.secrete/**",
       "!screen.png",
       "!dist/**",
-      "!node_modules/.cache/**"
+      "!node_modules/.cache/**",
+      "!AI.md",
+      "!glm5.md"
     ],
     "mac": {
       "target": [
