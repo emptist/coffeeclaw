@@ -122,7 +122,7 @@
       color: #4caf50;
     }
     
-    .license-indicator.supporter {
+    .license-indicator.purchaser {
       background: rgba(33, 150, 243, 0.2);
       color: #2196f3;
     }
@@ -994,10 +994,14 @@
         const currency = licenseData.currency || 'usd';
         const symbol = currency === 'cny' ? '¥' : '$';
         
-        if (licenseData.paid) {
-          licenseIndicator.classList.add('supporter');
+        if (licenseData.plan === 'lifetime') {
+          licenseIndicator.classList.add('purchaser');
+          licenseDays.textContent = '∞';
+          licenseIndicator.title = 'Purchaser - Lifetime';
+        } else if (licenseData.paid) {
+          licenseIndicator.classList.add('cooperator');
           licenseDays.textContent = `${symbol}${balance}`;
-          licenseIndicator.title = `Supporter - Balance: ${symbol}${balance}`;
+          licenseIndicator.title = `Cooperator - Balance: ${symbol}${balance}`;
         } else {
           licenseIndicator.classList.add('cooperator');
           licenseDays.textContent = `${symbol}${balance}`;
@@ -1638,10 +1642,13 @@
         const symbol = currency === 'cny' ? '¥' : '$';
         
         if (licenseData.status === 'lifetime') {
-          licenseStatusText.textContent = 'Lifetime ✓';
-          licenseRemainingText.textContent = 'Thank you!';
+          licenseStatusText.textContent = 'Purchaser ✓';
+          licenseRemainingText.textContent = 'Lifetime - Thank you!';
+        } else if (licenseData.paid) {
+          licenseStatusText.textContent = 'Cooperator';
+          licenseRemainingText.textContent = `Balance: ${symbol}${licenseData.balance}`;
         } else {
-          licenseStatusText.textContent = licenseData.paid ? 'Supporter' : 'Cooperator';
+          licenseStatusText.textContent = 'Cooperator';
           licenseRemainingText.textContent = `Balance: ${symbol}${licenseData.balance}`;
         }
       }
