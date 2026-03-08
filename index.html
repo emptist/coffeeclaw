@@ -831,7 +831,7 @@
         </div>
         <p style="font-size:12px;color:#888;">
           Send the equivalent amount to activate your license.<br>
-          Email <a href="mailto:support@coffeeclaw.app" style="color:#e94560;">support@coffeeclaw.app</a> with your TX ID.
+          Open an issue with your TX ID: <a href="https://github.com/emptist/coffeeclaw/issues" target="_blank" style="color:#e94560;">GitHub Issues</a>
         </p>
       </div>
       
@@ -842,7 +842,16 @@
         </p>
         <p style="font-size:12px;color:#888;">
           Supports USD, CNY, and 50+ currencies with low fees.<br>
-          Email <a href="mailto:support@coffeeclaw.app" style="color:#e94560;">support@coffeeclaw.app</a> with your Wise email and amount.
+          Open an issue with payment details: <a href="https://github.com/emptist/coffeeclaw/issues" target="_blank" style="color:#e94560;">GitHub Issues</a>
+        </p>
+      </div>
+      
+      <div id="alipayPaymentSection" style="display:none;margin:20px 0;padding:15px;background:#1a1a2e;border-radius:8px;text-align:center;">
+        <h4 style="font-size:14px;margin-bottom:10px;">支付宝 Alipay</h4>
+        <img src="assets/alipay-qr.jpg" style="max-width:200px;border-radius:8px;margin-bottom:10px;">
+        <p style="font-size:12px;color:#888;">
+          扫码付款后，截图发送到 GitHub Issues 确认<br>
+          <a href="https://github.com/emptist/coffeeclaw/issues" target="_blank" style="color:#e94560;">github.com/emptist/coffeeclaw/issues</a>
         </p>
       </div>
       
@@ -875,6 +884,7 @@
     const btcPaymentSection = document.getElementById('btcPaymentSection');
     const btcAddress = document.getElementById('btcAddress');
     const wisePaymentSection = document.getElementById('wisePaymentSection');
+    const alipayPaymentSection = document.getElementById('alipayPaymentSection');
     
     let selectedPlan = 'lifetime';
     let licenseData = null;
@@ -1713,9 +1723,15 @@
         
         btcPaymentSection.style.display = 'none';
         wisePaymentSection.style.display = 'none';
+        alipayPaymentSection.style.display = 'none';
         
         if (method === 'btc') {
           btcPaymentSection.style.display = 'block';
+          return;
+        }
+        
+        if (method === 'alipay') {
+          alipayPaymentSection.style.display = 'block';
           return;
         }
         
