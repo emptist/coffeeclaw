@@ -2,7 +2,7 @@
 (function() {
   // CoffeeClaw - Main Process
   // Auto-configures OpenClaw on first run
-  var BOT_TEMPLATES, BrowserWindow, MAX_HISTORY, MAX_SESSIONS, MODELS, SKILLS, addToSession, agentDir, agentMdFile, agentModelsFile, app, botsFile, callAPI, callAPIWithMessages, checkNodeInstalled, checkNpmInstalled, checkOpenClaw, checkOpenClawInstalled, checkOpenClawPromise, checkWSLInstalled, configExists, configFile, createAgentConfig, createBot, createDefaultConfig, createIdentity, createSession, createWindow, crypto, deleteBot, deleteSession, exec, executeSkillFunction, fs, generateId, generateToken, getActiveBot, getBot, getBotTemplates, getPlatform, getSession, getSkillFunctions, http, https, identityFile, installOpenClaw, ipcMain, isConfigured, isMac, isWindows, listSessions, loadBots, loadSessions, loadSettings, mainWindow, openclawDir, path, saveBots, saveSession, saveSessions, saveSettings, secreteDir, sendToOpenClaw, sessionsFile, setActiveBot, settingsFile, spawn, startOpenClaw, updateBot, workspaceDir;
+  var BOT_TEMPLATES, BrowserWindow, MAX_HISTORY, MAX_SESSIONS, MODELS, SKILLS, addToSession, agentDir, agentMdFile, agentModelsFile, app, botsFile, callAPI, callAPIWithMessages, checkNodeInstalled, checkNpmInstalled, checkOpenClaw, checkOpenClawInstalled, checkOpenClawPromise, checkWSLInstalled, configExists, configFile, configureFeishu, createAgentConfig, createBot, createDefaultConfig, createIdentity, createSession, createWindow, crypto, deleteBot, deleteSession, detectExistingFeishuConfig, exec, executeSkillFunction, fs, generateId, generateToken, getActiveBot, getBot, getBotTemplates, getPlatform, getSession, getSkillFunctions, http, https, identityFile, installOpenClaw, ipcMain, isConfigured, isMac, isWindows, listSessions, loadBots, loadSessions, loadSettings, mainWindow, openclawDir, path, saveBots, saveSession, saveSessions, saveSettings, secreteDir, sendToOpenClaw, sessionsFile, setActiveBot, settingsFile, spawn, startOpenClaw, syncFeishuConfigToOpenClaw, syncFeishuConfigToSettings, updateBot, workspaceDir;
 
   ({app, BrowserWindow, ipcMain} = require('electron'));
 
@@ -1286,6 +1286,195 @@ You are a helpful AI assistant running on the user's local machine. You are powe
   ipcMain.handle('get-models', function() {
     return MODELS;
   });
+
+  detectExistingFeishuConfig = function() {
+    var config, e, feishuChannel, ref, ref1, ref2;
+    try {
+      if (fs.existsSync(configFile)) {
+        config = JSON.parse(fs.readFileSync(configFile, 'utf8'));
+        if ((ref = config.channels) != null ? (ref1 = ref.feishu) != null ? ref1.enabled : void 0 : void 0) {
+          feishuChannel = config.channels.feishu;
+          if (feishuChannel.appId) {
+            return {
+              enabled: true,
+              appId: feishuChannel.appId,
+              appSecret: feishuChannel.appSecret,
+              botName: feishuChannel.botName || 'CoffeeClaw',
+              detected: true
+            };
+          } else if ((ref2 = feishuChannel.accounts) != null ? ref2.main : void 0) {
+            return {
+              enabled: true,
+              appId: feishuChannel.accounts.main.appId,
+              appSecret: feishuChannel.accounts.main.appSecret,
+              botName: feishuChannel.accounts.main.botName || 'CoffeeClaw',
+              detected: true
+            };
+          }
+        }
+      }
+    } catch (error) {
+      e = error;
+      console.error('Error detecting Feishu config:', e);
+    }
+    return null;
+  };
+
+  syncFeishuConfigToSettings = function() {
+    var existing, ref, settings;
+    existing = detectExistingFeishuConfig();
+    if (existing) {
+      settings = loadSettings();
+      if (!((ref = settings.feishu) != null ? ref.appId : void 0)) {
+        settings.feishu = existing;
+        saveSettings(settings);
+        console.log('Synced existing Feishu config to settings');
+      }
+      return existing;
+    }
+    return null;
+  };
+
+  syncFeishuConfigToOpenClaw = function() {
+    var base, base1, config, e, existing, ref, ref1, ref2, ref3, ref4, ref5, settings;
+    settings = loadSettings();
+    if (!((ref = settings.feishu) != null ? ref.appId : void 0) || !((ref1 = settings.feishu) != null ? ref1.enabled : void 0)) {
+      return false;
+    }
+    existing = detectExistingFeishuConfig();
+    if (existing != null ? existing.enabled : void 0) {
+      return true;
+    }
+    try {
+      config = {};
+      if (fs.existsSync(configFile)) {
+        config = JSON.parse(fs.readFileSync(configFile, 'utf8'));
+      }
+      if (((ref2 = config.channels) != null ? (ref3 = ref2.feishu) != null ? ref3.enabled : void 0 : void 0) && ((ref4 = config.channels) != null ? (ref5 = ref4.feishu) != null ? ref5.appId : void 0 : void 0)) {
+        return true;
+      }
+      if (config.channels == null) {
+        config.channels = {};
+      }
+      config.channels.feishu = {
+        enabled: true,
+        appId: settings.feishu.appId,
+        appSecret: settings.feishu.appSecret,
+        domain: 'feishu',
+        dmPolicy: settings.feishu.dmPolicy || 'pairing',
+        groupPolicy: settings.feishu.groupPolicy || 'open'
+      };
+      if (config.plugins == null) {
+        config.plugins = {};
+      }
+      if ((base = config.plugins).entries == null) {
+        base.entries = {};
+      }
+      config.plugins.entries.feishu = {
+        enabled: true
+      };
+      if (settings.apiKey) {
+        if (config.models == null) {
+          config.models = {};
+        }
+        if ((base1 = config.models).providers == null) {
+          base1.providers = {};
+        }
+        config.models.providers.glm = {
+          baseUrl: 'https://open.bigmodel.cn/api/paas/v4',
+          apiKey: settings.apiKey,
+          api: 'openai-completions',
+          models: [
+            {
+              id: 'GLM-4-Flash',
+              name: 'GLM 4 Flash'
+            },
+            {
+              id: 'GLM-4.5-air',
+              name: 'GLM 4.5 Air'
+            },
+            {
+              id: 'GLM-4.7',
+              name: 'GLM 4.7'
+            }
+          ]
+        };
+      }
+      fs.writeFileSync(configFile, JSON.stringify(config, null, 2));
+      console.log('Synced Feishu config to OpenClaw');
+      return true;
+    } catch (error) {
+      e = error;
+      console.error('Error syncing Feishu to OpenClaw:', e);
+      return false;
+    }
+  };
+
+  configureFeishu = function(appId, appSecret, botName, enabled = true) {
+    var base, config, settings;
+    settings = loadSettings();
+    settings.feishu = {
+      appId: appId,
+      appSecret: appSecret,
+      botName: botName || 'CoffeeClaw',
+      enabled: enabled
+    };
+    saveSettings(settings);
+    if (configExists()) {
+      config = JSON.parse(fs.readFileSync(configFile, 'utf8'));
+      if (config.plugins == null) {
+        config.plugins = {};
+      }
+      config.plugins.feishu = {
+        enabled: enabled
+      };
+      if (config.channels == null) {
+        config.channels = {};
+      }
+      config.channels.feishu = {
+        enabled: enabled,
+        dmPolicy: 'pairing',
+        accounts: {
+          main: {
+            appId: appId,
+            appSecret: appSecret,
+            botName: botName || 'CoffeeClaw'
+          }
+        }
+      };
+      if (settings.apiKey) {
+        if (config.models == null) {
+          config.models = {};
+        }
+        if ((base = config.models).providers == null) {
+          base.providers = {};
+        }
+        config.models.providers.glm = {
+          baseUrl: 'https://open.bigmodel.cn/api/paas/v4',
+          apiKey: settings.apiKey,
+          api: 'openai-completions',
+          models: [
+            {
+              id: 'GLM-4-Flash',
+              name: 'GLM 4 Flash'
+            },
+            {
+              id: 'GLM-4.5-air',
+              name: 'GLM 4.5 Air'
+            },
+            {
+              id: 'GLM-4.7',
+              name: 'GLM 4.7'
+            }
+          ]
+        };
+      }
+      fs.writeFileSync(configFile, JSON.stringify(config, null, 2));
+    }
+    return {
+      success: true
+    };
+  };
 
   ipcMain.handle('save-api-key', function(event, apiKey) {
     var base, config, settings;

@@ -841,6 +841,133 @@ ipcMain.handle 'save-settings', (event, newSettings) ->
 ipcMain.handle 'get-models', ->
   MODELS
 
+detectExistingFeishuConfig = ->
+  try
+    if fs.existsSync configFile
+      config = JSON.parse fs.readFileSync configFile, 'utf8'
+      if config.channels?.feishu?.enabled
+        feishuChannel = config.channels.feishu
+        if feishuChannel.appId
+          return {
+            enabled: true
+            appId: feishuChannel.appId
+            appSecret: feishuChannel.appSecret
+            botName: feishuChannel.botName or 'CoffeeClaw'
+            detected: true
+          }
+        else if feishuChannel.accounts?.main
+          return {
+            enabled: true
+            appId: feishuChannel.accounts.main.appId
+            appSecret: feishuChannel.accounts.main.appSecret
+            botName: feishuChannel.accounts.main.botName or 'CoffeeClaw'
+            detected: true
+          }
+  catch e
+    console.error 'Error detecting Feishu config:', e
+  null
+
+syncFeishuConfigToSettings = ->
+  existing = detectExistingFeishuConfig()
+  if existing
+    settings = loadSettings()
+    if not settings.feishu?.appId
+      settings.feishu = existing
+      saveSettings settings
+      console.log 'Synced existing Feishu config to settings'
+    return existing
+  null
+
+syncFeishuConfigToOpenClaw = ->
+  settings = loadSettings()
+  if not settings.feishu?.appId or not settings.feishu?.enabled
+    return false
+  
+  existing = detectExistingFeishuConfig()
+  if existing?.enabled
+    return true
+  
+  try
+    config = {}
+    if fs.existsSync configFile
+      config = JSON.parse fs.readFileSync configFile, 'utf8'
+    
+    if config.channels?.feishu?.enabled and config.channels?.feishu?.appId
+      return true
+    
+    config.channels ?= {}
+    config.channels.feishu =
+      enabled: true
+      appId: settings.feishu.appId
+      appSecret: settings.feishu.appSecret
+      domain: 'feishu'
+      dmPolicy: settings.feishu.dmPolicy or 'pairing'
+      groupPolicy: settings.feishu.groupPolicy or 'open'
+    
+    config.plugins ?= {}
+    config.plugins.entries ?= {}
+    config.plugins.entries.feishu = { enabled: true }
+    
+    if settings.apiKey
+      config.models ?= {}
+      config.models.providers ?= {}
+      config.models.providers.glm =
+        baseUrl: 'https://open.bigmodel.cn/api/paas/v4'
+        apiKey: settings.apiKey
+        api: 'openai-completions'
+        models: [
+          { id: 'GLM-4-Flash', name: 'GLM 4 Flash' }
+          { id: 'GLM-4.5-air', name: 'GLM 4.5 Air' }
+          { id: 'GLM-4.7', name: 'GLM 4.7' }
+        ]
+    
+    fs.writeFileSync configFile, JSON.stringify(config, null, 2)
+    console.log 'Synced Feishu config to OpenClaw'
+    return true
+  catch e
+    console.error 'Error syncing Feishu to OpenClaw:', e
+    return false
+
+configureFeishu = (appId, appSecret, botName, enabled = true) ->
+  settings = loadSettings()
+  settings.feishu =
+    appId: appId
+    appSecret: appSecret
+    botName: botName or 'CoffeeClaw'
+    enabled: enabled
+  saveSettings settings
+  
+  if configExists()
+    config = JSON.parse fs.readFileSync configFile, 'utf8'
+    config.plugins ?= {}
+    config.plugins.feishu = { enabled: enabled }
+    config.channels ?= {}
+    config.channels.feishu =
+      enabled: enabled
+      dmPolicy: 'pairing'
+      accounts:
+        main:
+          appId: appId
+          appSecret: appSecret
+          botName: botName or 'CoffeeClaw'
+    
+    if settings.apiKey
+      config.models ?= {}
+      config.models.providers ?= {}
+      config.models.providers.glm =
+        baseUrl: 'https://open.bigmodel.cn/api/paas/v4'
+        apiKey: settings.apiKey
+        api: 'openai-completions'
+        models: [
+          { id: 'GLM-4-Flash', name: 'GLM 4 Flash' }
+          { id: 'GLM-4.5-air', name: 'GLM 4.5 Air' }
+          { id: 'GLM-4.7', name: 'GLM 4.7' }
+        ]
+    
+    fs.writeFileSync configFile, JSON.stringify(config, null, 2)
+  
+  { success: true }
+
 ipcMain.handle 'save-api-key', (event, apiKey) ->
   settings = loadSettings()
   settings.apiKey = apiKey
