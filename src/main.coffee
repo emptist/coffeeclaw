@@ -221,12 +221,12 @@ setActiveBot = (botId) ->
 SKILLS =
   fs:
     list_files:
-      description: 'List files in a directory'
+      description: 'List all files and directories in a given path. Use this to explore the file system.'
       parameters:
         type: 'object'
         properties:
-          path: { type: 'string', description: 'Directory path to list' }
-        required: ['path']
+          path: { type: 'string', description: 'Directory path to list (default: current directory)' }
+        required: []
       handler: (args) ->
         try
           targetPath = args.path or process.cwd()
@@ -238,11 +238,11 @@ SKILLS =
         catch e
           { success: false, error: e.message }
     read_file:
-      description: 'Read file contents'
+      description: 'Read and return the contents of a file. Use this to read source code, config files, etc.'
       parameters:
         type: 'object'
         properties:
-          path: { type: 'string', description: 'File path to read' }
+          path: { type: 'string', description: 'File path to read (required)' }
         required: ['path']
       handler: (args) ->
         try
@@ -252,12 +252,12 @@ SKILLS =
           { success: false, error: e.message }
   code:
     execute:
-      description: 'Execute a shell command'
+      description: 'Execute a shell command and return the output. Use for commands like ls, git, npm, etc.'
       parameters:
         type: 'object'
         properties:
-          command: { type: 'string', description: 'Command to execute' }
-          cwd: { type: 'string', description: 'Working directory' }
+          command: { type: 'string', description: 'Shell command to execute (required)' }
+          cwd: { type: 'string', description: 'Working directory (default: current directory)' }
         required: ['command']
       handler: (args) ->
         try
@@ -270,17 +270,33 @@ SKILLS =
           { success: false, error: e.message, output: e.stdout or '' }
   git:
     status:
-      description: 'Get git status'
+      description: 'Get git status showing modified, added, and untracked files.'
       parameters:
         type: 'object'
         properties:
-          cwd: { type: 'string', description: 'Working directory' }
+          cwd: { type: 'string', description: 'Working directory (default: current directory)' }
       handler: (args) ->
         try
           result = require('child_process').execSync 'git status --short',
             cwd: args.cwd or process.cwd()
             encoding: 'utf8'
           { success: true, status: result }
+        catch e
+          { success: false, error: e.message }
+    log:
+      description: 'Get recent git commit history.'
+      parameters:
+        type: 'object'
+        properties:
+          count: { type: 'integer', description: 'Number of commits to show (default: 10)' }
+          cwd: { type: 'string', description: 'Working directory' }
+      handler: (args) ->
+        try
+          count = args.count or 10
+          result = require('child_process').execSync "git log --oneline -#{count}",
+            cwd: args.cwd or process.cwd()
+            encoding: 'utf8'
+          { success: true, log: result }
         catch e
           { success: false, error: e.message }
 

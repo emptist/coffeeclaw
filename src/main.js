@@ -344,16 +344,16 @@
   SKILLS = {
     fs: {
       list_files: {
-        description: 'List files in a directory',
+        description: 'List all files and directories in a given path. Use this to explore the file system.',
         parameters: {
           type: 'object',
           properties: {
             path: {
               type: 'string',
-              description: 'Directory path to list'
+              description: 'Directory path to list (default: current directory)'
             }
           },
-          required: ['path']
+          required: []
         },
         handler: function(args) {
           var e, files, results, targetPath;
@@ -383,13 +383,13 @@
         }
       },
       read_file: {
-        description: 'Read file contents',
+        description: 'Read and return the contents of a file. Use this to read source code, config files, etc.',
         parameters: {
           type: 'object',
           properties: {
             path: {
               type: 'string',
-              description: 'File path to read'
+              description: 'File path to read (required)'
             }
           },
           required: ['path']
@@ -414,17 +414,17 @@
     },
     code: {
       execute: {
-        description: 'Execute a shell command',
+        description: 'Execute a shell command and return the output. Use for commands like ls, git, npm, etc.',
         parameters: {
           type: 'object',
           properties: {
             command: {
               type: 'string',
-              description: 'Command to execute'
+              description: 'Shell command to execute (required)'
             },
             cwd: {
               type: 'string',
-              description: 'Working directory'
+              description: 'Working directory (default: current directory)'
             }
           },
           required: ['command']
@@ -454,13 +454,13 @@
     },
     git: {
       status: {
-        description: 'Get git status',
+        description: 'Get git status showing modified, added, and untracked files.',
         parameters: {
           type: 'object',
           properties: {
             cwd: {
               type: 'string',
-              description: 'Working directory'
+              description: 'Working directory (default: current directory)'
             }
           }
         },
@@ -474,6 +474,42 @@
             return {
               success: true,
               status: result
+            };
+          } catch (error) {
+            e = error;
+            return {
+              success: false,
+              error: e.message
+            };
+          }
+        }
+      },
+      log: {
+        description: 'Get recent git commit history.',
+        parameters: {
+          type: 'object',
+          properties: {
+            count: {
+              type: 'integer',
+              description: 'Number of commits to show (default: 10)'
+            },
+            cwd: {
+              type: 'string',
+              description: 'Working directory'
+            }
+          }
+        },
+        handler: function(args) {
+          var count, e, result;
+          try {
+            count = args.count || 10;
+            result = require('child_process').execSync(`git log --oneline -${count}`, {
+              cwd: args.cwd || process.cwd(),
+              encoding: 'utf8'
+            });
+            return {
+              success: true,
+              log: result
             };
           } catch (error) {
             e = error;
