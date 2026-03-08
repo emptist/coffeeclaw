@@ -16,3 +16,11 @@ contextBridge.exposeInMainWorld 'api',
   deleteSession: (sessionId) -> ipcRenderer.invoke 'delete-session', sessionId
   getHistory: -> ipcRenderer.invoke 'get-history'
   clearHistory: -> ipcRenderer.invoke 'clear-history'
+  getBots: -> ipcRenderer.invoke 'get-bots'
+  getBot: (botId) -> ipcRenderer.invoke 'get-bot', botId
+  getActiveBot: -> ipcRenderer.invoke 'get-active-bot'
+  createBot: (botConfig) -> ipcRenderer.invoke 'create-bot', botConfig
+  updateBot: (botId, updates) -> ipcRenderer.invoke 'update-bot', botId, updates
+  deleteBot: (botId) -> ipcRenderer.invoke 'delete-bot', botId
+  setActiveBot: (botId) -> ipcRenderer.invoke 'set-active-bot', botId
+  getBotTemplates: -> ipcRenderer.invoke 'get-bot-templates'

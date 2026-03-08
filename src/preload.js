@@ -47,6 +47,30 @@
     },
     clearHistory: function() {
       return ipcRenderer.invoke('clear-history');
+    },
+    getBots: function() {
+      return ipcRenderer.invoke('get-bots');
+    },
+    getBot: function(botId) {
+      return ipcRenderer.invoke('get-bot', botId);
+    },
+    getActiveBot: function() {
+      return ipcRenderer.invoke('get-active-bot');
+    },
+    createBot: function(botConfig) {
+      return ipcRenderer.invoke('create-bot', botConfig);
+    },
+    updateBot: function(botId, updates) {
+      return ipcRenderer.invoke('update-bot', botId, updates);
+    },
+    deleteBot: function(botId) {
+      return ipcRenderer.invoke('delete-bot', botId);
+    },
+    setActiveBot: function(botId) {
+      return ipcRenderer.invoke('set-active-bot', botId);
+    },
+    getBotTemplates: function() {
+      return ipcRenderer.invoke('get-bot-templates');
     }
   });
 

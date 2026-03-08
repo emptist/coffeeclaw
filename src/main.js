@@ -2,7 +2,7 @@
 (function() {
   // CoffeeClaw - Main Process
   // Auto-configures OpenClaw on first run
-  var BrowserWindow, MAX_HISTORY, MAX_SESSIONS, MODELS, addToSession, agentDir, agentMdFile, agentModelsFile, app, callAPI, checkNodeInstalled, checkNpmInstalled, checkOpenClaw, checkOpenClawInstalled, checkOpenClawPromise, checkWSLInstalled, configExists, configFile, createAgentConfig, createDefaultConfig, createIdentity, createSession, createWindow, crypto, deleteSession, exec, fs, generateId, generateToken, getPlatform, getSession, http, https, identityFile, installOpenClaw, ipcMain, isConfigured, isMac, isWindows, listSessions, loadSessions, loadSettings, mainWindow, openclawDir, path, saveSession, saveSessions, saveSettings, secreteDir, sendToOpenClaw, sessionsFile, settingsFile, spawn, startOpenClaw, workspaceDir;
+  var BOT_TEMPLATES, BrowserWindow, MAX_HISTORY, MAX_SESSIONS, MODELS, addToSession, agentDir, agentMdFile, agentModelsFile, app, botsFile, callAPI, checkNodeInstalled, checkNpmInstalled, checkOpenClaw, checkOpenClawInstalled, checkOpenClawPromise, checkWSLInstalled, configExists, configFile, createAgentConfig, createBot, createDefaultConfig, createIdentity, createSession, createWindow, crypto, deleteBot, deleteSession, exec, fs, generateId, generateToken, getActiveBot, getBot, getBotTemplates, getPlatform, getSession, http, https, identityFile, installOpenClaw, ipcMain, isConfigured, isMac, isWindows, listSessions, loadBots, loadSessions, loadSettings, mainWindow, openclawDir, path, saveBots, saveSession, saveSessions, saveSettings, secreteDir, sendToOpenClaw, sessionsFile, setActiveBot, settingsFile, spawn, startOpenClaw, updateBot, workspaceDir;
 
   ({app, BrowserWindow, ipcMain} = require('electron'));
 
@@ -37,6 +37,8 @@
   settingsFile = path.join(secreteDir, 'settings.json');
 
   sessionsFile = path.join(secreteDir, 'sessions.json');
+
+  botsFile = path.join(secreteDir, 'bots.json');
 
   MAX_HISTORY = 100;
 
@@ -170,6 +172,173 @@
     };
     saveSession(sessionId, session);
     return session;
+  };
+
+  BOT_TEMPLATES = [
+    {
+      id: 'code-helper',
+      name: 'Code Helper',
+      description: 'Expert assistant for Swift, CoffeeScript, and Python development',
+      model: 'glm-4-flash',
+      systemPrompt: 'You are an expert software developer specializing in Swift, CoffeeScript, and Python. You help with coding tasks, debugging, code review, and best practices. Always provide clean, well-commented code examples. Explain your reasoning and suggest improvements.',
+      skills: ['fs',
+    'code',
+    'git']
+    },
+    {
+      id: 'writer',
+      name: 'Creative Writer',
+      description: 'Creative writing assistant for content creation',
+      model: 'glm-4-flash',
+      systemPrompt: 'You are a creative writing assistant. You help with blog posts, articles, stories, and other content. You have excellent grammar and style. You can adapt to different tones and audiences. Always be creative and engaging.',
+      skills: ['*']
+    },
+    {
+      id: 'translator',
+      name: 'Translator',
+      description: 'Multilingual translation assistant',
+      model: 'glm-4-flash',
+      systemPrompt: 'You are a professional translator. You translate text accurately while preserving meaning, tone, and cultural context. You support English, Chinese, and Esperanto. Always ask for clarification if the source text is ambiguous.',
+      skills: ['*']
+    }
+  ];
+
+  getBotTemplates = function() {
+    return BOT_TEMPLATES;
+  };
+
+  loadBots = function() {
+    var data, e;
+    try {
+      if (fs.existsSync(botsFile)) {
+        data = fs.readFileSync(botsFile, 'utf8');
+        return JSON.parse(data);
+      }
+    } catch (error) {
+      e = error;
+      console.error('Error loading bots:', e);
+    }
+    return {
+      bots: [
+        {
+          id: 'default',
+          name: 'General Assistant',
+          description: 'A helpful general-purpose assistant',
+          model: 'glm-4-flash',
+          systemPrompt: 'You are a helpful assistant. Be concise and helpful.',
+          skills: ['*'],
+          enabled: true,
+          createdAt: new Date().toISOString()
+        }
+      ],
+      activeBotId: 'default'
+    };
+  };
+
+  saveBots = function(botsData) {
+    var e;
+    try {
+      fs.mkdirSync(secreteDir, {
+        recursive: true
+      });
+      return fs.writeFileSync(botsFile, JSON.stringify(botsData, null, 2));
+    } catch (error) {
+      e = error;
+      return console.error('Error saving bots:', e);
+    }
+  };
+
+  getBot = function(botId) {
+    var botsData;
+    botsData = loadBots();
+    return botsData.bots.find(function(b) {
+      return b.id === botId;
+    });
+  };
+
+  getActiveBot = function() {
+    var activeBot, botsData;
+    botsData = loadBots();
+    activeBot = botsData.bots.find(function(b) {
+      return b.id === botsData.activeBotId;
+    });
+    return activeBot || botsData.bots[0];
+  };
+
+  createBot = function(botConfig) {
+    var botsData, newBot, ref, ref1;
+    if (!((ref = botConfig.name) != null ? ref.trim() : void 0)) {
+      return {
+        error: 'Bot name is required'
+      };
+    }
+    botsData = loadBots();
+    newBot = {
+      id: generateId(),
+      name: botConfig.name.trim(),
+      description: ((ref1 = botConfig.description) != null ? ref1.trim() : void 0) || '',
+      model: botConfig.model || 'glm-4-flash',
+      systemPrompt: botConfig.systemPrompt || 'You are a helpful assistant.',
+      skills: botConfig.skills || ['*'],
+      enabled: true,
+      createdAt: new Date().toISOString()
+    };
+    botsData.bots.push(newBot);
+    saveBots(botsData);
+    return newBot;
+  };
+
+  updateBot = function(botId, updates) {
+    var botIndex, botsData;
+    botsData = loadBots();
+    botIndex = botsData.bots.findIndex(function(b) {
+      return b.id === botId;
+    });
+    if (botIndex >= 0) {
+      botsData.bots[botIndex] = {
+        ...botsData.bots[botIndex],
+        ...updates,
+        updatedAt: new Date().toISOString()
+      };
+      saveBots(botsData);
+      return botsData.bots[botIndex];
+    }
+    return null;
+  };
+
+  deleteBot = function(botId) {
+    var botsData, ref;
+    botsData = loadBots();
+    if (botsData.bots.length <= 1) {
+      return {
+        success: false,
+        error: 'Cannot delete the last bot'
+      };
+    }
+    botsData.bots = botsData.bots.filter(function(b) {
+      return b.id !== botId;
+    });
+    if (botsData.activeBotId === botId) {
+      botsData.activeBotId = (ref = botsData.bots[0]) != null ? ref.id : void 0;
+    }
+    saveBots(botsData);
+    return {
+      success: true
+    };
+  };
+
+  setActiveBot = function(botId) {
+    var bot, botsData;
+    botsData = loadBots();
+    bot = botsData.bots.find(function(b) {
+      return b.id === botId;
+    });
+    if (bot) {
+      botsData.activeBotId = botId;
+      saveBots(botsData);
+      return bot;
+    }
+    return null;
   };
 
   deleteSession = function(sessionId) {
@@ -715,6 +884,38 @@ You are a helpful AI assistant running on the user's local machine. You are powe
 
   ipcMain.handle('create-session', function() {
     return createSession();
+  });
+
+  ipcMain.handle('get-bots', function() {
+    return loadBots();
+  });
+
+  ipcMain.handle('get-bot', function(event, botId) {
+    return getBot(botId);
+  });
+
+  ipcMain.handle('get-active-bot', function() {
+    return getActiveBot();
+  });
+
+  ipcMain.handle('create-bot', function(event, botConfig) {
+    return createBot(botConfig);
+  });
+
+  ipcMain.handle('update-bot', function(event, botId, updates) {
+    return updateBot(botId, updates);
+  });
+
+  ipcMain.handle('delete-bot', function(event, botId) {
+    return deleteBot(botId);
+  });
+
+  ipcMain.handle('set-active-bot', function(event, botId) {
+    return setActiveBot(botId);
+  });
+
+  ipcMain.handle('get-bot-templates', function() {
+    return getBotTemplates();
   });
 
   ipcMain.handle('get-session', function(event, sessionId) {

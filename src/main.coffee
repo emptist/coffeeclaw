@@ -19,6 +19,7 @@ agentModelsFile = path.join agentDir, 'models.json'
 secreteDir = path.join path.dirname(__dirname), '.secrete'
 settingsFile = path.join secreteDir, 'settings.json'
 sessionsFile = path.join secreteDir, 'sessions.json'
+botsFile = path.join secreteDir, 'bots.json'
 MAX_HISTORY = 100
 MAX_SESSIONS = 50
 
@@ -105,6 +106,117 @@ createSession = ->
     updatedAt: Date.now()
   saveSession sessionId, session
   session
+
+BOT_TEMPLATES = [
+  {
+    id: 'code-helper'
+    name: 'Code Helper'
+    description: 'Expert assistant for Swift, CoffeeScript, and Python development'
+    model: 'glm-4-flash'
+    systemPrompt: 'You are an expert software developer specializing in Swift, CoffeeScript, and Python. You help with coding tasks, debugging, code review, and best practices. Always provide clean, well-commented code examples. Explain your reasoning and suggest improvements.'
+    skills: ['fs', 'code', 'git']
+  }
+  {
+    id: 'writer'
+    name: 'Creative Writer'
+    description: 'Creative writing assistant for content creation'
+    model: 'glm-4-flash'
+    systemPrompt: 'You are a creative writing assistant. You help with blog posts, articles, stories, and other content. You have excellent grammar and style. You can adapt to different tones and audiences. Always be creative and engaging.'
+    skills: ['*']
+  }
+  {
+    id: 'translator'
+    name: 'Translator'
+    description: 'Multilingual translation assistant'
+    model: 'glm-4-flash'
+    systemPrompt: 'You are a professional translator. You translate text accurately while preserving meaning, tone, and cultural context. You support English, Chinese, and Esperanto. Always ask for clarification if the source text is ambiguous.'
+    skills: ['*']
+  }
+]
+
+getBotTemplates = -> BOT_TEMPLATES
+
+loadBots = ->
+  try
+    if fs.existsSync botsFile
+      data = fs.readFileSync botsFile, 'utf8'
+      return JSON.parse data
+  catch e
+    console.error 'Error loading bots:', e
+  {
+    bots: [
+      id: 'default'
+      name: 'General Assistant'
+      description: 'A helpful general-purpose assistant'
+      model: 'glm-4-flash'
+      systemPrompt: 'You are a helpful assistant. Be concise and helpful.'
+      skills: ['*']
+      enabled: true
+      createdAt: new Date().toISOString()
+    ]
+    activeBotId: 'default'
+  }
+
+saveBots = (botsData) ->
+  try
+    fs.mkdirSync secreteDir, { recursive: true }
+    fs.writeFileSync botsFile, JSON.stringify(botsData, null, 2)
+  catch e
+    console.error 'Error saving bots:', e
+
+getBot = (botId) ->
+  botsData = loadBots()
+  botsData.bots.find (b) -> b.id == botId
+
+getActiveBot = ->
+  botsData = loadBots()
+  activeBot = botsData.bots.find (b) -> b.id == botsData.activeBotId
+  activeBot or botsData.bots[0]
+
+createBot = (botConfig) ->
+  unless botConfig.name?.trim()
+    return error: 'Bot name is required'
+  botsData = loadBots()
+  newBot =
+    id: generateId()
+    name: botConfig.name.trim()
+    description: botConfig.description?.trim() or ''
+    model: botConfig.model or 'glm-4-flash'
+    systemPrompt: botConfig.systemPrompt or 'You are a helpful assistant.'
+    skills: botConfig.skills or ['*']
+    enabled: true
+    createdAt: new Date().toISOString()
+  botsData.bots.push newBot
+  saveBots botsData
+  newBot
+
+updateBot = (botId, updates) ->
+  botsData = loadBots()
+  botIndex = botsData.bots.findIndex (b) -> b.id == botId
+  if botIndex >= 0
+    botsData.bots[botIndex] = { ...botsData.bots[botIndex], ...updates, updatedAt: new Date().toISOString() }
+    saveBots botsData
+    return botsData.bots[botIndex]
+  null
+
+deleteBot = (botId) ->
+  botsData = loadBots()
+  if botsData.bots.length <= 1
+    return { success: false, error: 'Cannot delete the last bot' }
+  botsData.bots = botsData.bots.filter (b) -> b.id != botId
+  if botsData.activeBotId == botId
+    botsData.activeBotId = botsData.bots[0]?.id
+  saveBots botsData
+  { success: true }
+
+setActiveBot = (botId) ->
+  botsData = loadBots()
+  bot = botsData.bots.find (b) -> b.id == botId
+  if bot
+    botsData.activeBotId = botId
+    saveBots botsData
+    return bot
+  null
 
 deleteSession = (sessionId) ->
   sessions = loadSessions()
@@ -491,6 +603,15 @@ ipcMain.handle 'check-prerequisites', ->
 
 ipcMain.handle 'create-session', ->
   createSession()
+
+ipcMain.handle 'get-bots', -> loadBots()
+ipcMain.handle 'get-bot', (event, botId) -> getBot botId
+ipcMain.handle 'get-active-bot', -> getActiveBot()
+ipcMain.handle 'create-bot', (event, botConfig) -> createBot botConfig
+ipcMain.handle 'update-bot', (event, botId, updates) -> updateBot botId, updates
+ipcMain.handle 'delete-bot', (event, botId) -> deleteBot botId
+ipcMain.handle 'set-active-bot', (event, botId) -> setActiveBot botId
+ipcMain.handle 'get-bot-templates', -> getBotTemplates()
 
 ipcMain.handle 'get-session', (event, sessionId) ->
   getSession sessionId
