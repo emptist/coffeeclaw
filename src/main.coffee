@@ -20,6 +20,16 @@ secreteDir = path.join path.dirname(__dirname), '.secrete'
 settingsFile = path.join secreteDir, 'settings.json'
 sessionsFile = path.join secreteDir, 'sessions.json'
 botsFile = path.join secreteDir, 'bots.json'
+licenseFile = path.join secreteDir, 'license.json'
+
+LICENSE_PRICES =
+  yearly_usd: 12
+  yearly_cny: 36
+  lifetime_usd: 36
+  lifetime_cny: 108
+  btc_address: null
+
+FREE_TRIAL_DAYS = 30
 MAX_HISTORY = 100
 MAX_SESSIONS = 50
 
@@ -49,6 +59,80 @@ saveSettings = (settings) ->
     fs.writeFileSync settingsFile, JSON.stringify(settings, null, 2)
   catch e
     console.error 'Error saving settings:', e
+
+loadLicense = ->
+  try
+    if fs.existsSync licenseFile
+      data = fs.readFileSync licenseFile, 'utf8'
+      return JSON.parse data
+  catch e
+    console.error 'Error loading license:', e
+  null
+
+saveLicense = (license) ->
+  try
+    fs.mkdirSync secreteDir, { recursive: true }
+    fs.writeFileSync licenseFile, JSON.stringify(license, null, 2)
+  catch e
+    console.error 'Error saving license:', e
+
+initLicense = ->
+  license = loadLicense()
+  if license
+    return license
+  
+  newLicense =
+    deviceId: generateId()
+    createdAt: new Date().toISOString()
+    trialEndsAt: new Date(Date.now() + FREE_TRIAL_DAYS * 24 * 60 * 60 * 1000).toISOString()
+    status: 'trial'
+    paid: false
+    plan: null
+    expiresAt: null
+  
+  saveLicense newLicense
+  newLicense
+
+getLicenseStatus = ->
+  license = loadLicense()
+  unless license
+    license = initLicense()
+  
+  now = Date.now()
+  
+  if license.paid and license.plan == 'lifetime'
+    return
+      status: 'lifetime'
+      remaining: -1
+      paid: true
+      plan: 'lifetime'
+  
+  if license.paid and license.plan == 'yearly' and license.expiresAt
+    expiresAt = new Date(license.expiresAt).getTime()
+    if now < expiresAt
+      remaining = Math.ceil (expiresAt - now) / (24 * 60 * 60 * 1000)
+      return
+        status: 'yearly'
+        remaining: remaining
+        paid: true
+        plan: 'yearly'
+        expiresAt: license.expiresAt
+  
+  trialEndsAt = new Date(license.trialEndsAt).getTime()
+  if now < trialEndsAt
+    remaining = Math.ceil (trialEndsAt - now) / (24 * 60 * 60 * 1000)
+    return
+      status: 'trial'
+      remaining: remaining
+      paid: false
+      plan: null
+      trialEndsAt: license.trialEndsAt
+  
+  return
+    status: 'expired'
+    remaining: 0
+    paid: false
+    plan: null
 
 loadSessions = ->
   try
@@ -928,6 +1012,30 @@ ipcMain.handle 'save-settings', (event, newSettings) ->
     settings[key] = value
   saveSettings settings
   true
+
+ipcMain.handle 'get-license', ->
+  getLicenseStatus()
+
+ipcMain.handle 'get-license-prices', ->
+  LICENSE_PRICES
+
+ipcMain.handle 'activate-license', (event, plan, paymentInfo) ->
+  license = loadLicense()
+  unless license
+    license = initLicense()
+  
+  license.paid = true
+  license.plan = plan
+  license.activatedAt = new Date().toISOString()
+  
+  if plan == 'yearly'
+    license.expiresAt = new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString()
+  else if plan == 'lifetime'
+    license.expiresAt = null
+  
+  license.paymentInfo = paymentInfo
+  saveLicense license
+  getLicenseStatus()
 
 ipcMain.handle 'get-models', ->
   MODELS

@@ -2,7 +2,7 @@
 (function() {
   // CoffeeClaw - Main Process
   // Auto-configures OpenClaw on first run
-  var BOT_TEMPLATES, BrowserWindow, MAX_HISTORY, MAX_SESSIONS, MODELS, SKILLS, addToSession, agentDir, agentMdFile, agentModelsFile, app, botsFile, callAPI, callAPIWithMessages, checkNodeInstalled, checkNpmInstalled, checkOpenClaw, checkOpenClawInstalled, checkOpenClawPromise, checkWSLInstalled, configExists, configFile, configureFeishu, createAgentConfig, createBot, createDefaultConfig, createIdentity, createSession, createWindow, crypto, deleteBot, deleteSession, detectExistingFeishuConfig, exec, executeSkillFunction, fs, generateId, generateToken, getActiveBot, getBot, getBotTemplates, getPlatform, getSession, getSkillFunctions, http, https, identityFile, installOpenClaw, ipcMain, isConfigured, isMac, isWindows, listSessions, loadBots, loadSessions, loadSettings, mainWindow, openclawDir, path, saveBots, saveSession, saveSessions, saveSettings, secreteDir, sendToOpenClaw, sessionsFile, setActiveBot, settingsFile, spawn, startOpenClaw, syncFeishuConfigToOpenClaw, syncFeishuConfigToSettings, updateBot, workspaceDir;
+  var BOT_TEMPLATES, BrowserWindow, FREE_TRIAL_DAYS, LICENSE_PRICES, MAX_HISTORY, MAX_SESSIONS, MODELS, SKILLS, addToSession, agentDir, agentMdFile, agentModelsFile, app, botsFile, callAPI, callAPIWithMessages, checkNodeInstalled, checkNpmInstalled, checkOpenClaw, checkOpenClawInstalled, checkOpenClawPromise, checkWSLInstalled, configExists, configFile, configureFeishu, createAgentConfig, createBot, createDefaultConfig, createIdentity, createSession, createWindow, crypto, deleteBot, deleteSession, detectExistingFeishuConfig, exec, executeSkillFunction, fs, generateId, generateToken, getActiveBot, getBot, getBotTemplates, getLicenseStatus, getPlatform, getSession, getSkillFunctions, http, https, identityFile, initLicense, installOpenClaw, ipcMain, isConfigured, isMac, isWindows, licenseFile, listSessions, loadBots, loadLicense, loadSessions, loadSettings, mainWindow, openclawDir, path, saveBots, saveLicense, saveSession, saveSessions, saveSettings, secreteDir, sendToOpenClaw, sessionsFile, setActiveBot, settingsFile, spawn, startOpenClaw, syncFeishuConfigToOpenClaw, syncFeishuConfigToSettings, updateBot, workspaceDir;
 
   ({app, BrowserWindow, ipcMain} = require('electron'));
 
@@ -39,6 +39,18 @@
   sessionsFile = path.join(secreteDir, 'sessions.json');
 
   botsFile = path.join(secreteDir, 'bots.json');
+
+  licenseFile = path.join(secreteDir, 'license.json');
+
+  LICENSE_PRICES = {
+    yearly_usd: 12,
+    yearly_cny: 36,
+    lifetime_usd: 36,
+    lifetime_cny: 108,
+    btc_address: null
+  };
+
+  FREE_TRIAL_DAYS = 30;
 
   MAX_HISTORY = 100;
 
@@ -84,6 +96,99 @@
       e = error;
       return console.error('Error saving settings:', e);
     }
+  };
+
+  loadLicense = function() {
+    var data, e;
+    try {
+      if (fs.existsSync(licenseFile)) {
+        data = fs.readFileSync(licenseFile, 'utf8');
+        return JSON.parse(data);
+      }
+    } catch (error) {
+      e = error;
+      console.error('Error loading license:', e);
+    }
+    return null;
+  };
+
+  saveLicense = function(license) {
+    var e;
+    try {
+      fs.mkdirSync(secreteDir, {
+        recursive: true
+      });
+      return fs.writeFileSync(licenseFile, JSON.stringify(license, null, 2));
+    } catch (error) {
+      e = error;
+      return console.error('Error saving license:', e);
+    }
+  };
+
+  initLicense = function() {
+    var license, newLicense;
+    license = loadLicense();
+    if (license) {
+      return license;
+    }
+    newLicense = {
+      deviceId: generateId(),
+      createdAt: new Date().toISOString(),
+      trialEndsAt: new Date(Date.now() + FREE_TRIAL_DAYS * 24 * 60 * 60 * 1000).toISOString(),
+      status: 'trial',
+      paid: false,
+      plan: null,
+      expiresAt: null
+    };
+    saveLicense(newLicense);
+    return newLicense;
+  };
+
+  getLicenseStatus = function() {
+    var expiresAt, license, now, remaining, trialEndsAt;
+    license = loadLicense();
+    if (!license) {
+      license = initLicense();
+    }
+    now = Date.now();
+    if (license.paid && license.plan === 'lifetime') {
+      return {
+        status: 'lifetime',
+        remaining: -1,
+        paid: true,
+        plan: 'lifetime'
+      };
+    }
+    if (license.paid && license.plan === 'yearly' && license.expiresAt) {
+      expiresAt = new Date(license.expiresAt).getTime();
+      if (now < expiresAt) {
+        remaining = Math.ceil((expiresAt - now) / (24 * 60 * 60 * 1000));
+        return {
+          status: 'yearly',
+          remaining: remaining,
+          paid: true,
+          plan: 'yearly',
+          expiresAt: license.expiresAt
+        };
+      }
+    }
+    trialEndsAt = new Date(license.trialEndsAt).getTime();
+    if (now < trialEndsAt) {
+      remaining = Math.ceil((trialEndsAt - now) / (24 * 60 * 60 * 1000));
+      return {
+        status: 'trial',
+        remaining: remaining,
+        paid: false,
+        plan: null,
+        trialEndsAt: license.trialEndsAt
+      };
+    }
+    return {
+      status: 'expired',
+      remaining: 0,
+      paid: false,
+      plan: null
+    };
   };
 
   loadSessions = function() {
@@ -1427,6 +1532,33 @@ You are a helpful AI assistant running on the user's local machine. You are powe
     }
     saveSettings(settings);
     return true;
+  });
+
+  ipcMain.handle('get-license', function() {
+    return getLicenseStatus();
+  });
+
+  ipcMain.handle('get-license-prices', function() {
+    return LICENSE_PRICES;
+  });
+
+  ipcMain.handle('activate-license', function(event, plan, paymentInfo) {
+    var license;
+    license = loadLicense();
+    if (!license) {
+      license = initLicense();
+    }
+    license.paid = true;
+    license.plan = plan;
+    license.activatedAt = new Date().toISOString();
+    if (plan === 'yearly') {
+      license.expiresAt = new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString();
+    } else if (plan === 'lifetime') {
+      license.expiresAt = null;
+    }
+    license.paymentInfo = paymentInfo;
+    saveLicense(license);
+    return getLicenseStatus();
   });
 
   ipcMain.handle('get-models', function() {

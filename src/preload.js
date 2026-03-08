@@ -83,6 +83,15 @@
     },
     syncFeishuToOpenClaw: function() {
       return ipcRenderer.invoke('sync-feishu-to-openclaw');
+    },
+    getLicense: function() {
+      return ipcRenderer.invoke('get-license');
+    },
+    getLicensePrices: function() {
+      return ipcRenderer.invoke('get-license-prices');
+    },
+    activateLicense: function(plan, paymentInfo) {
+      return ipcRenderer.invoke('activate-license', plan, paymentInfo);
     }
   });
 
