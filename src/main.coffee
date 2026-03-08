@@ -609,6 +609,8 @@ callAPI = (sessionId, message, settings, bot = null) ->
     
     if functions.length > 0
       postData.tools = functions.map (f) -> { type: 'function', function: f }
+      postData.tool_choice = 'auto'
+      postData.do_sample = false
     
     postData = JSON.stringify postData
 
@@ -666,10 +668,13 @@ callAPIWithMessages = (sessionId, messages, settings, bot, apiKey) ->
     model = bot?.model or settings.model or 'glm-4-flash'
     config = MODELS[provider]
     
-    postData = JSON.stringify
+    postData =
       model: model
       messages: messages
       stream: false
+      do_sample: false
+    
+    postData = JSON.stringify postData
 
     options =
       hostname: config.baseUrl

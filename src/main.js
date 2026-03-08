@@ -985,6 +985,8 @@ You are a helpful AI assistant running on the user's local machine. You are powe
             function: f
           };
         });
+        postData.tool_choice = 'auto';
+        postData.do_sample = false;
       }
       postData = JSON.stringify(postData);
       options = {
@@ -1054,11 +1056,13 @@ You are a helpful AI assistant running on the user's local machine. You are powe
       provider = settings.provider || 'zhipu';
       model = (bot != null ? bot.model : void 0) || settings.model || 'glm-4-flash';
       config = MODELS[provider];
-      postData = JSON.stringify({
+      postData = {
         model: model,
         messages: messages,
-        stream: false
-      });
+        stream: false,
+        do_sample: false
+      };
+      postData = JSON.stringify(postData);
       options = {
         hostname: config.baseUrl,
         port: 443,
