@@ -27,11 +27,17 @@
       align-items: center;
       justify-content: space-between;
       border-bottom: 1px solid #0f3460;
+      gap: 10px;
+      flex-wrap: wrap;
+      min-width: 0;
+      overflow: hidden;
     }
     
     .header h1 {
       font-size: 20px;
       color: #e94560;
+      white-space: nowrap;
+      flex-shrink: 0;
     }
     
     .header .title-emoji {
@@ -41,6 +47,7 @@
     .lang-select {
       display: flex;
       gap: 5px;
+      flex-shrink: 0;
     }
     
     .lang-btn {
@@ -58,11 +65,52 @@
       color: white;
     }
     
+    .bot-selector {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      flex-shrink: 1;
+      min-width: 0;
+    }
+    
+    .bot-selector select {
+      padding: 5px 10px;
+      background: #0f3460;
+      border: none;
+      border-radius: 4px;
+      color: #fff;
+      font-size: 12px;
+      cursor: pointer;
+      max-width: 150px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    
+    .bot-selector select:focus {
+      outline: 2px solid #e94560;
+    }
+    
+    .bot-selector button {
+      padding: 5px 10px;
+      background: #0f3460;
+      border: none;
+      border-radius: 4px;
+      color: #888;
+      cursor: pointer;
+      font-size: 14px;
+    }
+    
+    .bot-selector button:hover {
+      background: #e94560;
+      color: white;
+    }
+    
     .status {
       display: flex;
       align-items: center;
       gap: 8px;
       font-size: 12px;
+      flex-shrink: 0;
     }
     
     .status-dot {
@@ -403,10 +451,18 @@
       <div class="header">
         <button class="toggle-sidebar" id="showSidebarBtn" style="display:none;">☰</button>
         <h1><span class="title-emoji">☕</span>CoffeeClaw</h1>
+        <div class="bot-selector">
+          <select id="botSelect" title="Select Bot">
+            <option value="default">General Assistant</option>
+          </select>
+          <button id="addBotBtn" title="Add New Bot">+</button>
+          <button id="editBotBtn" title="Edit Bot">⚙️</button>
+        </div>
         <div class="lang-select">
           <button class="lang-btn active" data-lang="en">EN</button>
           <button class="lang-btn" data-lang="zh">中文</button>
           <button class="lang-btn" data-lang="eo">Espo</button>
+          <button class="lang-btn" id="feishuStatusBtn" style="display:none;" title="Feishu Status">📱</button>
         </div>
         <div class="status">
           <span class="status-dot" id="statusDot"></span>
@@ -493,6 +549,81 @@
         <div class="btn-group">
           <button id="finishBtn">Start Chatting</button>
         </div>
+      </div>
+    </div>
+  </div>
+  
+  <div id="botEditorModal" class="setup-overlay" style="display:none;">
+    <div class="setup-card" style="max-width:500px;">
+      <h2 id="botEditorTitle">🤖 Bot Editor</h2>
+      
+      <div id="templateSection" style="margin-bottom:20px;">
+        <label>Quick Start from Template:</label>
+        <div id="templateList" style="display:flex;flex-wrap:wrap;gap:8px;margin-top:8px;"></div>
+      </div>
+      
+      <hr style="border-color:#1a1a2e;margin:15px 0;">
+      
+      <label>Bot Name:</label>
+      <input type="text" id="botNameInput" placeholder="e.g., Code Helper">
+      
+      <label>Description:</label>
+      <input type="text" id="botDescInput" placeholder="e.g., Helps with coding tasks">
+      
+      <label>Model:</label>
+      <select id="botModelSelect">
+        <option value="glm-4-flash">GLM-4-Flash (Fast)</option>
+        <option value="glm-4-plus">GLM-4-Plus</option>
+        <option value="glm-4-air">GLM-4-Air</option>
+      </select>
+      
+      <label>System Prompt:</label>
+      <textarea id="botPromptInput" rows="4" placeholder="You are a helpful assistant..."></textarea>
+      
+      <label>Skills (comma-separated, use * for all):</label>
+      <input type="text" id="botSkillsInput" placeholder="fs, code, web, git">
+      
+      <div id="botEditorError" style="display:none;margin-top:15px;padding:10px;border-radius:8px;background:#e94560;color:white;"></div>
+      
+      <div class="btn-group">
+        <button class="btn-secondary" id="exportBotsBtn" title="Export all bots to JSON">📤 Export</button>
+        <button class="btn-secondary" id="importBotsBtn" title="Import bots from JSON">📥 Import</button>
+        <button class="btn-secondary" id="cancelBotEditorBtn">Cancel</button>
+        <button class="btn-secondary" id="deleteBotBtn" style="background:#e94560;display:none;">Delete</button>
+        <button id="saveBotBtn">Save</button>
+      </div>
+      <input type="file" id="importBotsFile" accept=".json" style="display:none;">
+    </div>
+  </div>
+  
+  <div id="feishuPairingModal" class="setup-overlay" style="display:none;">
+    <div class="setup-card" style="max-width:400px;">
+      <h2>📱 Feishu Status</h2>
+      
+      <div id="feishuStatusInfo" style="background:#0f3460;padding:15px;border-radius:8px;margin-bottom:15px;font-size:12px;">
+        <p style="margin:0 0 10px 0;"><strong>Connection Status:</strong></p>
+        <div id="feishuConnectionStatus" style="display:flex;align-items:center;gap:8px;">
+          <span id="feishuConnectionDot" style="width:10px;height:10px;border-radius:50%;background:#00ff88;"></span>
+          <span id="feishuConnectionText">Connected</span>
+        </div>
+        <div style="margin-top:10px;">
+          <span style="color:#888;">App ID:</span>
+          <span id="feishuAppIdDisplay" style="font-family:monospace;">-</span>
+        </div>
+      </div>
+      
+      <div id="pairingSection" style="display:none;">
+        <p style="font-size:13px;color:#e94560;margin-bottom:15px;">⚠️ A user is waiting for pairing approval.</p>
+        
+        <label>Pairing Code:</label>
+        <input type="text" id="pairingCodeInput" placeholder="XXXXXX" style="text-transform:uppercase;text-align:center;font-size:24px;letter-spacing:4px;">
+        
+        <div id="pairingResult" style="display:none;margin-top:15px;padding:10px;border-radius:8px;"></div>
+      </div>
+      
+      <div class="btn-group">
+        <button class="btn-secondary" id="closeFeishuModalBtn">Close</button>
+        <button id="approvePairingBtn" style="display:none;">Approve Pairing</button>
       </div>
     </div>
   </div>
@@ -1019,7 +1150,233 @@
       addMessage('Ready to chat! Ask me anything.', 'success');
     });
     
+    let currentEditingBotId = null;
+    
+    async function loadBots() {
+      const botsData = await window.api.getBots();
+      const select = document.getElementById('botSelect');
+      select.innerHTML = '';
+      
+      botsData.bots.forEach(bot => {
+        const option = document.createElement('option');
+        option.value = bot.id;
+        option.textContent = bot.name;
+        if (bot.id === botsData.activeBotId) {
+          option.selected = true;
+        }
+        select.appendChild(option);
+      });
+      
+      return botsData;
+    }
+    
+    document.getElementById('botSelect').addEventListener('change', async (e) => {
+      const botId = e.target.value;
+      await window.api.setActiveBot(botId);
+      currentSessionId = null;
+      chatContainer.innerHTML = '';
+      welcomeMsg.style.display = 'block';
+      welcomeMsg.textContent = translations[currentLang].welcome;
+      chatContainer.appendChild(welcomeMsg);
+      await loadSessionList();
+      addMessage(`Switched to bot: ${e.target.options[e.target.selectedIndex].text}`, 'success');
+    });
+    
+    let loadedTemplates = [];
+    
+    async function loadTemplates() {
+      loadedTemplates = await window.api.getBotTemplates();
+      const templateList = document.getElementById('templateList');
+      templateList.innerHTML = '';
+      
+      loadedTemplates.forEach(template => {
+        const btn = document.createElement('button');
+        btn.className = 'template-btn';
+        btn.style.cssText = 'padding:8px 12px;background:#0f3460;border:none;border-radius:4px;color:#fff;cursor:pointer;font-size:12px;';
+        btn.textContent = template.name;
+        btn.title = template.description;
+        btn.addEventListener('click', () => applyTemplate(template));
+        templateList.appendChild(btn);
+      });
+    }
+    
+    function applyTemplate(template) {
+      document.getElementById('botNameInput').value = template.name;
+      document.getElementById('botDescInput').value = template.description;
+      document.getElementById('botModelSelect').value = template.model;
+      document.getElementById('botPromptInput').value = template.systemPrompt;
+      document.getElementById('botSkillsInput').value = template.skills.join(', ');
+      document.getElementById('templateSection').style.display = 'none';
+    }
+    
+    document.getElementById('addBotBtn').addEventListener('click', async () => {
+      currentEditingBotId = null;
+      document.getElementById('botEditorTitle').textContent = '🤖 Create New Bot';
+      document.getElementById('botNameInput').value = '';
+      document.getElementById('botDescInput').value = '';
+      document.getElementById('botModelSelect').value = 'glm-4-flash';
+      document.getElementById('botPromptInput').value = 'You are a helpful assistant.';
+      document.getElementById('botSkillsInput').value = '*';
+      document.getElementById('deleteBotBtn').style.display = 'none';
+      document.getElementById('templateSection').style.display = 'block';
+      document.getElementById('botEditorError').style.display = 'none';
+      await loadTemplates();
+      document.getElementById('botEditorModal').style.display = 'flex';
+    });
+    
+    document.getElementById('editBotBtn').addEventListener('click', async () => {
+      const botId = document.getElementById('botSelect').value;
+      const bot = await window.api.getBot(botId);
+      if (bot) {
+        currentEditingBotId = botId;
+        document.getElementById('botEditorTitle').textContent = '🤖 Edit Bot';
+        document.getElementById('botNameInput').value = bot.name;
+        document.getElementById('botDescInput').value = bot.description || '';
+        document.getElementById('botModelSelect').value = bot.model;
+        document.getElementById('botPromptInput').value = bot.systemPrompt;
+        document.getElementById('botSkillsInput').value = bot.skills.join(', ');
+        document.getElementById('deleteBotBtn').style.display = 'inline-block';
+        document.getElementById('templateSection').style.display = 'none';
+        document.getElementById('botEditorError').style.display = 'none';
+        document.getElementById('botEditorModal').style.display = 'flex';
+      }
+    });
+    
+    document.getElementById('cancelBotEditorBtn').addEventListener('click', () => {
+      document.getElementById('botEditorModal').style.display = 'none';
+    });
+    
+    document.getElementById('saveBotBtn').addEventListener('click', async () => {
+      const name = document.getElementById('botNameInput').value.trim();
+      const description = document.getElementById('botDescInput').value.trim();
+      const model = document.getElementById('botModelSelect').value;
+      const systemPrompt = document.getElementById('botPromptInput').value.trim();
+      const skillsInput = document.getElementById('botSkillsInput').value.trim();
+      const errorDiv = document.getElementById('botEditorError');
+      
+      if (!name) {
+        errorDiv.textContent = 'Please enter a bot name';
+        errorDiv.style.display = 'block';
+        return;
+      }
+      
+      const skills = skillsInput.split(',').map(s => s.trim()).filter(s => s);
+      
+      try {
+        if (currentEditingBotId) {
+          await window.api.updateBot(currentEditingBotId, { name, description, model, systemPrompt, skills });
+        } else {
+          await window.api.createBot({ name, description, model, systemPrompt, skills });
+        }
+        
+        document.getElementById('botEditorModal').style.display = 'none';
+        await loadBots();
+        addMessage(currentEditingBotId ? 'Bot updated!' : 'Bot created!', 'success');
+      } catch (e) {
+        errorDiv.textContent = 'Error: ' + e.message;
+        errorDiv.style.display = 'block';
+      }
+    });
+    
+    document.getElementById('deleteBotBtn').addEventListener('click', async () => {
+      if (!currentEditingBotId) return;
+      
+      if (confirm('Are you sure you want to delete this bot?')) {
+        const result = await window.api.deleteBot(currentEditingBotId);
+        if (result.success) {
+          document.getElementById('botEditorModal').style.display = 'none';
+          await loadBots();
+          addMessage('Bot deleted!', 'success');
+        } else {
+          document.getElementById('botEditorError').textContent = result.error || 'Failed to delete bot';
+          document.getElementById('botEditorError').style.display = 'block';
+        }
+      }
+    });
+    
+    document.getElementById('closeFeishuModalBtn').addEventListener('click', () => {
+      document.getElementById('feishuPairingModal').style.display = 'none';
+    });
+    
+    document.getElementById('exportBotsBtn').addEventListener('click', async () => {
+      const result = await window.api.exportBots();
+      if (result.success) {
+        const blob = new Blob([JSON.stringify(result.data, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `coffeeclaw-backup-${new Date().toISOString().split('T')[0]}.json`;
+        a.click();
+        URL.revokeObjectURL(url);
+        document.getElementById('botEditorModal').style.display = 'none';
+        addMessage('Configuration exported successfully!', 'success');
+      } else {
+        document.getElementById('botEditorError').textContent = 'Export failed: ' + result.error;
+        document.getElementById('botEditorError').style.display = 'block';
+      }
+    });
+    
+    document.getElementById('importBotsBtn').addEventListener('click', () => {
+      document.getElementById('importBotsFile').click();
+    });
+    
+    document.getElementById('importBotsFile').addEventListener('change', async (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      
+      try {
+        const text = await file.text();
+        const data = JSON.parse(text);
+        const result = await window.api.importBots(data);
+        
+        if (result.success) {
+          await loadBots();
+          document.getElementById('botEditorModal').style.display = 'none';
+          addMessage(`Imported ${result.imported} bots. Total: ${result.total}`, 'success');
+        } else {
+          document.getElementById('botEditorError').textContent = 'Import failed: ' + result.error;
+          document.getElementById('botEditorError').style.display = 'block';
+        }
+      } catch (err) {
+        document.getElementById('botEditorError').textContent = 'Invalid JSON file: ' + err.message;
+        document.getElementById('botEditorError').style.display = 'block';
+      }
+      
+      e.target.value = '';
+    });
+    
+    document.getElementById('feishuStatusBtn').addEventListener('click', async () => {
+      const status = await window.api.getFeishuStatus();
+      document.getElementById('feishuAppIdDisplay').textContent = status.appId || '-';
+      
+      if (status.enabled && status.configured) {
+        document.getElementById('feishuConnectionDot').style.background = '#00ff88';
+        document.getElementById('feishuConnectionText').textContent = 'Connected';
+      } else if (status.enabled) {
+        document.getElementById('feishuConnectionDot').style.background = '#e94560';
+        document.getElementById('feishuConnectionText').textContent = 'Not configured in OpenClaw';
+      } else {
+        document.getElementById('feishuConnectionDot').style.background = '#888';
+        document.getElementById('feishuConnectionText').textContent = 'Disabled';
+      }
+      
+      document.getElementById('feishuPairingModal').style.display = 'flex';
+    });
+    
+    async function checkFeishuStatus() {
+      const status = await window.api.getFeishuStatus();
+      const btn = document.getElementById('feishuStatusBtn');
+      if (status.enabled) {
+        btn.style.display = 'inline-block';
+        btn.style.background = status.configured ? '#00ff88' : '#e94560';
+      } else {
+        btn.style.display = 'none';
+      }
+    }
+    
     initApp();
+    loadBots();
+    checkFeishuStatus();
     setInterval(checkStatus, 5000);
   </script>
 </body>

@@ -19,6 +19,7 @@ agentModelsFile = path.join agentDir, 'models.json'
 secreteDir = path.join path.dirname(__dirname), '.secrete'
 settingsFile = path.join secreteDir, 'settings.json'
 sessionsFile = path.join secreteDir, 'sessions.json'
+botsFile = path.join secreteDir, 'bots.json'
 MAX_HISTORY = 100
 MAX_SESSIONS = 50
 
@@ -105,6 +106,205 @@ createSession = ->
     updatedAt: Date.now()
   saveSession sessionId, session
   session
+
+BOT_TEMPLATES = [
+  {
+    id: 'code-helper'
+    name: 'Code Helper'
+    description: 'Expert assistant for Swift, CoffeeScript, and Python development'
+    model: 'glm-4-flash'
+    systemPrompt: 'You are an expert software developer specializing in Swift, CoffeeScript, and Python. You help with coding tasks, debugging, code review, and best practices. Always provide clean, well-commented code examples. Explain your reasoning and suggest improvements.'
+    skills: ['fs', 'code', 'git']
+  }
+  {
+    id: 'writer'
+    name: 'Creative Writer'
+    description: 'Creative writing assistant for content creation'
+    model: 'glm-4-flash'
+    systemPrompt: 'You are a creative writing assistant. You help with blog posts, articles, stories, and other content. You have excellent grammar and style. You can adapt to different tones and audiences. Always be creative and engaging.'
+    skills: ['*']
+  }
+  {
+    id: 'translator'
+    name: 'Translator'
+    description: 'Multilingual translation assistant'
+    model: 'glm-4-flash'
+    systemPrompt: 'You are a professional translator. You translate text accurately while preserving meaning, tone, and cultural context. You support English, Chinese, and Esperanto. Always ask for clarification if the source text is ambiguous.'
+    skills: ['*']
+  }
+]
+
+getBotTemplates = -> BOT_TEMPLATES
+
+loadBots = ->
+  try
+    if fs.existsSync botsFile
+      data = fs.readFileSync botsFile, 'utf8'
+      return JSON.parse data
+  catch e
+    console.error 'Error loading bots:', e
+  {
+    bots: [
+      id: 'default'
+      name: 'General Assistant'
+      description: 'A helpful general-purpose assistant'
+      model: 'glm-4-flash'
+      systemPrompt: 'You are a helpful assistant. Be concise and helpful.'
+      skills: ['*']
+      enabled: true
+      createdAt: new Date().toISOString()
+    ]
+    activeBotId: 'default'
+  }
+
+saveBots = (botsData) ->
+  try
+    fs.mkdirSync secreteDir, { recursive: true }
+    fs.writeFileSync botsFile, JSON.stringify(botsData, null, 2)
+  catch e
+    console.error 'Error saving bots:', e
+
+getBot = (botId) ->
+  botsData = loadBots()
+  botsData.bots.find (b) -> b.id == botId
+
+getActiveBot = ->
+  botsData = loadBots()
+  activeBot = botsData.bots.find (b) -> b.id == botsData.activeBotId
+  activeBot or botsData.bots[0]
+
+createBot = (botConfig) ->
+  unless botConfig.name?.trim()
+    return error: 'Bot name is required'
+  botsData = loadBots()
+  newBot =
+    id: generateId()
+    name: botConfig.name.trim()
+    description: botConfig.description?.trim() or ''
+    model: botConfig.model or 'glm-4-flash'
+    systemPrompt: botConfig.systemPrompt or 'You are a helpful assistant.'
+    skills: botConfig.skills or ['*']
+    enabled: true
+    createdAt: new Date().toISOString()
+  botsData.bots.push newBot
+  saveBots botsData
+  newBot
+
+updateBot = (botId, updates) ->
+  botsData = loadBots()
+  botIndex = botsData.bots.findIndex (b) -> b.id == botId
+  if botIndex >= 0
+    botsData.bots[botIndex] = { ...botsData.bots[botIndex], ...updates, updatedAt: new Date().toISOString() }
+    saveBots botsData
+    return botsData.bots[botIndex]
+  null
+
+deleteBot = (botId) ->
+  botsData = loadBots()
+  if botsData.bots.length <= 1
+    return { success: false, error: 'Cannot delete the last bot' }
+  botsData.bots = botsData.bots.filter (b) -> b.id != botId
+  if botsData.activeBotId == botId
+    botsData.activeBotId = botsData.bots[0]?.id
+  saveBots botsData
+  { success: true }
+
+setActiveBot = (botId) ->
+  botsData = loadBots()
+  bot = botsData.bots.find (b) -> b.id == botId
+  if bot
+    botsData.activeBotId = botId
+    saveBots botsData
+    return bot
+  null
+
+SKILLS =
+  fs:
+    list_files:
+      description: 'List files in a directory'
+      parameters:
+        type: 'object'
+        properties:
+          path: { type: 'string', description: 'Directory path to list' }
+        required: ['path']
+      handler: (args) ->
+        try
+          targetPath = args.path or process.cwd()
+          files = fs.readdirSync targetPath, { withFileTypes: true }
+          results = files.map (f) ->
+            type: if f.isDirectory() then 'directory' else 'file'
+            name: f.name
+          { success: true, files: results, path: targetPath }
+        catch e
+          { success: false, error: e.message }
+    read_file:
+      description: 'Read file contents'
+      parameters:
+        type: 'object'
+        properties:
+          path: { type: 'string', description: 'File path to read' }
+        required: ['path']
+      handler: (args) ->
+        try
+          content = fs.readFileSync args.path, 'utf8'
+          { success: true, content: content.substring(0, 10000) }
+        catch e
+          { success: false, error: e.message }
+  code:
+    execute:
+      description: 'Execute a shell command'
+      parameters:
+        type: 'object'
+        properties:
+          command: { type: 'string', description: 'Command to execute' }
+          cwd: { type: 'string', description: 'Working directory' }
+        required: ['command']
+      handler: (args) ->
+        try
+          result = require('child_process').execSync args.command,
+            cwd: args.cwd or process.cwd()
+            encoding: 'utf8'
+            timeout: 30000
+          { success: true, output: result.substring(0, 5000) }
+        catch e
+          { success: false, error: e.message, output: e.stdout or '' }
+  git:
+    status:
+      description: 'Get git status'
+      parameters:
+        type: 'object'
+        properties:
+          cwd: { type: 'string', description: 'Working directory' }
+      handler: (args) ->
+        try
+          result = require('child_process').execSync 'git status --short',
+            cwd: args.cwd or process.cwd()
+            encoding: 'utf8'
+          { success: true, status: result }
+        catch e
+          { success: false, error: e.message }
+
+getSkillFunctions = (botSkills) ->
+  return [] unless botSkills and botSkills[0] != '*'
+  functions = []
+  for skillName in botSkills
+    skill = SKILLS[skillName]
+    continue unless skill
+    for funcName, funcDef of skill
+      functions.push { name: funcName, description: funcDef.description, parameters: funcDef.parameters }
+  functions
+
+executeSkillFunction = (name, args, botSkills) ->
+  for skillName in (botSkills or ['*'])
+    if skillName == '*'
+      for skillName2, skill of SKILLS
+        if skill[name]
+          return skill[name].handler args
+    else
+      skill = SKILLS[skillName]
+      if skill?[name]
+        return skill[name].handler args
+  { success: false, error: "Unknown function: #{name}" }
 
 deleteSession = (sessionId) ->
   sessions = loadSessions()
@@ -359,19 +559,20 @@ MODELS =
     baseUrl: 'api.deepseek.com'
     apiPath: '/v1/chat/completions'
 
-callAPI = (sessionId, message, settings) ->
+callAPI = (sessionId, message, settings, bot = null) ->
   new Promise (resolve, reject) ->
     { apiKey, provider, model } = settings
     provider = provider or 'zhipu'
-    model = model or 'glm-4-flash'
+    model = bot?.model or model or 'glm-4-flash'
     
     config = MODELS[provider]
     unless config
       return reject new Error "Unknown provider: #{provider}"
     
     session = getSession sessionId
+    systemPrompt = bot?.systemPrompt or 'You are CoffeeClaw, a helpful AI assistant. Respond in the same language the user uses. Be friendly and helpful.'
     messages = [
-      { role: 'system', content: 'You are CoffeeClaw, a helpful AI assistant. Respond in the same language the user uses. Be friendly and helpful.' }
+      { role: 'system', content: systemPrompt }
     ]
     
     if session.messages
@@ -383,6 +584,71 @@ callAPI = (sessionId, message, settings) ->
     messages.push
       role: 'user'
       content: message
+    
+    functions = getSkillFunctions bot?.skills
+    postData =
+      model: model
+      messages: messages
+      stream: false
+    
+    if functions.length > 0
+      postData.tools = functions.map (f) -> { type: 'function', function: f }
+    
+    postData = JSON.stringify postData
+
+    options =
+      hostname: config.baseUrl
+      port: 443
+      path: config.apiPath
+      method: 'POST'
+      headers:
+        'Content-Type': 'application/json'
+        'Authorization': "Bearer #{apiKey}"
+        'Content-Length': Buffer.byteLength(postData)
+
+    req = https.request options, (res) ->
+      data = ''
+      res.on 'data', (chunk) -> data += chunk
+      res.on 'end', ->
+        try
+          result = JSON.parse data
+          if result.error
+            reject new Error result.error.message or 'API error'
+          else if result.choices and result.choices[0]
+            choice = result.choices[0]
+            if choice.message?.tool_calls
+              toolCall = choice.message.tool_calls[0]
+              if toolCall?.type == 'function'
+                funcName = toolCall.function.name
+                funcArgs = JSON.parse toolCall.function.arguments
+                funcResult = executeSkillFunction funcName, funcArgs, bot?.skills
+                messages.push choice.message
+                messages.push
+                  role: 'tool'
+                  content: JSON.stringify funcResult
+                  tool_call_id: toolCall.id
+                callAPIWithMessages sessionId, messages, settings, bot, apiKey
+                  .then resolve
+                  .catch reject
+                return
+            resolve choice.message.content
+          else
+            reject new Error 'Unknown response format'
+        catch e
+          reject e
+
+    req.on 'error', reject
+    req.setTimeout 60000, ->
+      req.destroy()
+      reject new Error 'Request timeout'
+    req.write postData
+    req.end()
+
+callAPIWithMessages = (sessionId, messages, settings, bot, apiKey) ->
+  new Promise (resolve, reject) ->
+    provider = settings.provider or 'zhipu'
+    model = bot?.model or settings.model or 'glm-4-flash'
+    config = MODELS[provider]
     
     postData = JSON.stringify
       model: model
@@ -408,7 +674,23 @@ callAPI = (sessionId, message, settings) ->
           if result.error
             reject new Error result.error.message or 'API error'
           else if result.choices and result.choices[0]
-            resolve result.choices[0].message.content
+            choice = result.choices[0]
+            if choice.message?.tool_calls
+              toolCall = choice.message.tool_calls[0]
+              if toolCall?.type == 'function'
+                funcName = toolCall.function.name
+                funcArgs = JSON.parse toolCall.function.arguments
+                funcResult = executeSkillFunction funcName, funcArgs, bot?.skills
+                messages.push choice.message
+                messages.push
+                  role: 'tool'
+                  content: JSON.stringify funcResult
+                  tool_call_id: toolCall.id
+                callAPIWithMessages sessionId, messages, settings, bot, apiKey
+                  .then resolve
+                  .catch reject
+                return
+            resolve choice.message.content
           else
             reject new Error 'Unknown response format'
         catch e
@@ -428,8 +710,9 @@ sendToOpenClaw = (sessionId, message) ->
   unless apiKey
     throw new Error 'No API key configured'
   
+  bot = getActiveBot()
   addToSession sessionId, 'user', message
-  response = await callAPI sessionId, message, settings
+  response = await callAPI sessionId, message, settings, bot
   addToSession sessionId, 'assistant', response
   response
 
@@ -492,6 +775,71 @@ ipcMain.handle 'check-prerequisites', ->
 ipcMain.handle 'create-session', ->
   createSession()
 
+ipcMain.handle 'get-bots', -> loadBots()
+ipcMain.handle 'get-bot', (event, botId) -> getBot botId
+ipcMain.handle 'get-active-bot', -> getActiveBot()
+ipcMain.handle 'create-bot', (event, botConfig) -> createBot botConfig
+ipcMain.handle 'update-bot', (event, botId, updates) -> updateBot botId, updates
+ipcMain.handle 'delete-bot', (event, botId) -> deleteBot botId
+ipcMain.handle 'set-active-bot', (event, botId) -> setActiveBot botId
+ipcMain.handle 'get-bot-templates', -> getBotTemplates()
+
+ipcMain.handle 'export-bots', ->
+  try
+    botsData = loadBots()
+    settings = loadSettings()
+    {
+      success: true
+      data:
+        bots: botsData.bots
+        activeBotId: botsData.activeBotId
+        settings:
+          feishu: settings.feishu
+        exportedAt: new Date().toISOString()
+        version: '1.0'
+    }
+  catch e
+    { success: false, error: e.message }
+
+ipcMain.handle 'import-bots', (event, data) ->
+  try
+    unless data.bots and Array.isArray data.bots
+      return { success: false, error: 'Invalid data: bots array required' }
+    
+    botsData = loadBots()
+    imported = 0
+    
+    for bot in data.bots
+      if bot.id and bot.name
+        existing = botsData.bots.find (b) -> b.id == bot.id
+        if existing
+          Object.assign existing, bot
+        else
+          botsData.bots.push bot
+        imported++
+    
+    saveBots botsData
+    
+    if data.settings?.feishu
+      settings = loadSettings()
+      settings.feishu = data.settings.feishu
+      saveSettings settings
+    
+    { success: true, imported: imported, total: botsData.bots.length }
+  catch e
+    { success: false, error: e.message }
+
+ipcMain.handle 'get-feishu-status', ->
+  settings = loadSettings()
+  existing = detectExistingFeishuConfig()
+  {
+    enabled: settings.feishu?.enabled or false
+    configured: existing?.enabled or false
+    appId: settings.feishu?.appId or null
+  }
+
+ipcMain.handle 'sync-feishu-to-openclaw', -> syncFeishuConfigToOpenClaw()
+
 ipcMain.handle 'get-session', (event, sessionId) ->
   getSession sessionId
 
@@ -548,6 +896,133 @@ ipcMain.handle 'save-settings', (event, newSettings) ->
 
 ipcMain.handle 'get-models', ->
   MODELS
+
+detectExistingFeishuConfig = ->
+  try
+    if fs.existsSync configFile
+      config = JSON.parse fs.readFileSync configFile, 'utf8'
+      if config.channels?.feishu?.enabled
+        feishuChannel = config.channels.feishu
+        if feishuChannel.appId
+          return {
+            enabled: true
+            appId: feishuChannel.appId
+            appSecret: feishuChannel.appSecret
+            botName: feishuChannel.botName or 'CoffeeClaw'
+            detected: true
+          }
+        else if feishuChannel.accounts?.main
+          return {
+            enabled: true
+            appId: feishuChannel.accounts.main.appId
+            appSecret: feishuChannel.accounts.main.appSecret
+            botName: feishuChannel.accounts.main.botName or 'CoffeeClaw'
+            detected: true
+          }
+  catch e
+    console.error 'Error detecting Feishu config:', e
+  null
+
+syncFeishuConfigToSettings = ->
+  existing = detectExistingFeishuConfig()
+  if existing
+    settings = loadSettings()
+    if not settings.feishu?.appId
+      settings.feishu = existing
+      saveSettings settings
+      console.log 'Synced existing Feishu config to settings'
+    return existing
+  null
+
+syncFeishuConfigToOpenClaw = ->
+  settings = loadSettings()
+  if not settings.feishu?.appId or not settings.feishu?.enabled
+    return false
+  
+  existing = detectExistingFeishuConfig()
+  if existing?.enabled
+    return true
+  
+  try
+    config = {}
+    if fs.existsSync configFile
+      config = JSON.parse fs.readFileSync configFile, 'utf8'
+    
+    if config.channels?.feishu?.enabled and config.channels?.feishu?.appId
+      return true
+    
+    config.channels ?= {}
+    config.channels.feishu =
+      enabled: true
+      appId: settings.feishu.appId
+      appSecret: settings.feishu.appSecret
+      domain: 'feishu'
+      dmPolicy: settings.feishu.dmPolicy or 'pairing'
+      groupPolicy: settings.feishu.groupPolicy or 'open'
+    
+    config.plugins ?= {}
+    config.plugins.entries ?= {}
+    config.plugins.entries.feishu = { enabled: true }
+    
+    if settings.apiKey
+      config.models ?= {}
+      config.models.providers ?= {}
+      config.models.providers.glm =
+        baseUrl: 'https://open.bigmodel.cn/api/paas/v4'
+        apiKey: settings.apiKey
+        api: 'openai-completions'
+        models: [
+          { id: 'GLM-4-Flash', name: 'GLM 4 Flash' }
+          { id: 'GLM-4.5-air', name: 'GLM 4.5 Air' }
+          { id: 'GLM-4.7', name: 'GLM 4.7' }
+        ]
+    
+    fs.writeFileSync configFile, JSON.stringify(config, null, 2)
+    console.log 'Synced Feishu config to OpenClaw'
+    return true
+  catch e
+    console.error 'Error syncing Feishu to OpenClaw:', e
+    return false
+
+configureFeishu = (appId, appSecret, botName, enabled = true) ->
+  settings = loadSettings()
+  settings.feishu =
+    appId: appId
+    appSecret: appSecret
+    botName: botName or 'CoffeeClaw'
+    enabled: enabled
+  saveSettings settings
+  
+  if configExists()
+    config = JSON.parse fs.readFileSync configFile, 'utf8'
+    config.plugins ?= {}
+    config.plugins.feishu = { enabled: enabled }
+    config.channels ?= {}
+    config.channels.feishu =
+      enabled: enabled
+      dmPolicy: 'pairing'
+      accounts:
+        main:
+          appId: appId
+          appSecret: appSecret
+          botName: botName or 'CoffeeClaw'
+    
+    if settings.apiKey
+      config.models ?= {}
+      config.models.providers ?= {}
+      config.models.providers.glm =
+        baseUrl: 'https://open.bigmodel.cn/api/paas/v4'
+        apiKey: settings.apiKey
+        api: 'openai-completions'
+        models: [
+          { id: 'GLM-4-Flash', name: 'GLM 4 Flash' }
+          { id: 'GLM-4.5-air', name: 'GLM 4.5 Air' }
+          { id: 'GLM-4.7', name: 'GLM 4.7' }
+        ]
+    
+    fs.writeFileSync configFile, JSON.stringify(config, null, 2)
+  
+  { success: true }
 
 ipcMain.handle 'save-api-key', (event, apiKey) ->
   settings = loadSettings()
