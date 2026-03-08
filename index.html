@@ -117,12 +117,12 @@
       flex-shrink: 0;
     }
     
-    .license-indicator.trial {
+    .license-indicator.cooperator {
       background: rgba(76, 175, 80, 0.2);
       color: #4caf50;
     }
     
-    .license-indicator.paid {
+    .license-indicator.supporter {
       background: rgba(33, 150, 243, 0.2);
       color: #2196f3;
     }
@@ -994,14 +994,14 @@
         const currency = licenseData.currency || 'usd';
         const symbol = currency === 'cny' ? '¥' : '$';
         
-        if (balance > 0) {
-          licenseIndicator.classList.add('trial');
+        if (licenseData.paid) {
+          licenseIndicator.classList.add('supporter');
           licenseDays.textContent = `${symbol}${balance}`;
-          licenseIndicator.title = `Balance: ${symbol}${balance} - Click to support`;
+          licenseIndicator.title = `Supporter - Balance: ${symbol}${balance}`;
         } else {
-          licenseIndicator.classList.add('expired');
+          licenseIndicator.classList.add('cooperator');
           licenseDays.textContent = `${symbol}${balance}`;
-          licenseIndicator.title = `Balance: ${symbol}${balance} - Consider supporting?`;
+          licenseIndicator.title = `Cooperator - Balance: ${symbol}${balance} - Click to support`;
         }
       } catch (e) {
         console.error('Error updating license:', e);
@@ -1641,7 +1641,7 @@
           licenseStatusText.textContent = 'Lifetime ✓';
           licenseRemainingText.textContent = 'Thank you!';
         } else {
-          licenseStatusText.textContent = licenseData.paid ? 'Supporter' : 'Free User';
+          licenseStatusText.textContent = licenseData.paid ? 'Supporter' : 'Cooperator';
           licenseRemainingText.textContent = `Balance: ${symbol}${licenseData.balance}`;
         }
       }
