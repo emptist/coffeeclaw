@@ -210,6 +210,29 @@
       border-color: #e94560;
     }
     
+    .currency-btn {
+      flex: 1;
+      padding: 8px 15px;
+      background: #0f3460;
+      border: 1px solid #1a1a2e;
+      border-radius: 8px;
+      color: #888;
+      cursor: pointer;
+      transition: all 0.2s;
+      font-size: 13px;
+    }
+    
+    .currency-btn:hover {
+      background: #1a1a2e;
+      border-color: #e94560;
+    }
+    
+    .currency-btn.active {
+      background: #e94560;
+      color: white;
+      border-color: #e94560;
+    }
+    
     .status {
       display: flex;
       align-items: center;
@@ -780,10 +803,16 @@
       <label style="font-size:13px;margin-bottom:5px;display:block;">Your Email (optional):</label>
       <input type="email" id="userEmailInput" placeholder="your@email.com" style="width:100%;padding:10px;background:#1a1a2e;color:#eee;border:1px solid #0f3460;border-radius:8px;margin-bottom:15px;">
       
-      <label style="font-size:13px;margin-bottom:5px;display:block;">Payment Amount (USD):</label>
+      <label style="font-size:13px;margin-bottom:5px;display:block;">Currency:</label>
+      <div style="display:flex;gap:8px;margin-bottom:15px;">
+        <button class="currency-btn active" data-currency="usd">$ USD</button>
+        <button class="currency-btn" data-currency="cny">¥ CNY</button>
+      </div>
+      
+      <label style="font-size:13px;margin-bottom:5px;display:block;">Payment Amount:</label>
       <input type="number" id="paymentAmountInput" placeholder="12" min="1" max="1000" step="1" style="width:100%;padding:10px;background:#1a1a2e;color:#eee;border:1px solid #0f3460;border-radius:8px;margin-bottom:15px;">
-      <p style="font-size:11px;color:#888;margin-top:-10px;margin-bottom:15px;">
-        Suggested: $12/year or $36 lifetime (¥72/¥216)
+      <p id="suggestedAmount" style="font-size:11px;color:#888;margin-top:-10px;margin-bottom:15px;">
+        Suggested: $12/year or $36 lifetime
       </p>
       
       <label style="font-size:13px;margin-bottom:5px;display:block;">Payment Method:</label>
@@ -834,6 +863,7 @@
     let selectedPlan = 'lifetime';
     let licenseData = null;
     let currentPaymentMethod = 'alipay';
+    let currentCurrency = 'usd';
     
     const translations = {
       en: {
@@ -1653,6 +1683,21 @@
       });
     });
     
+    document.querySelectorAll('.currency-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        currentCurrency = btn.dataset.currency;
+        document.querySelectorAll('.currency-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        
+        const suggestedEl = document.getElementById('suggestedAmount');
+        if (currentCurrency === 'cny') {
+          suggestedEl.textContent = '建议: ¥72/年 或 ¥216终身';
+        } else {
+          suggestedEl.textContent = 'Suggested: $12/year or $36 lifetime';
+        }
+      });
+    });
+    
     document.querySelectorAll('.payment-method-btn').forEach(btn => {
       btn.addEventListener('click', async () => {
         const method = btn.dataset.method;
@@ -1687,14 +1732,16 @@
     document.getElementById('paymentCompleteBtn').addEventListener('click', async () => {
       const amount = parseFloat(document.getElementById('paymentAmountInput').value) || 0;
       const email = document.getElementById('userEmailInput').value.trim();
+      const symbol = currentCurrency === 'cny' ? '¥' : '$';
       
       if (amount <= 0) {
         alert('Please enter a payment amount');
         return;
       }
       
-      if (amount > 100) {
-        const confirm = window.confirm(`You entered $${amount}. This seems higher than our suggested amounts.\n\nDid you mean to donate this amount? Click OK to confirm.`);
+      const maxAmount = currentCurrency === 'cny' ? 600 : 100;
+      if (amount > maxAmount) {
+        const confirm = window.confirm(`You entered ${symbol}${amount}. This seems higher than our suggested amounts.\n\nDid you mean to donate this amount? Click OK to confirm.`);
         if (!confirm) return;
       }
       
@@ -1702,11 +1749,12 @@
         const result = await window.api.addPayment({
           amount: amount,
           method: currentPaymentMethod,
-          email: email
+          email: email,
+          currency: currentCurrency
         });
         
         if (result.success) {
-          alert(`Thank you! $${amount} has been added to your balance.\n\nWe appreciate your support! ☕`);
+          alert(`Thank you! ${symbol}${amount} has been added to your balance.\n\nWe appreciate your support! ☕`);
           await updateLicenseIndicator();
           licenseModal.style.display = 'none';
         } else {

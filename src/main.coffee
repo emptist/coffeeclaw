@@ -111,6 +111,12 @@ getLicenseStatus = ->
       plan: 'lifetime'
       showIndicator: false
   
+  unless license.balance?
+    license.balance = INITIAL_BALANCE_USD
+    saveLicense(license)
+  
+  currentBalance = license.balance
+  
   now = new Date()
   createdAt = new Date(license.createdAt)
   
@@ -121,8 +127,6 @@ getLicenseStatus = ->
     monthsSinceLastDeduction = (now.getFullYear() - lastDeduction.getFullYear()) * 12 + (now.getMonth() - lastDeduction.getMonth())
   else
     monthsSinceLastDeduction = monthsSinceCreation
-  
-  currentBalance = license.balance
   
   if monthsSinceLastDeduction >= 1
     deduction = Math.floor(monthsSinceLastDeduction)
@@ -1064,15 +1068,24 @@ ipcMain.handle 'add-payment', (event, paymentData) ->
     unless license
       license = initLicense()
     
-    { amount, method, email } = paymentData
+    { amount, method, email, currency } = paymentData
     
     unless amount and amount > 0
       return { success: false, error: 'Invalid amount' }
     
+    currency = currency or 'usd'
+    
+    unless license.currency
+      license.currency = currency
+    
+    if license.currency != currency
+      return { success: false, error: "Currency mismatch. Your account uses #{license.currency}" }
+    
     license.balance = (license.balance or 0) + amount
     license.paid = true
     
-    if amount >= 36
+    lifetimeThreshold = if currency == 'cny' then 216 else 36
+    if amount >= lifetimeThreshold
       license.plan = 'lifetime'
     
     license.paymentInfo = license.paymentInfo or []
@@ -1080,6 +1093,7 @@ ipcMain.handle 'add-payment', (event, paymentData) ->
       amount: amount
       method: method
       email: email
+      currency: currency
       timestamp: new Date().toISOString()
     }
     
