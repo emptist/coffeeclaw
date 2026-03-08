@@ -105,6 +105,121 @@
       color: white;
     }
     
+    .license-indicator {
+      display: flex;
+      align-items: center;
+      padding: 4px 10px;
+      border-radius: 12px;
+      font-size: 12px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+      flex-shrink: 0;
+    }
+    
+    .license-indicator.trial {
+      background: rgba(76, 175, 80, 0.2);
+      color: #4caf50;
+    }
+    
+    .license-indicator.paid {
+      background: rgba(33, 150, 243, 0.2);
+      color: #2196f3;
+    }
+    
+    .license-indicator.lifetime {
+      background: rgba(156, 39, 176, 0.2);
+      color: #9c27b0;
+    }
+    
+    .license-indicator.expired {
+      background: rgba(244, 67, 54, 0.2);
+      color: #f44336;
+    }
+    
+    .license-indicator:hover {
+      transform: scale(1.05);
+    }
+    
+    .plan-options {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      margin-bottom: 15px;
+    }
+    
+    .plan-option {
+      position: relative;
+      background: #0f3460;
+      border: 2px solid #1a1a2e;
+      border-radius: 12px;
+      padding: 15px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    
+    .plan-option:hover {
+      border-color: #e94560;
+      transform: translateX(5px);
+    }
+    
+    .plan-option.selected {
+      border-color: #e94560;
+      background: rgba(233, 69, 96, 0.1);
+    }
+    
+    .plan-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    
+    .plan-name {
+      font-size: 16px;
+      font-weight: bold;
+    }
+    
+    .plan-price {
+      font-size: 18px;
+      font-weight: bold;
+      color: #e94560;
+    }
+    
+    .plan-desc {
+      font-size: 12px;
+      color: #888;
+      margin-top: 5px;
+    }
+    
+    .plan-badge {
+      position: absolute;
+      top: -8px;
+      right: 10px;
+      background: #e94560;
+      color: white;
+      font-size: 10px;
+      padding: 2px 8px;
+      border-radius: 10px;
+    }
+    
+    .payment-method-btn {
+      flex: 1;
+      min-width: 100px;
+      padding: 10px 15px;
+      background: #0f3460;
+      border: 1px solid #1a1a2e;
+      border-radius: 8px;
+      color: #eee;
+      cursor: pointer;
+      transition: all 0.2s;
+      font-size: 13px;
+    }
+    
+    .payment-method-btn:hover {
+      background: #1a1a2e;
+      border-color: #e94560;
+    }
+    
     .status {
       display: flex;
       align-items: center;
@@ -464,6 +579,9 @@
           <button class="lang-btn" data-lang="eo">Espo</button>
           <button class="lang-btn" id="feishuStatusBtn" style="display:none;" title="Feishu Status">📱</button>
         </div>
+        <div class="license-indicator" id="licenseIndicator" title="License Status">
+          <span id="licenseDays">--</span>
+        </div>
         <div class="status">
           <span class="status-dot" id="statusDot"></span>
           <span id="statusText">Connecting...</span>
@@ -628,6 +746,79 @@
     </div>
   </div>
   
+  <div id="licenseModal" class="setup-overlay" style="display:none;">
+    <div class="setup-card" style="max-width:450px;">
+      <h2>☕ CoffeeClaw License</h2>
+      
+      <div id="licenseStatusInfo" style="background:#0f3460;padding:15px;border-radius:8px;margin-bottom:20px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+          <span>Status:</span>
+          <span id="licenseStatusText" style="font-weight:bold;">--</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px;">
+          <span>Remaining:</span>
+          <span id="licenseRemainingText" style="font-weight:bold;">--</span>
+        </div>
+      </div>
+      
+      <h3 style="font-size:16px;margin-bottom:15px;">Choose Your Plan</h3>
+      
+      <div class="plan-options">
+        <div class="plan-option" data-plan="yearly" data-currency="usd">
+          <div class="plan-header">
+            <span class="plan-name">Yearly</span>
+            <span class="plan-price">$12/year</span>
+          </div>
+          <div class="plan-desc">¥36/year • Auto-renew</div>
+        </div>
+        
+        <div class="plan-option" data-plan="lifetime" data-currency="usd">
+          <div class="plan-header">
+            <span class="plan-name">Lifetime</span>
+            <span class="plan-price">$36</span>
+          </div>
+          <div class="plan-desc">¥108 • One-time payment</div>
+          <div class="plan-badge">Best Value</div>
+        </div>
+      </div>
+      
+      <div style="margin:20px 0;padding:15px;background:#1a1a2e;border-radius:8px;">
+        <h4 style="font-size:14px;margin-bottom:10px;">Payment Methods</h4>
+        <div style="display:flex;flex-wrap:wrap;gap:8px;">
+          <button class="payment-method-btn" data-method="stripe">
+            💳 Card (Stripe)
+          </button>
+          <button class="payment-method-btn" data-method="alipay">
+            支付宝 Alipay
+          </button>
+          <button class="payment-method-btn" data-method="btc">
+            ₿ Bitcoin
+          </button>
+        </div>
+      </div>
+      
+      <div id="btcPaymentSection" style="display:none;margin:20px 0;padding:15px;background:#1a1a2e;border-radius:8px;">
+        <h4 style="font-size:14px;margin-bottom:10px;">Bitcoin Payment</h4>
+        <div style="font-family:monospace;font-size:12px;word-break:break-all;background:#0f3460;padding:10px;border-radius:4px;margin-bottom:10px;">
+          <span id="btcAddress">Loading...</span>
+        </div>
+        <p style="font-size:12px;color:#888;">
+          Send the equivalent amount to activate your license.<br>
+          Email <a href="mailto:support@coffeeclaw.app" style="color:#e94560;">support@coffeeclaw.app</a> with your TX ID.
+        </p>
+      </div>
+      
+      <p style="font-size:12px;color:#888;text-align:center;margin-top:15px;">
+        No feature restrictions • Just a gentle reminder<br>
+        <a href="#" id="remindLaterLink" style="color:#e94560;">Remind me later</a>
+      </p>
+      
+      <div class="btn-group">
+        <button class="btn-secondary" id="closeLicenseModalBtn">Close</button>
+      </div>
+    </div>
+  </div>
+  
   <script>
     const chatContainer = document.getElementById('chatContainer');
     const messageInput = document.getElementById('messageInput');
@@ -637,6 +828,17 @@
     const welcomeMsg = document.getElementById('welcomeMsg');
     const langBtns = document.querySelectorAll('.lang-btn');
     const setupOverlay = document.getElementById('setupOverlay');
+    
+    const licenseIndicator = document.getElementById('licenseIndicator');
+    const licenseDays = document.getElementById('licenseDays');
+    const licenseModal = document.getElementById('licenseModal');
+    const licenseStatusText = document.getElementById('licenseStatusText');
+    const licenseRemainingText = document.getElementById('licenseRemainingText');
+    const btcPaymentSection = document.getElementById('btcPaymentSection');
+    const btcAddress = document.getElementById('btcAddress');
+    
+    let selectedPlan = 'lifetime';
+    let licenseData = null;
     
     const translations = {
       en: {
@@ -770,6 +972,34 @@
     langBtns.forEach(btn => {
       btn.addEventListener('click', () => setLang(btn.dataset.lang));
     });
+    
+    async function updateLicenseIndicator() {
+      try {
+        licenseData = await window.api.getLicense();
+        
+        licenseIndicator.className = 'license-indicator';
+        
+        if (licenseData.status === 'lifetime') {
+          licenseIndicator.classList.add('lifetime');
+          licenseDays.textContent = '∞';
+          licenseIndicator.title = 'Lifetime License';
+        } else if (licenseData.status === 'yearly') {
+          licenseIndicator.classList.add('paid');
+          licenseDays.textContent = licenseData.remaining + 'd';
+          licenseIndicator.title = `${licenseData.remaining} days remaining (Yearly)`;
+        } else if (licenseData.status === 'trial') {
+          licenseIndicator.classList.add('trial');
+          licenseDays.textContent = licenseData.remaining + 'd';
+          licenseIndicator.title = `${licenseData.remaining} days free trial`;
+        } else {
+          licenseIndicator.classList.add('expired');
+          licenseDays.textContent = '0d';
+          licenseIndicator.title = 'License expired - Click to renew';
+        }
+      } catch (e) {
+        console.error('Error updating license:', e);
+      }
+    }
     
     async function checkStatus() {
       try {
@@ -944,6 +1174,7 @@
       }
       
       await loadSessionList();
+      await updateLicenseIndicator();
     }
     
     let prereqResult = null;
@@ -1296,6 +1527,68 @@
     
     document.getElementById('closeFeishuModalBtn').addEventListener('click', () => {
       document.getElementById('feishuPairingModal').style.display = 'none';
+    });
+    
+    licenseIndicator.addEventListener('click', async () => {
+      await updateLicenseIndicator();
+      
+      if (licenseData) {
+        if (licenseData.status === 'lifetime') {
+          licenseStatusText.textContent = 'Lifetime ✓';
+          licenseRemainingText.textContent = 'Forever';
+        } else if (licenseData.status === 'yearly') {
+          licenseStatusText.textContent = 'Yearly';
+          licenseRemainingText.textContent = licenseData.remaining + ' days';
+        } else if (licenseData.status === 'trial') {
+          licenseStatusText.textContent = 'Free Trial';
+          licenseRemainingText.textContent = licenseData.remaining + ' days';
+        } else {
+          licenseStatusText.textContent = 'Expired';
+          licenseRemainingText.textContent = '0 days';
+        }
+      }
+      
+      const prices = await window.api.getLicensePrices();
+      if (prices.btc_address) {
+        btcAddress.textContent = prices.btc_address;
+      } else {
+        btcAddress.textContent = 'Contact support@coffeeclaw.app for BTC payment';
+      }
+      
+      licenseModal.style.display = 'flex';
+    });
+    
+    document.getElementById('closeLicenseModalBtn').addEventListener('click', () => {
+      licenseModal.style.display = 'none';
+    });
+    
+    document.getElementById('remindLaterLink').addEventListener('click', (e) => {
+      e.preventDefault();
+      licenseModal.style.display = 'none';
+    });
+    
+    document.querySelectorAll('.plan-option').forEach(option => {
+      option.addEventListener('click', () => {
+        document.querySelectorAll('.plan-option').forEach(o => o.classList.remove('selected'));
+        option.classList.add('selected');
+        selectedPlan = option.dataset.plan;
+      });
+    });
+    
+    document.querySelectorAll('.payment-method-btn').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const method = btn.dataset.method;
+        
+        if (method === 'btc') {
+          btcPaymentSection.style.display = 'block';
+          return;
+        }
+        
+        if (method === 'stripe' || method === 'alipay') {
+          alert('Payment integration coming soon!\n\nFor now, please:\n1. Email support@coffeeclaw.app\n2. Or use Bitcoin payment\n\nThank you for your support! ☕');
+          return;
+        }
+      });
     });
     
     document.getElementById('exportBotsBtn').addEventListener('click', async () => {
