@@ -987,15 +987,11 @@
         if (licenseData.plan === 'lifetime') {
           licenseIndicator.classList.add('lifetime');
           licenseDays.textContent = '∞';
-          licenseIndicator.title = 'Lifetime Supporter';
-        } else if (licenseData.paid) {
-          licenseIndicator.classList.add('cooperator');
-          licenseDays.textContent = `${symbol}${balance}`;
-          licenseIndicator.title = `Cooperator - Balance: ${symbol}${balance}`;
+          licenseIndicator.title = 'Thank you for your support!';
         } else {
           licenseIndicator.classList.add('cooperator');
           licenseDays.textContent = `${symbol}${balance}`;
-          licenseIndicator.title = `Cooperator - Balance: ${symbol}${balance} - Click to support`;
+          licenseIndicator.title = `Balance: ${symbol}${balance}`;
         }
       } catch (e) {
         console.error('Error updating license:', e);
@@ -1632,14 +1628,11 @@
         const symbol = currency === 'cny' ? '¥' : '$';
         
         if (licenseData.status === 'lifetime') {
-          licenseStatusText.textContent = 'Lifetime Supporter ✓';
+          licenseStatusText.textContent = '∞';
           licenseRemainingText.textContent = 'Thank you for your support!';
-        } else if (licenseData.paid) {
-          licenseStatusText.textContent = 'Cooperator';
-          licenseRemainingText.textContent = `Balance: ${symbol}${licenseData.balance}`;
         } else {
-          licenseStatusText.textContent = 'Cooperator';
-          licenseRemainingText.textContent = `Balance: ${symbol}${licenseData.balance}`;
+          licenseStatusText.textContent = `${symbol}${licenseData.balance}`;
+          licenseRemainingText.textContent = 'Balance';
         }
       }
       
