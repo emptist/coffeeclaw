@@ -1,0 +1,40 @@
+{
+  "name": "coffeeclaw",
+  "version": "1.0.0",
+  "description": "OpenClaw Chat Desktop App",
+  "main": "src/main.js",
+  "scripts": {
+    "start": "electron .",
+    "build": "electron-builder --mac",
+    "build:win": "electron-builder --win",
+    "build:linux": "electron-builder --linux"
+  },
+  "author": "You",
+  "license": "MIT",
+  "devDependencies": {
+    "coffeescript": "^2.7.0",
+    "electron": "^40.8.0",
+    "electron-builder": "^26.8.1"
+  },
+  "dependencies": {
+    "electron-store": "^10.0.0",
+    "ws": "^8.19.0"
+  },
+  "build": {
+    "appId": "com.coffeeclaw.app",
+    "productName": "CoffeeClaw",
+    "directories": {
+      "output": "dist"
+    },
+    "mac": {
+      "target": "dmg"
+    },
+    "win": {
+      "target": "nsis"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true
+    }
+  }
+}

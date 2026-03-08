@@ -1,0 +1,649 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CoffeeClaw - OpenClaw Chat</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #1a1a2e;
+      color: #eee;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+    
+    .header {
+      background: #16213e;
+      padding: 15px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid #0f3460;
+    }
+    
+    .header h1 {
+      font-size: 20px;
+      color: #e94560;
+    }
+    
+    .header .title-emoji {
+      margin-right: 8px;
+    }
+    
+    .lang-select {
+      display: flex;
+      gap: 5px;
+    }
+    
+    .lang-btn {
+      padding: 5px 10px;
+      background: #0f3460;
+      border: none;
+      border-radius: 4px;
+      color: #888;
+      cursor: pointer;
+      font-size: 11px;
+    }
+    
+    .lang-btn.active {
+      background: #e94560;
+      color: white;
+    }
+    
+    .status {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 12px;
+    }
+    
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #e94560;
+      animation: pulse 2s infinite;
+    }
+    
+    .status-dot.connected {
+      background: #00ff88;
+      animation: none;
+    }
+    
+    .status-dot.starting {
+      background: #ffa500;
+    }
+    
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+    
+    .chat-container {
+      flex: 1;
+      overflow-y: auto;
+      padding: 20px;
+    }
+    
+    .message {
+      margin-bottom: 15px;
+      max-width: 85%;
+      padding: 12px 16px;
+      border-radius: 12px;
+      line-height: 1.5;
+      white-space: pre-wrap;
+    }
+    
+    .message.user {
+      background: #e94560;
+      color: white;
+      margin-left: auto;
+      border-bottom-right-radius: 4px;
+    }
+    
+    .message.bot {
+      background: #16213e;
+      border: 1px solid #0f3460;
+      border-bottom-left-radius: 4px;
+    }
+    
+    .message.error {
+      background: #ff4757;
+      color: white;
+    }
+    
+    .message.success {
+      background: #2ed573;
+      color: white;
+    }
+    
+    .input-container {
+      background: #16213e;
+      padding: 15px 20px;
+      border-top: 1px solid #0f3460;
+      display: flex;
+      gap: 10px;
+    }
+    
+    input {
+      flex: 1;
+      padding: 12px 16px;
+      border: 1px solid #0f3460;
+      border-radius: 8px;
+      background: #1a1a2e;
+      color: #eee;
+      font-size: 14px;
+      outline: none;
+    }
+    
+    input:focus {
+      border-color: #e94560;
+    }
+    
+    button {
+      padding: 12px 24px;
+      background: #e94560;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 600;
+    }
+    
+    button:hover {
+      background: #d63d56;
+    }
+    
+    button:disabled {
+      background: #555;
+      cursor: not-allowed;
+    }
+    
+    .typing {
+      color: #888;
+      font-style: italic;
+    }
+    
+    .setup-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.9);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+    }
+    
+    .setup-overlay.hidden {
+      display: none;
+    }
+    
+    .setup-card {
+      background: #16213e;
+      border-radius: 16px;
+      padding: 30px;
+      max-width: 450px;
+      width: 90%;
+      border: 1px solid #0f3460;
+    }
+    
+    .setup-card h2 {
+      color: #e94560;
+      margin-bottom: 20px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    
+    .setup-card p {
+      color: #aaa;
+      margin-bottom: 20px;
+      line-height: 1.6;
+    }
+    
+    .setup-card label {
+      display: block;
+      margin-bottom: 8px;
+      color: #888;
+      font-size: 13px;
+    }
+    
+    .setup-card input {
+      width: 100%;
+      margin-bottom: 15px;
+    }
+    
+    .setup-card .btn-group {
+      display: flex;
+      gap: 10px;
+      margin-top: 20px;
+    }
+    
+    .setup-card .btn-group button {
+      flex: 1;
+    }
+    
+    .setup-card .btn-secondary {
+      background: #0f3460;
+    }
+    
+    .setup-card .btn-secondary:hover {
+      background: #1a3a6e;
+    }
+    
+    .progress-bar {
+      width: 100%;
+      height: 4px;
+      background: #0f3460;
+      border-radius: 2px;
+      margin: 15px 0;
+      overflow: hidden;
+    }
+    
+    .progress-bar .progress {
+      height: 100%;
+      background: #e94560;
+      width: 0%;
+      transition: width 0.3s;
+    }
+    
+    .progress-text {
+      font-size: 12px;
+      color: #888;
+      text-align: center;
+    }
+    
+    .step-indicator {
+      display: flex;
+      justify-content: center;
+      gap: 8px;
+      margin-bottom: 20px;
+    }
+    
+    .step-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #0f3460;
+    }
+    
+    .step-dot.active {
+      background: #e94560;
+    }
+    
+    .step-dot.done {
+      background: #00ff88;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1><span class="title-emoji">☕</span>CoffeeClaw</h1>
+    <div class="lang-select">
+      <button class="lang-btn active" data-lang="en">EN</button>
+      <button class="lang-btn" data-lang="zh">中文</button>
+      <button class="lang-btn" data-lang="eo">Espo</button>
+    </div>
+    <div class="status">
+      <span class="status-dot" id="statusDot"></span>
+      <span id="statusText">Connecting...</span>
+    </div>
+  </div>
+  
+  <div class="chat-container" id="chatContainer">
+    <div class="message bot" id="welcomeMsg">
+      Hello! I'm CoffeeClaw, your OpenClaw assistant. How can I help you today?
+    </div>
+  </div>
+  
+  <div class="input-container">
+    <input type="text" id="messageInput" placeholder="Type your message..." autofocus>
+    <button id="sendButton">Send</button>
+    <button id="clearBtn" title="Clear history" style="background:#0f3460;margin-left:5px;">🗑️</button>
+  </div>
+  
+  <div class="setup-overlay hidden" id="setupOverlay">
+    <div class="setup-card">
+      <div class="step-indicator" id="stepIndicator">
+        <div class="step-dot active"></div>
+        <div class="step-dot"></div>
+        <div class="step-dot"></div>
+      </div>
+      
+      <div id="step1">
+        <h2>☕ <span data-i18n="setupTitle">Setup CoffeeClaw</span></h2>
+        <p data-i18n="setupDesc">CoffeeClaw needs to configure OpenClaw to work properly. This will only take a minute.</p>
+        <div class="btn-group">
+          <button id="startSetupBtn" data-i18n="startSetup">Start Setup</button>
+        </div>
+      </div>
+      
+      <div id="step2" class="hidden">
+        <h2>🔑 <span data-i18n="apiKeyTitle">API Key</span></h2>
+        <p data-i18n="apiKeyDesc">Enter your Zhipu AI API key. Get one free at <a href="https://open.bigmodel.cn" target="_blank" style="color:#e94560">open.bigmodel.cn</a></p>
+        <label data-i18n="apiKeyLabel">Zhipu API Key:</label>
+        <input type="text" id="apiKeyInput" placeholder="xxxxxxxx.xxxxxxxxxxxxxxxx">
+        <div class="btn-group">
+          <button class="btn-secondary" id="skipApiBtn" data-i18n="skip">Skip</button>
+          <button id="saveApiBtn" data-i18n="save">Save</button>
+        </div>
+      </div>
+      
+      <div id="step3" class="hidden">
+        <h2>⚙️ <span data-i18n="installTitle">Installing</span></h2>
+        <p data-i18n="installDesc">Setting up OpenClaw...</p>
+        <div class="progress-bar">
+          <div class="progress" id="progressBar"></div>
+        </div>
+        <p class="progress-text" id="progressText">Checking OpenClaw...</p>
+      </div>
+    </div>
+  </div>
+  
+  <script>
+    const chatContainer = document.getElementById('chatContainer');
+    const messageInput = document.getElementById('messageInput');
+    const sendButton = document.getElementById('sendButton');
+    const statusDot = document.getElementById('statusDot');
+    const statusText = document.getElementById('statusText');
+    const welcomeMsg = document.getElementById('welcomeMsg');
+    const langBtns = document.querySelectorAll('.lang-btn');
+    const setupOverlay = document.getElementById('setupOverlay');
+    
+    const translations = {
+      en: {
+        welcome: 'Hello! I\'m CoffeeClaw, your OpenClaw assistant. How can I help you today?',
+        connecting: 'Connecting...',
+        connected: 'Connected',
+        notRunning: 'OpenClaw not running',
+        starting: 'Starting OpenClaw...',
+        thinking: 'Thinking...',
+        error: 'Error: ',
+        placeholder: 'Type your message...',
+        send: 'Send',
+        setupTitle: 'Setup CoffeeClaw',
+        setupDesc: 'CoffeeClaw needs to configure OpenClaw to work properly. This will only take a minute.',
+        startSetup: 'Start Setup',
+        apiKeyTitle: 'API Key',
+        apiKeyDesc: 'Enter your Zhipu AI API key. Get one free at open.bigmodel.cn',
+        apiKeyLabel: 'Zhipu API Key:',
+        skip: 'Skip',
+        save: 'Save',
+        installTitle: 'Installing',
+        installDesc: 'Setting up OpenClaw...',
+        checking: 'Checking OpenClaw...',
+        installing: 'Installing OpenClaw...',
+        configuring: 'Configuring...',
+        starting: 'Starting gateway...',
+        done: 'Setup complete!',
+        ready: 'Ready to chat!'
+      },
+      zh: {
+        welcome: '你好！我是 CoffeeClaw，你的 OpenClaw 助手。今天有什么可以帮你的吗？',
+        connecting: '连接中...',
+        connected: '已连接',
+        notRunning: 'OpenClaw 未运行',
+        starting: '正在启动 OpenClaw...',
+        thinking: '思考中...',
+        error: '错误：',
+        placeholder: '输入消息...',
+        send: '发送',
+        setupTitle: '设置 CoffeeClaw',
+        setupDesc: 'CoffeeClaw 需要配置 OpenClaw 才能正常工作。只需一分钟。',
+        startSetup: '开始设置',
+        apiKeyTitle: 'API 密钥',
+        apiKeyDesc: '输入你的智谱 AI API 密钥。可在 open.bigmodel.cn 免费获取',
+        apiKeyLabel: '智谱 API 密钥：',
+        skip: '跳过',
+        save: '保存',
+        installTitle: '安装中',
+        installDesc: '正在设置 OpenClaw...',
+        checking: '检查 OpenClaw...',
+        installing: '安装 OpenClaw...',
+        configuring: '配置中...',
+        starting: '启动网关...',
+        done: '设置完成！',
+        ready: '准备聊天！'
+      },
+      eo: {
+        welcome: 'Saluton! Mi estas CoffeeClaw, via OpenClaw asistanto. Kiel mi povas helpi vin hodiaŭ?',
+        connecting: 'Konektante...',
+        connected: 'Konektita',
+        notRunning: 'OpenClaw ne funkcias',
+        starting: 'Startigante OpenClaw...',
+        thinking: 'Pensante...',
+        error: 'Eraro: ',
+        placeholder: 'Tajpu vian mesaĝon...',
+        send: 'Sendi',
+        setupTitle: 'Agordi CoffeeClaw',
+        setupDesc: 'CoffeeClaw bezonas agordi OpenClaw por funkcii ĝuste. Tio nur prenos unu minuton.',
+        startSetup: 'Komenci Agordadon',
+        apiKeyTitle: 'API-Ŝlosilo',
+        apiKeyDesc: 'Enigu vian Zhipu AI API-ŝlosilon. Ricevu senpage ĉe open.bigmodel.cn',
+        apiKeyLabel: 'Zhipu API-Ŝlosilo:',
+        skip: 'Preterpasi',
+        save: 'Konservi',
+        installTitle: 'Instalante',
+        installDesc: 'Agordante OpenClaw...',
+        checking: 'Kontrolante OpenClaw...',
+        installing: 'Instalante OpenClaw...',
+        configuring: 'Agordante...',
+        starting: 'Startigante kluzon...',
+        done: 'Agordado kompleta!',
+        ready: 'Preta babili!'
+      }
+    };
+    
+    let currentLang = 'en';
+    
+    function setLang(lang) {
+      currentLang = lang;
+      welcomeMsg.textContent = translations[lang].welcome;
+      messageInput.placeholder = translations[lang].placeholder;
+      sendButton.textContent = translations[lang].send;
+      
+      document.querySelectorAll('[data-i18n]').forEach(el => {
+        const key = el.getAttribute('data-i18n');
+        if (translations[lang][key]) {
+          el.textContent = translations[lang][key];
+        }
+      });
+      
+      langBtns.forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.lang === lang);
+      });
+      localStorage.setItem('coffeeclaw-lang', lang);
+    }
+    
+    const savedLang = localStorage.getItem('coffeeclaw-lang');
+    if (savedLang && translations[savedLang]) {
+      setLang(savedLang);
+    }
+    
+    langBtns.forEach(btn => {
+      btn.addEventListener('click', () => setLang(btn.dataset.lang));
+    });
+    
+    async function checkStatus() {
+      try {
+        const result = await window.api.checkStatus();
+        if (result.running) {
+          statusDot.classList.add('connected');
+          statusDot.classList.remove('starting');
+          statusText.textContent = translations[currentLang].connected;
+        } else if (result.starting) {
+          statusDot.classList.add('starting');
+          statusDot.classList.remove('connected');
+          statusText.textContent = translations[currentLang].starting;
+        } else {
+          statusDot.classList.remove('connected', 'starting');
+          statusText.textContent = translations[currentLang].notRunning;
+        }
+        return result;
+      } catch (e) {
+        statusDot.classList.remove('connected', 'starting');
+        statusText.textContent = translations[currentLang].notRunning;
+        return { running: false, starting: false };
+      }
+    }
+    
+    function addMessage(text, type = 'bot') {
+      const div = document.createElement('div');
+      div.className = `message ${type}`;
+      div.textContent = text;
+      chatContainer.appendChild(div);
+      chatContainer.scrollTop = chatContainer.scrollHeight;
+    }
+    
+    async function sendMessage() {
+      const text = messageInput.value.trim();
+      if (!text) return;
+      
+      addMessage(text, 'user');
+      messageInput.value = '';
+      sendButton.disabled = true;
+      
+      const typingDiv = document.createElement('div');
+      typingDiv.className = 'message bot typing';
+      typingDiv.textContent = translations[currentLang].thinking;
+      chatContainer.appendChild(typingDiv);
+      chatContainer.scrollTop = chatContainer.scrollHeight;
+      
+      try {
+        const response = await window.api.sendMessage(text);
+        typingDiv.remove();
+        addMessage(response, 'bot');
+      } catch (e) {
+        typingDiv.remove();
+        addMessage(translations[currentLang].error + e, 'error');
+      }
+      
+      sendButton.disabled = false;
+      messageInput.focus();
+    }
+    
+    sendButton.addEventListener('click', sendMessage);
+    messageInput.addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') sendMessage();
+    });
+    
+    async function initApp() {
+      const status = await checkStatus();
+      
+      if (!status.hasApiKey) {
+        setupOverlay.classList.remove('hidden');
+      } else if (!status.running && !status.configured) {
+        setupOverlay.classList.remove('hidden');
+      }
+      
+      if (!status.running && status.configured) {
+        statusDot.classList.add('starting');
+        statusText.textContent = translations[currentLang].starting;
+      }
+      
+      await loadHistory();
+    }
+    
+    async function loadHistory() {
+      try {
+        const history = await window.api.getHistory();
+        if (history && history.length > 0) {
+          welcomeMsg.style.display = 'none';
+          for (const msg of history) {
+            const type = msg.role === 'user' ? 'user' : 'bot';
+            addMessage(msg.content, type);
+          }
+        }
+      } catch (e) {
+        console.error('Failed to load history:', e);
+      }
+    }
+    
+    document.getElementById('clearBtn').addEventListener('click', async () => {
+      if (confirm('Clear all chat history?')) {
+        await window.api.clearHistory();
+        chatContainer.innerHTML = '';
+        welcomeMsg.style.display = 'block';
+        chatContainer.appendChild(welcomeMsg);
+      }
+    });
+    
+    document.getElementById('startSetupBtn').addEventListener('click', () => {
+      document.getElementById('step1').classList.add('hidden');
+      document.getElementById('step2').classList.remove('hidden');
+      document.querySelectorAll('.step-dot')[0].classList.add('done');
+      document.querySelectorAll('.step-dot')[1].classList.add('active');
+    });
+    
+    document.getElementById('skipApiBtn').addEventListener('click', () => startInstallation(null));
+    document.getElementById('saveApiBtn').addEventListener('click', () => {
+      const apiKey = document.getElementById('apiKeyInput').value.trim();
+      startInstallation(apiKey || null);
+    });
+    
+    async function startInstallation(apiKey) {
+      document.getElementById('step2').classList.add('hidden');
+      document.getElementById('step3').classList.remove('hidden');
+      document.querySelectorAll('.step-dot')[1].classList.add('done');
+      document.querySelectorAll('.step-dot')[2].classList.add('active');
+      
+      const progressBar = document.getElementById('progressBar');
+      const progressText = document.getElementById('progressText');
+      
+      try {
+        progressText.textContent = translations[currentLang].checking;
+        progressBar.style.width = '20%';
+        
+        const result = await window.api.runSetup(apiKey);
+        
+        if (result.installing) {
+          progressText.textContent = translations[currentLang].installing;
+          progressBar.style.width = '50%';
+          await new Promise(r => setTimeout(r, 2000));
+        }
+        
+        progressText.textContent = translations[currentLang].configuring;
+        progressBar.style.width = '70%';
+        
+        if (result.configuring) {
+          await new Promise(r => setTimeout(r, 1000));
+        }
+        
+        progressText.textContent = translations[currentLang].starting;
+        progressBar.style.width = '90%';
+        
+        if (result.starting) {
+          await new Promise(r => setTimeout(r, 2000));
+        }
+        
+        progressBar.style.width = '100%';
+        progressText.textContent = translations[currentLang].done;
+        
+        await new Promise(r => setTimeout(r, 500));
+        setupOverlay.classList.add('hidden');
+        
+        addMessage(translations[currentLang].ready, 'success');
+        
+      } catch (e) {
+        progressText.textContent = translations[currentLang].error + e.message;
+        progressBar.style.width = '0%';
+      }
+    }
+    
+    initApp();
+    setInterval(checkStatus, 5000);
+  </script>
+</body>
+</html>
