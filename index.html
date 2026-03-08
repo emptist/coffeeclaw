@@ -1637,11 +1637,6 @@
       }
       
       const prices = await window.api.getLicensePrices();
-      if (prices.btc_address) {
-        btcAddress.textContent = prices.btc_address;
-      } else {
-        btcAddress.textContent = 'Contact support@coffeeclaw.app for BTC payment';
-      }
       
       licenseModal.style.display = 'flex';
     });
