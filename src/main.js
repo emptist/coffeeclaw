@@ -2,7 +2,7 @@
 (function() {
   // CoffeeClaw - Main Process
   // Auto-configures OpenClaw on first run
-  var BOT_TEMPLATES, BrowserWindow, MAX_HISTORY, MAX_SESSIONS, MODELS, addToSession, agentDir, agentMdFile, agentModelsFile, app, botsFile, callAPI, checkNodeInstalled, checkNpmInstalled, checkOpenClaw, checkOpenClawInstalled, checkOpenClawPromise, checkWSLInstalled, configExists, configFile, createAgentConfig, createBot, createDefaultConfig, createIdentity, createSession, createWindow, crypto, deleteBot, deleteSession, exec, fs, generateId, generateToken, getActiveBot, getBot, getBotTemplates, getPlatform, getSession, http, https, identityFile, installOpenClaw, ipcMain, isConfigured, isMac, isWindows, listSessions, loadBots, loadSessions, loadSettings, mainWindow, openclawDir, path, saveBots, saveSession, saveSessions, saveSettings, secreteDir, sendToOpenClaw, sessionsFile, setActiveBot, settingsFile, spawn, startOpenClaw, updateBot, workspaceDir;
+  var BOT_TEMPLATES, BrowserWindow, MAX_HISTORY, MAX_SESSIONS, MODELS, SKILLS, addToSession, agentDir, agentMdFile, agentModelsFile, app, botsFile, callAPI, callAPIWithMessages, checkNodeInstalled, checkNpmInstalled, checkOpenClaw, checkOpenClawInstalled, checkOpenClawPromise, checkWSLInstalled, configExists, configFile, createAgentConfig, createBot, createDefaultConfig, createIdentity, createSession, createWindow, crypto, deleteBot, deleteSession, exec, executeSkillFunction, fs, generateId, generateToken, getActiveBot, getBot, getBotTemplates, getPlatform, getSession, getSkillFunctions, http, https, identityFile, installOpenClaw, ipcMain, isConfigured, isMac, isWindows, listSessions, loadBots, loadSessions, loadSettings, mainWindow, openclawDir, path, saveBots, saveSession, saveSessions, saveSettings, secreteDir, sendToOpenClaw, sessionsFile, setActiveBot, settingsFile, spawn, startOpenClaw, updateBot, workspaceDir;
 
   ({app, BrowserWindow, ipcMain} = require('electron'));
 
@@ -339,6 +339,201 @@
       return bot;
     }
     return null;
+  };
+
+  SKILLS = {
+    fs: {
+      list_files: {
+        description: 'List files in a directory',
+        parameters: {
+          type: 'object',
+          properties: {
+            path: {
+              type: 'string',
+              description: 'Directory path to list'
+            }
+          },
+          required: ['path']
+        },
+        handler: function(args) {
+          var e, files, results, targetPath;
+          try {
+            targetPath = args.path || process.cwd();
+            files = fs.readdirSync(targetPath, {
+              withFileTypes: true
+            });
+            results = files.map(function(f) {
+              return {
+                type: f.isDirectory() ? 'directory' : 'file',
+                name: f.name
+              };
+            });
+            return {
+              success: true,
+              files: results,
+              path: targetPath
+            };
+          } catch (error) {
+            e = error;
+            return {
+              success: false,
+              error: e.message
+            };
+          }
+        }
+      },
+      read_file: {
+        description: 'Read file contents',
+        parameters: {
+          type: 'object',
+          properties: {
+            path: {
+              type: 'string',
+              description: 'File path to read'
+            }
+          },
+          required: ['path']
+        },
+        handler: function(args) {
+          var content, e;
+          try {
+            content = fs.readFileSync(args.path, 'utf8');
+            return {
+              success: true,
+              content: content.substring(0, 10000)
+            };
+          } catch (error) {
+            e = error;
+            return {
+              success: false,
+              error: e.message
+            };
+          }
+        }
+      }
+    },
+    code: {
+      execute: {
+        description: 'Execute a shell command',
+        parameters: {
+          type: 'object',
+          properties: {
+            command: {
+              type: 'string',
+              description: 'Command to execute'
+            },
+            cwd: {
+              type: 'string',
+              description: 'Working directory'
+            }
+          },
+          required: ['command']
+        },
+        handler: function(args) {
+          var e, result;
+          try {
+            result = require('child_process').execSync(args.command, {
+              cwd: args.cwd || process.cwd(),
+              encoding: 'utf8',
+              timeout: 30000
+            });
+            return {
+              success: true,
+              output: result.substring(0, 5000)
+            };
+          } catch (error) {
+            e = error;
+            return {
+              success: false,
+              error: e.message,
+              output: e.stdout || ''
+            };
+          }
+        }
+      }
+    },
+    git: {
+      status: {
+        description: 'Get git status',
+        parameters: {
+          type: 'object',
+          properties: {
+            cwd: {
+              type: 'string',
+              description: 'Working directory'
+            }
+          }
+        },
+        handler: function(args) {
+          var e, result;
+          try {
+            result = require('child_process').execSync('git status --short', {
+              cwd: args.cwd || process.cwd(),
+              encoding: 'utf8'
+            });
+            return {
+              success: true,
+              status: result
+            };
+          } catch (error) {
+            e = error;
+            return {
+              success: false,
+              error: e.message
+            };
+          }
+        }
+      }
+    }
+  };
+
+  getSkillFunctions = function(botSkills) {
+    var funcDef, funcName, functions, i, len, skill, skillName;
+    if (!(botSkills && botSkills[0] !== '*')) {
+      return [];
+    }
+    functions = [];
+    for (i = 0, len = botSkills.length; i < len; i++) {
+      skillName = botSkills[i];
+      skill = SKILLS[skillName];
+      if (!skill) {
+        continue;
+      }
+      for (funcName in skill) {
+        funcDef = skill[funcName];
+        functions.push({
+          name: funcName,
+          description: funcDef.description,
+          parameters: funcDef.parameters
+        });
+      }
+    }
+    return functions;
+  };
+
+  executeSkillFunction = function(name, args, botSkills) {
+    var i, len, ref, skill, skillName, skillName2;
+    ref = botSkills || ['*'];
+    for (i = 0, len = ref.length; i < len; i++) {
+      skillName = ref[i];
+      if (skillName === '*') {
+        for (skillName2 in SKILLS) {
+          skill = SKILLS[skillName2];
+          if (skill[name]) {
+            return skill[name].handler(args);
+          }
+        }
+      } else {
+        skill = SKILLS[skillName];
+        if (skill != null ? skill[name] : void 0) {
+          return skill[name].handler(args);
+        }
+      }
+    }
+    return {
+      success: false,
+      error: `Unknown function: ${name}`
+    };
   };
 
   deleteSession = function(sessionId) {
@@ -709,21 +904,22 @@ You are a helpful AI assistant running on the user's local machine. You are powe
     }
   };
 
-  callAPI = function(sessionId, message, settings) {
+  callAPI = function(sessionId, message, settings, bot = null) {
     return new Promise(function(resolve, reject) {
-      var apiKey, config, i, len, messages, model, msg, options, postData, provider, ref, req, session;
+      var apiKey, config, functions, i, len, messages, model, msg, options, postData, provider, ref, req, session, systemPrompt;
       ({apiKey, provider, model} = settings);
       provider = provider || 'zhipu';
-      model = model || 'glm-4-flash';
+      model = (bot != null ? bot.model : void 0) || model || 'glm-4-flash';
       config = MODELS[provider];
       if (!config) {
         return reject(new Error(`Unknown provider: ${provider}`));
       }
       session = getSession(sessionId);
+      systemPrompt = (bot != null ? bot.systemPrompt : void 0) || 'You are CoffeeClaw, a helpful AI assistant. Respond in the same language the user uses. Be friendly and helpful.';
       messages = [
         {
           role: 'system',
-          content: 'You are CoffeeClaw, a helpful AI assistant. Respond in the same language the user uses. Be friendly and helpful.'
+          content: systemPrompt
         }
       ];
       if (session.messages) {
@@ -740,6 +936,88 @@ You are a helpful AI assistant running on the user's local machine. You are powe
         role: 'user',
         content: message
       });
+      functions = getSkillFunctions(bot != null ? bot.skills : void 0);
+      postData = {
+        model: model,
+        messages: messages,
+        stream: false
+      };
+      if (functions.length > 0) {
+        postData.tools = functions.map(function(f) {
+          return {
+            type: 'function',
+            function: f
+          };
+        });
+      }
+      postData = JSON.stringify(postData);
+      options = {
+        hostname: config.baseUrl,
+        port: 443,
+        path: config.apiPath,
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${apiKey}`,
+          'Content-Length': Buffer.byteLength(postData)
+        }
+      };
+      req = https.request(options, function(res) {
+        var data;
+        data = '';
+        res.on('data', function(chunk) {
+          return data += chunk;
+        });
+        return res.on('end', function() {
+          var choice, e, funcArgs, funcName, funcResult, ref1, result, toolCall;
+          try {
+            result = JSON.parse(data);
+            if (result.error) {
+              return reject(new Error(result.error.message || 'API error'));
+            } else if (result.choices && result.choices[0]) {
+              choice = result.choices[0];
+              if ((ref1 = choice.message) != null ? ref1.tool_calls : void 0) {
+                toolCall = choice.message.tool_calls[0];
+                if ((toolCall != null ? toolCall.type : void 0) === 'function') {
+                  funcName = toolCall.function.name;
+                  funcArgs = JSON.parse(toolCall.function.arguments);
+                  funcResult = executeSkillFunction(funcName, funcArgs, bot != null ? bot.skills : void 0);
+                  messages.push(choice.message);
+                  messages.push({
+                    role: 'tool',
+                    content: JSON.stringify(funcResult),
+                    tool_call_id: toolCall.id
+                  });
+                  callAPIWithMessages(sessionId, messages, settings, bot, apiKey).then(resolve).catch(reject);
+                  return;
+                }
+              }
+              return resolve(choice.message.content);
+            } else {
+              return reject(new Error('Unknown response format'));
+            }
+          } catch (error) {
+            e = error;
+            return reject(e);
+          }
+        });
+      });
+      req.on('error', reject);
+      req.setTimeout(60000, function() {
+        req.destroy();
+        return reject(new Error('Request timeout'));
+      });
+      req.write(postData);
+      return req.end();
+    });
+  };
+
+  callAPIWithMessages = function(sessionId, messages, settings, bot, apiKey) {
+    return new Promise(function(resolve, reject) {
+      var config, model, options, postData, provider, req;
+      provider = settings.provider || 'zhipu';
+      model = (bot != null ? bot.model : void 0) || settings.model || 'glm-4-flash';
+      config = MODELS[provider];
       postData = JSON.stringify({
         model: model,
         messages: messages,
@@ -763,13 +1041,30 @@ You are a helpful AI assistant running on the user's local machine. You are powe
           return data += chunk;
         });
         return res.on('end', function() {
-          var e, result;
+          var choice, e, funcArgs, funcName, funcResult, ref, result, toolCall;
           try {
             result = JSON.parse(data);
             if (result.error) {
               return reject(new Error(result.error.message || 'API error'));
             } else if (result.choices && result.choices[0]) {
-              return resolve(result.choices[0].message.content);
+              choice = result.choices[0];
+              if ((ref = choice.message) != null ? ref.tool_calls : void 0) {
+                toolCall = choice.message.tool_calls[0];
+                if ((toolCall != null ? toolCall.type : void 0) === 'function') {
+                  funcName = toolCall.function.name;
+                  funcArgs = JSON.parse(toolCall.function.arguments);
+                  funcResult = executeSkillFunction(funcName, funcArgs, bot != null ? bot.skills : void 0);
+                  messages.push(choice.message);
+                  messages.push({
+                    role: 'tool',
+                    content: JSON.stringify(funcResult),
+                    tool_call_id: toolCall.id
+                  });
+                  callAPIWithMessages(sessionId, messages, settings, bot, apiKey).then(resolve).catch(reject);
+                  return;
+                }
+              }
+              return resolve(choice.message.content);
             } else {
               return reject(new Error('Unknown response format'));
             }
@@ -790,14 +1085,15 @@ You are a helpful AI assistant running on the user's local machine. You are powe
   };
 
   sendToOpenClaw = async function(sessionId, message) {
-    var apiKey, response, settings;
+    var apiKey, bot, response, settings;
     settings = loadSettings();
     apiKey = settings.apiKey;
     if (!apiKey) {
       throw new Error('No API key configured');
     }
+    bot = getActiveBot();
     addToSession(sessionId, 'user', message);
-    response = (await callAPI(sessionId, message, settings));
+    response = (await callAPI(sessionId, message, settings, bot));
     addToSession(sessionId, 'assistant', response);
     return response;
   };

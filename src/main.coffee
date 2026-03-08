@@ -218,6 +218,94 @@ setActiveBot = (botId) ->
     return bot
   null
 
+SKILLS =
+  fs:
+    list_files:
+      description: 'List files in a directory'
+      parameters:
+        type: 'object'
+        properties:
+          path: { type: 'string', description: 'Directory path to list' }
+        required: ['path']
+      handler: (args) ->
+        try
+          targetPath = args.path or process.cwd()
+          files = fs.readdirSync targetPath, { withFileTypes: true }
+          results = files.map (f) ->
+            type: if f.isDirectory() then 'directory' else 'file'
+            name: f.name
+          { success: true, files: results, path: targetPath }
+        catch e
+          { success: false, error: e.message }
+    read_file:
+      description: 'Read file contents'
+      parameters:
+        type: 'object'
+        properties:
+          path: { type: 'string', description: 'File path to read' }
+        required: ['path']
+      handler: (args) ->
+        try
+          content = fs.readFileSync args.path, 'utf8'
+          { success: true, content: content.substring(0, 10000) }
+        catch e
+          { success: false, error: e.message }
+  code:
+    execute:
+      description: 'Execute a shell command'
+      parameters:
+        type: 'object'
+        properties:
+          command: { type: 'string', description: 'Command to execute' }
+          cwd: { type: 'string', description: 'Working directory' }
+        required: ['command']
+      handler: (args) ->
+        try
+          result = require('child_process').execSync args.command,
+            cwd: args.cwd or process.cwd()
+            encoding: 'utf8'
+            timeout: 30000
+          { success: true, output: result.substring(0, 5000) }
+        catch e
+          { success: false, error: e.message, output: e.stdout or '' }
+  git:
+    status:
+      description: 'Get git status'
+      parameters:
+        type: 'object'
+        properties:
+          cwd: { type: 'string', description: 'Working directory' }
+      handler: (args) ->
+        try
+          result = require('child_process').execSync 'git status --short',
+            cwd: args.cwd or process.cwd()
+            encoding: 'utf8'
+          { success: true, status: result }
+        catch e
+          { success: false, error: e.message }
+
+getSkillFunctions = (botSkills) ->
+  return [] unless botSkills and botSkills[0] != '*'
+  functions = []
+  for skillName in botSkills
+    skill = SKILLS[skillName]
+    continue unless skill
+    for funcName, funcDef of skill
+      functions.push { name: funcName, description: funcDef.description, parameters: funcDef.parameters }
+  functions
+
+executeSkillFunction = (name, args, botSkills) ->
+  for skillName in (botSkills or ['*'])
+    if skillName == '*'
+      for skillName2, skill of SKILLS
+        if skill[name]
+          return skill[name].handler args
+    else
+      skill = SKILLS[skillName]
+      if skill?[name]
+        return skill[name].handler args
+  { success: false, error: "Unknown function: #{name}" }
+
 deleteSession = (sessionId) ->
   sessions = loadSessions()
   delete sessions[sessionId]
@@ -471,19 +559,20 @@ MODELS =
     baseUrl: 'api.deepseek.com'
     apiPath: '/v1/chat/completions'
 
-callAPI = (sessionId, message, settings) ->
+callAPI = (sessionId, message, settings, bot = null) ->
   new Promise (resolve, reject) ->
     { apiKey, provider, model } = settings
     provider = provider or 'zhipu'
-    model = model or 'glm-4-flash'
+    model = bot?.model or model or 'glm-4-flash'
     
     config = MODELS[provider]
     unless config
       return reject new Error "Unknown provider: #{provider}"
     
     session = getSession sessionId
+    systemPrompt = bot?.systemPrompt or 'You are CoffeeClaw, a helpful AI assistant. Respond in the same language the user uses. Be friendly and helpful.'
     messages = [
-      { role: 'system', content: 'You are CoffeeClaw, a helpful AI assistant. Respond in the same language the user uses. Be friendly and helpful.' }
+      { role: 'system', content: systemPrompt }
     ]
     
     if session.messages
@@ -495,6 +584,71 @@ callAPI = (sessionId, message, settings) ->
     messages.push
       role: 'user'
       content: message
+    
+    functions = getSkillFunctions bot?.skills
+    postData =
+      model: model
+      messages: messages
+      stream: false
+    
+    if functions.length > 0
+      postData.tools = functions.map (f) -> { type: 'function', function: f }
+    
+    postData = JSON.stringify postData
+
+    options =
+      hostname: config.baseUrl
+      port: 443
+      path: config.apiPath
+      method: 'POST'
+      headers:
+        'Content-Type': 'application/json'
+        'Authorization': "Bearer #{apiKey}"
+        'Content-Length': Buffer.byteLength(postData)
+
+    req = https.request options, (res) ->
+      data = ''
+      res.on 'data', (chunk) -> data += chunk
+      res.on 'end', ->
+        try
+          result = JSON.parse data
+          if result.error
+            reject new Error result.error.message or 'API error'
+          else if result.choices and result.choices[0]
+            choice = result.choices[0]
+            if choice.message?.tool_calls
+              toolCall = choice.message.tool_calls[0]
+              if toolCall?.type == 'function'
+                funcName = toolCall.function.name
+                funcArgs = JSON.parse toolCall.function.arguments
+                funcResult = executeSkillFunction funcName, funcArgs, bot?.skills
+                messages.push choice.message
+                messages.push
+                  role: 'tool'
+                  content: JSON.stringify funcResult
+                  tool_call_id: toolCall.id
+                callAPIWithMessages sessionId, messages, settings, bot, apiKey
+                  .then resolve
+                  .catch reject
+                return
+            resolve choice.message.content
+          else
+            reject new Error 'Unknown response format'
+        catch e
+          reject e
+
+    req.on 'error', reject
+    req.setTimeout 60000, ->
+      req.destroy()
+      reject new Error 'Request timeout'
+    req.write postData
+    req.end()
+
+callAPIWithMessages = (sessionId, messages, settings, bot, apiKey) ->
+  new Promise (resolve, reject) ->
+    provider = settings.provider or 'zhipu'
+    model = bot?.model or settings.model or 'glm-4-flash'
+    config = MODELS[provider]
     
     postData = JSON.stringify
       model: model
@@ -520,7 +674,23 @@ callAPI = (sessionId, message, settings) ->
           if result.error
             reject new Error result.error.message or 'API error'
           else if result.choices and result.choices[0]
-            resolve result.choices[0].message.content
+            choice = result.choices[0]
+            if choice.message?.tool_calls
+              toolCall = choice.message.tool_calls[0]
+              if toolCall?.type == 'function'
+                funcName = toolCall.function.name
+                funcArgs = JSON.parse toolCall.function.arguments
+                funcResult = executeSkillFunction funcName, funcArgs, bot?.skills
+                messages.push choice.message
+                messages.push
+                  role: 'tool'
+                  content: JSON.stringify funcResult
+                  tool_call_id: toolCall.id
+                callAPIWithMessages sessionId, messages, settings, bot, apiKey
+                  .then resolve
+                  .catch reject
+                return
+            resolve choice.message.content
           else
             reject new Error 'Unknown response format'
         catch e
@@ -540,8 +710,9 @@ sendToOpenClaw = (sessionId, message) ->
   unless apiKey
     throw new Error 'No API key configured'
   
+  bot = getActiveBot()
   addToSession sessionId, 'user', message
-  response = await callAPI sessionId, message, settings
+  response = await callAPI sessionId, message, settings, bot
   addToSession sessionId, 'assistant', response
   response
 
