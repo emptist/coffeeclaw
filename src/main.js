@@ -1248,9 +1248,9 @@ You are a helpful AI assistant running on the user's local machine. You are powe
 
   createWindow = function() {
     mainWindow = new BrowserWindow({
-      width: 900,
+      width: 1200,
       height: 800,
-      minWidth: 600,
+      minWidth: 800,
       minHeight: 600,
       webPreferences: {
         nodeIntegration: false,

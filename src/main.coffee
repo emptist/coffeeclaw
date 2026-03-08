@@ -830,9 +830,9 @@ mainWindow = null
 
 createWindow = ->
   mainWindow = new BrowserWindow
-    width: 900
+    width: 1200
     height: 800
-    minWidth: 600
+    minWidth: 800
     minHeight: 600
     webPreferences:
       nodeIntegration: false
