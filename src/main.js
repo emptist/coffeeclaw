@@ -165,6 +165,11 @@
         showIndicator: false
       };
     }
+    if (license.balance == null) {
+      license.balance = INITIAL_BALANCE_USD;
+      saveLicense(license);
+    }
+    currentBalance = license.balance;
     now = new Date();
     createdAt = new Date(license.createdAt);
     monthsSinceCreation = (now.getFullYear() - createdAt.getFullYear()) * 12 + (now.getMonth() - createdAt.getMonth());
@@ -174,7 +179,6 @@
     } else {
       monthsSinceLastDeduction = monthsSinceCreation;
     }
-    currentBalance = license.balance;
     if (monthsSinceLastDeduction >= 1) {
       deduction = Math.floor(monthsSinceLastDeduction);
       currentBalance = license.balance - deduction;
@@ -1578,22 +1582,33 @@ You are a helpful AI assistant running on the user's local machine. You are powe
   });
 
   ipcMain.handle('add-payment', function(event, paymentData) {
-    var amount, e, email, license, method;
+    var amount, currency, e, email, license, lifetimeThreshold, method;
     try {
       license = loadLicense();
       if (!license) {
         license = initLicense();
       }
-      ({amount, method, email} = paymentData);
+      ({amount, method, email, currency} = paymentData);
       if (!(amount && amount > 0)) {
         return {
           success: false,
           error: 'Invalid amount'
         };
       }
+      currency = currency || 'usd';
+      if (!license.currency) {
+        license.currency = currency;
+      }
+      if (license.currency !== currency) {
+        return {
+          success: false,
+          error: `Currency mismatch. Your account uses ${license.currency}`
+        };
+      }
       license.balance = (license.balance || 0) + amount;
       license.paid = true;
-      if (amount >= 36) {
+      lifetimeThreshold = currency === 'cny' ? 216 : 36;
+      if (amount >= lifetimeThreshold) {
         license.plan = 'lifetime';
       }
       license.paymentInfo = license.paymentInfo || [];
@@ -1601,6 +1616,7 @@ You are a helpful AI assistant running on the user's local machine. You are powe
         amount: amount,
         method: method,
         email: email,
+        currency: currency,
         timestamp: new Date().toISOString()
       });
       saveLicense(license);

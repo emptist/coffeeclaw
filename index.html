@@ -789,12 +789,8 @@
       
       <div id="licenseStatusInfo" style="background:#0f3460;padding:15px;border-radius:8px;margin-bottom:20px;">
         <div style="display:flex;justify-content:space-between;align-items:center;">
-          <span>Status:</span>
-          <span id="licenseStatusText" style="font-weight:bold;">--</span>
-        </div>
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px;">
-          <span>Remaining:</span>
-          <span id="licenseRemainingText" style="font-weight:bold;">--</span>
+          <span>Balance:</span>
+          <span id="licenseStatusText" style="font-weight:bold;font-size:18px;">--</span>
         </div>
       </div>
       
@@ -855,7 +851,6 @@
     const licenseDays = document.getElementById('licenseDays');
     const licenseModal = document.getElementById('licenseModal');
     const licenseStatusText = document.getElementById('licenseStatusText');
-    const licenseRemainingText = document.getElementById('licenseRemainingText');
     const paymentQrImage = document.getElementById('paymentQrImage');
     const paymentAddressText = document.getElementById('paymentAddressText');
     const paymentQrSection = document.getElementById('paymentQrSection');
@@ -1659,10 +1654,8 @@
         
         if (licenseData.status === 'lifetime') {
           licenseStatusText.textContent = '∞';
-          licenseRemainingText.textContent = 'Thank you for your support!';
         } else {
           licenseStatusText.textContent = `${symbol}${licenseData.balance || 0}`;
-          licenseRemainingText.textContent = 'Balance';
         }
       }
       
