@@ -574,6 +574,7 @@
           </select>
           <button id="addBotBtn" title="Add New Bot">+</button>
           <button id="editBotBtn" title="Edit Bot">⚙️</button>
+          <button id="providerSettingsBtn" title="API Keys">🔑</button>
         </div>
         <div class="lang-select">
           <button class="lang-btn active" data-lang="en">EN</button>
@@ -718,6 +719,22 @@
         <button id="saveBotBtn">Save</button>
       </div>
       <input type="file" id="importBotsFile" accept=".json" style="display:none;">
+    </div>
+  </div>
+  
+  <div id="providerSettingsModal" class="setup-overlay" style="display:none;">
+    <div class="setup-card" style="max-width:450px;">
+      <h2>🔑 API Keys</h2>
+      <p style="font-size:12px;color:#888;margin-bottom:15px;">
+        Manage API keys for different AI providers. 
+        <a href="https://github.com/emptist/openclaw" target="_blank" style="color:#e94560;">OpenClaw docs</a>
+      </p>
+      
+      <div id="providerList"></div>
+      
+      <div class="btn-group">
+        <button class="btn-secondary" id="closeProviderSettingsBtn">Close</button>
+      </div>
     </div>
   </div>
   
@@ -1520,6 +1537,75 @@
         document.getElementById('botEditorError').style.display = 'none';
         document.getElementById('botEditorModal').style.display = 'flex';
       }
+    });
+    
+    async function renderProviderList() {
+      const settings = await window.api.getSettings();
+      const models = await window.api.getModels();
+      const providerList = document.getElementById('providerList');
+      
+      providerList.innerHTML = '';
+      
+      for (const [providerId, providerConfig] of Object.entries(models)) {
+        const isActive = settings.activeProvider === providerId;
+        const hasKey = settings.providers && settings.providers[providerId] && settings.providers[providerId].apiKey;
+        
+        const providerDiv = document.createElement('div');
+        providerDiv.style.cssText = 'background:#1a1a2e;padding:12px;border-radius:8px;margin-bottom:10px;';
+        
+        providerDiv.innerHTML = `
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+            <span style="font-weight:bold;">${providerConfig.name}</span>
+            <span style="font-size:11px;padding:2px 8px;border-radius:4px;background:${hasKey ? '#00bfa5' : '#666'};color:white;">
+              ${hasKey ? '✓ Configured' : 'Not Set'}
+            </span>
+          </div>
+          <input type="password" id="apiKey_${providerId}" placeholder="API Key" value="${hasKey ? settings.providers[providerId].apiKey : ''}" 
+            style="width:100%;padding:8px;background:#0f3460;border:1px solid #333;border-radius:4px;color:#eee;margin-bottom:8px;font-size:12px;">
+          <select id="model_${providerId}" style="width:100%;padding:8px;background:#0f3460;border:1px solid #333;border-radius:4px;color:#eee;margin-bottom:8px;font-size:12px;">
+            ${providerConfig.models.map(m => `<option value="${m.id}" ${hasKey && settings.providers[providerId].model === m.id ? 'selected' : ''}>${m.name}</option>`).join('')}
+          </select>
+          <div style="display:flex;gap:8px;">
+            <button class="btn-secondary" onclick="saveProviderKey('${providerId}')" style="flex:1;padding:6px;font-size:12px;">Save</button>
+            ${isActive ? '<span style="color:#00bfa5;font-size:12px;padding:6px;">✓ Active</span>' : `<button class="btn-secondary" onclick="setActiveProvider('${providerId}')" style="flex:1;padding:6px;font-size:12px;">Set Active</button>`}
+          </div>
+        `;
+        
+        providerList.appendChild(providerDiv);
+      }
+    }
+    
+    window.saveProviderKey = async function(providerId) {
+      const apiKey = document.getElementById(`apiKey_${providerId}`).value.trim();
+      const model = document.getElementById(`model_${providerId}`).value;
+      
+      if (!apiKey) {
+        alert('Please enter an API key');
+        return;
+      }
+      
+      const settings = await window.api.getSettings();
+      settings.providers = settings.providers || {};
+      settings.providers[providerId] = { apiKey, model };
+      await window.api.saveSettings(settings);
+      
+      await renderProviderList();
+    };
+    
+    window.setActiveProvider = async function(providerId) {
+      const settings = await window.api.getSettings();
+      settings.activeProvider = providerId;
+      await window.api.saveSettings(settings);
+      await renderProviderList();
+    };
+    
+    document.getElementById('providerSettingsBtn').addEventListener('click', async () => {
+      await renderProviderList();
+      document.getElementById('providerSettingsModal').style.display = 'flex';
+    });
+    
+    document.getElementById('closeProviderSettingsBtn').addEventListener('click', () => {
+      document.getElementById('providerSettingsModal').style.display = 'none';
     });
     
     document.getElementById('cancelBotEditorBtn').addEventListener('click', () => {
