@@ -105,14 +105,17 @@
     listBackups: function() {
       return ipcRenderer.invoke('list-backups');
     },
-    restoreBackup: function(backupName) {
-      return ipcRenderer.invoke('restore-backup', backupName);
+    restoreBackup: function(backupName, options) {
+      return ipcRenderer.invoke('restore-backup', backupName, options);
+    },
+    getBackupData: function(backupName) {
+      return ipcRenderer.invoke('get-backup-data', backupName);
     },
     exportAllSettings: function() {
       return ipcRenderer.invoke('export-all-settings');
     },
-    importAllSettings: function(data) {
-      return ipcRenderer.invoke('import-all-settings', data);
+    importAllSettings: function(data, options) {
+      return ipcRenderer.invoke('import-all-settings', data, options);
     }
   });
 

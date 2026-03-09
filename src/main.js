@@ -2,7 +2,7 @@
 (function() {
   // CoffeeClaw - Main Process
   // Auto-configures OpenClaw on first run
-  var BOT_TEMPLATES, BrowserWindow, INITIAL_BALANCE_CNY, INITIAL_BALANCE_USD, LICENSE_PRICES, MAX_HISTORY, MAX_SESSIONS, MODELS, SKILLS, USD_TO_CNY, addToSession, agentDir, agentMdFile, agentModelsFile, app, backupSettings, botsFile, callAPI, callAPIWithMessages, checkNodeInstalled, checkNpmInstalled, checkOpenClaw, checkOpenClawInstalled, checkOpenClawPromise, checkWSLInstalled, configExists, configFile, configureFeishu, createAgentConfig, createBot, createDefaultConfig, createIdentity, createSession, createWindow, crypto, deleteBot, deleteSession, detectExistingFeishuConfig, exec, executeSkillFunction, exportAllSettings, fs, generateId, generateToken, getActiveBot, getBot, getBotTemplates, getLicenseStatus, getPlatform, getSession, getSkillFunctions, http, https, identityFile, importAllSettings, initLicense, installOpenClaw, ipcMain, isConfigured, isMac, isWindows, licenseFile, listSessions, listSettingsBackups, loadBots, loadLicense, loadSessions, loadSettings, mainWindow, openclawDir, path, restoreSettings, saveBots, saveLicense, saveSession, saveSessions, saveSettings, secreteDir, sendToOpenClaw, sessionsFile, setActiveBot, settingsFile, spawn, startOpenClaw, syncFeishuConfigToOpenClaw, syncFeishuConfigToSettings, updateBot, workspaceDir;
+  var BOT_TEMPLATES, BrowserWindow, INITIAL_BALANCE_CNY, INITIAL_BALANCE_USD, LICENSE_PRICES, MAX_HISTORY, MAX_SESSIONS, MODELS, SKILLS, USD_TO_CNY, addToSession, agentDir, agentMdFile, agentModelsFile, app, backupSettings, botsFile, callAPI, callAPIWithMessages, checkNodeInstalled, checkNpmInstalled, checkOpenClaw, checkOpenClawInstalled, checkOpenClawPromise, checkWSLInstalled, configExists, configFile, configureFeishu, createAgentConfig, createBot, createDefaultConfig, createIdentity, createSession, createWindow, crypto, deleteBot, deleteSession, detectExistingFeishuConfig, exec, executeSkillFunction, exportAllSettings, fs, generateId, generateToken, getActiveBot, getBackupData, getBot, getBotTemplates, getLicenseStatus, getPlatform, getSession, getSkillFunctions, http, https, identityFile, importAllSettings, initLicense, installOpenClaw, ipcMain, isConfigured, isMac, isWindows, licenseFile, listSessions, listSettingsBackups, loadBots, loadLicense, loadSessions, loadSettings, mainWindow, openclawDir, path, restoreSettings, saveBots, saveLicense, saveSession, saveSessions, saveSettings, secreteDir, sendToOpenClaw, sessionsFile, setActiveBot, settingsFile, spawn, startOpenClaw, syncFeishuConfigToOpenClaw, syncFeishuConfigToSettings, updateBot, workspaceDir;
 
   ({app, BrowserWindow, ipcMain} = require('electron'));
 
@@ -105,50 +105,92 @@
   };
 
   backupSettings = function() {
-    var backup, backupFile, backups, e, i, j, len, timestamp;
+    var backup, backupData, backupFile, backups, e, i, j, len, timestamp;
     try {
-      if (fs.existsSync(settingsFile)) {
-        timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-        backupFile = path.join(secreteDir, `settings.backup.${timestamp}.json`);
-        fs.copyFileSync(settingsFile, backupFile);
-        backups = fs.readdirSync(secreteDir).filter(function(f) {
-          return f.startsWith('settings.backup.' && f.endsWith('.json'));
-        }).sort().reverse();
-        for (i = j = 0, len = backups.length; j < len; i = ++j) {
-          backup = backups[i];
-          if (i >= 5) {
-            fs.unlinkSync(path.join(secreteDir, backup));
-          }
+      timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+      backupFile = path.join(secreteDir, `backup.${timestamp}.json`);
+      backupData = {
+        version: '1.0',
+        backedUpAt: new Date().toISOString(),
+        settings: fs.existsSync(settingsFile) ? JSON.parse(fs.readFileSync(settingsFile, 'utf8')) : {},
+        sessions: fs.existsSync(sessionsFile) ? JSON.parse(fs.readFileSync(sessionsFile, 'utf8')) : {
+          sessions: []
+        },
+        bots: loadBots(),
+        license: loadLicense()
+      };
+      fs.writeFileSync(backupFile, JSON.stringify(backupData, null, 2));
+      backups = fs.readdirSync(secreteDir).filter(function(f) {
+        return f.startsWith('backup.') && f.endsWith('.json') && f !== 'bots.json';
+      }).sort().reverse();
+      for (i = j = 0, len = backups.length; j < len; i = ++j) {
+        backup = backups[i];
+        if (i >= 5) {
+          fs.unlinkSync(path.join(secreteDir, backup));
         }
-        return console.log(`Settings backed up: ${backupFile}`);
       }
+      console.log(`Full backup created: ${backupFile}`);
+      return true;
     } catch (error) {
       e = error;
-      return console.error('Error backing up settings:', e);
+      console.error('Error backing up:', e);
+      return false;
     }
   };
 
-  restoreSettings = function(backupName) {
-    var backupPath, e;
+  restoreSettings = function(backupName, options = {}) {
+    var backupPath, data, e, restoreBots, restoreLicense, restoreSessions;
     try {
       backupPath = path.join(secreteDir, backupName);
       if (fs.existsSync(backupPath)) {
-        fs.copyFileSync(backupPath, settingsFile);
-        console.log(`Settings restored from: ${backupName}`);
+        data = JSON.parse(fs.readFileSync(backupPath, 'utf8'));
+        restoreSettings = options.settings != null ? options.settings : true;
+        restoreSessions = options.sessions != null ? options.sessions : true;
+        restoreBots = options.bots != null ? options.bots : true;
+        restoreLicense = options.license != null ? options.license : true;
+        if (data.settings && restoreSettings) {
+          fs.writeFileSync(settingsFile, JSON.stringify(data.settings, null, 2));
+        }
+        if (data.sessions && restoreSessions) {
+          fs.writeFileSync(sessionsFile, JSON.stringify(data.sessions, null, 2));
+        }
+        if (data.bots && restoreBots) {
+          fs.writeFileSync(botsFile, JSON.stringify(data.bots, null, 2));
+        }
+        if (data.license && restoreLicense) {
+          fs.writeFileSync(licenseFile, JSON.stringify(data.license, null, 2));
+        }
+        console.log(`Backup restored from: ${backupName}`);
         return true;
       }
       return false;
     } catch (error) {
       e = error;
-      console.error('Error restoring settings:', e);
+      console.error('Error restoring backup:', e);
       return false;
+    }
+  };
+
+  getBackupData = function(backupName) {
+    var backupPath, e;
+    try {
+      backupPath = path.join(secreteDir, backupName);
+      if (fs.existsSync(backupPath)) {
+        return JSON.parse(fs.readFileSync(backupPath, 'utf8'));
+      } else {
+        return null;
+      }
+    } catch (error) {
+      e = error;
+      console.error('Error reading backup:', e);
+      return null;
     }
   };
 
   listSettingsBackups = function() {
     try {
       return fs.readdirSync(secreteDir).filter(function(f) {
-        return f.startsWith('settings.backup.' && f.endsWith('.json'));
+        return f.startsWith('backup.') && f.endsWith('.json') && f !== 'bots.json';
       }).sort().reverse();
     } catch (error) {
       return [];
@@ -180,19 +222,23 @@
     }
   };
 
-  importAllSettings = function(data) {
-    var e;
+  importAllSettings = function(data, options = {}) {
+    var e, importBots, importLicense, importSessions, importSettings;
     try {
-      if (data.settings) {
+      importSettings = options.settings != null ? options.settings : true;
+      importSessions = options.sessions != null ? options.sessions : true;
+      importBots = options.bots != null ? options.bots : true;
+      importLicense = options.license != null ? options.license : true;
+      if (data.settings && importSettings) {
         saveSettings(data.settings);
       }
-      if (data.sessions) {
+      if (data.sessions && importSessions) {
         fs.writeFileSync(sessionsFile, JSON.stringify(data.sessions, null, 2));
       }
-      if (data.bots) {
+      if (data.bots && importBots) {
         fs.writeFileSync(botsFile, JSON.stringify(data.bots, null, 2));
       }
-      if (data.license) {
+      if (data.license && importLicense) {
         saveLicense(data.license);
       }
       return true;
@@ -1580,16 +1626,20 @@ You are a helpful AI assistant running on the user's local machine. You are powe
     return listSettingsBackups();
   });
 
-  ipcMain.handle('restore-backup', function(event, backupName) {
-    return restoreSettings(backupName);
+  ipcMain.handle('restore-backup', function(event, backupName, options) {
+    return restoreSettings(backupName, options);
+  });
+
+  ipcMain.handle('get-backup-data', function(event, backupName) {
+    return getBackupData(backupName);
   });
 
   ipcMain.handle('export-all-settings', function() {
     return exportAllSettings();
   });
 
-  ipcMain.handle('import-all-settings', function(event, data) {
-    return importAllSettings(data);
+  ipcMain.handle('import-all-settings', function(event, data, options) {
+    return importAllSettings(data, options);
   });
 
   ipcMain.handle('get-feishu-status', function() {
