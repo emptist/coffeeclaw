@@ -854,15 +854,19 @@ callOpenClawAgent = (sessionId, message) ->
         reject new Error(err.message)
         return
       try
-        result = JSON.parse stdout
-        payloads = result?.payloads or result?.result?.payloads or []
-        text = ''
-        for p in payloads
-          if p.type == 'text' or p.text
-            text += p.text or p.content or ''
-        if not text and result?.meta?.agentMeta
-          text = 'Response received (check session for details)'
-        resolve text or 'No response'
+        jsonMatch = stdout.match /\{[\s\S]*"payloads"[\s\S]*\}/
+        if jsonMatch
+          result = JSON.parse jsonMatch[0]
+          payloads = result?.payloads or []
+          text = ''
+          for p in payloads
+            if p.type == 'text' or p.text
+              text += p.text or p.content or ''
+          if not text and result?.meta?.agentMeta
+            text = 'Response received (check session for details)'
+          resolve text or 'No response'
+        else
+          resolve stdout.trim() or 'Response received'
       catch e
         resolve stdout.trim() or 'Response received'
 

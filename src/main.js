@@ -1309,26 +1309,31 @@ You are a helpful AI assistant running on the user's local machine. You are powe
       return exec(cmd, {
         maxBuffer: 1024 * 1024 * 10
       }, function(err, stdout, stderr) {
-        var e, j, len, p, payloads, ref, ref1, result, text;
+        var e, j, jsonMatch, len, p, payloads, ref, result, text;
         if (err) {
           console.error('OpenClaw Agent error:', err);
           reject(new Error(err.message));
           return;
         }
         try {
-          result = JSON.parse(stdout);
-          payloads = (result != null ? result.payloads : void 0) || (result != null ? (ref = result.result) != null ? ref.payloads : void 0 : void 0) || [];
-          text = '';
-          for (j = 0, len = payloads.length; j < len; j++) {
-            p = payloads[j];
-            if (p.type === 'text' || p.text) {
-              text += p.text || p.content || '';
+          jsonMatch = stdout.match(/\{[\s\S]*"payloads"[\s\S]*\}/);
+          if (jsonMatch) {
+            result = JSON.parse(jsonMatch[0]);
+            payloads = (result != null ? result.payloads : void 0) || [];
+            text = '';
+            for (j = 0, len = payloads.length; j < len; j++) {
+              p = payloads[j];
+              if (p.type === 'text' || p.text) {
+                text += p.text || p.content || '';
+              }
             }
+            if (!text && (result != null ? (ref = result.meta) != null ? ref.agentMeta : void 0 : void 0)) {
+              text = 'Response received (check session for details)';
+            }
+            return resolve(text || 'No response');
+          } else {
+            return resolve(stdout.trim() || 'Response received');
           }
-          if (!text && (result != null ? (ref1 = result.meta) != null ? ref1.agentMeta : void 0 : void 0)) {
-            text = 'Response received (check session for details)';
-          }
-          return resolve(text || 'No response');
         } catch (error) {
           e = error;
           return resolve(stdout.trim() || 'Response received');
