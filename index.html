@@ -1755,6 +1755,7 @@
     });
     
     let pendingRestoreBackup = null;
+    let pendingImportData = null;
     
     document.getElementById('restoreFromBackupBtn').addEventListener('click', async () => {
       const backups = await window.api.listBackups();
@@ -1798,8 +1799,6 @@
     document.getElementById('importAllBtn').addEventListener('click', () => {
       document.getElementById('importAllFile').click();
     });
-    
-    let pendingImportData = null;
     
     document.getElementById('importAllFile').addEventListener('change', async (e) => {
       const file = e.target.files[0];
