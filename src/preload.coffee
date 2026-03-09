@@ -33,3 +33,8 @@ contextBridge.exposeInMainWorld 'api',
   activateLicense: (plan, paymentInfo) -> ipcRenderer.invoke 'activate-license', plan, paymentInfo
   addPayment: (paymentData) -> ipcRenderer.invoke 'add-payment', paymentData
   getGitEmail: -> ipcRenderer.invoke 'get-git-email'
+  backupSettings: -> ipcRenderer.invoke 'backup-settings'
+  listBackups: -> ipcRenderer.invoke 'list-backups'
+  restoreBackup: (backupName) -> ipcRenderer.invoke 'restore-backup', backupName
+  exportAllSettings: -> ipcRenderer.invoke 'export-all-settings'
+  importAllSettings: (data) -> ipcRenderer.invoke 'import-all-settings', data

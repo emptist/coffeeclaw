@@ -744,6 +744,8 @@
       <div class="btn-group">
         <button class="btn-secondary" id="exportBotsBtn" title="Export all bots to JSON">📤 Export</button>
         <button class="btn-secondary" id="importBotsBtn" title="Import bots from JSON">📥 Import</button>
+        <button class="btn-secondary" id="backupSettingsBtn" title="Backup all settings">💾 Backup</button>
+        <button class="btn-secondary" id="restoreSettingsBtn" title="Restore from backup">🔄 Restore</button>
         <button class="btn-secondary" id="cancelBotEditorBtn">Cancel</button>
         <button class="btn-secondary" id="deleteBotBtn" style="background:#e94560;display:none;">Delete</button>
         <button id="saveBotBtn">Save</button>
@@ -1854,6 +1856,38 @@
       }
       
       e.target.value = '';
+    });
+    
+    document.getElementById('backupSettingsBtn').addEventListener('click', async () => {
+      const result = await window.api.backupSettings();
+      if (result) {
+        addMessage('Settings backed up successfully!', 'success');
+      } else {
+        addMessage('Backup failed', 'error');
+      }
+    });
+    
+    document.getElementById('restoreSettingsBtn').addEventListener('click', async () => {
+      const backups = await window.api.listBackups();
+      if (backups.length === 0) {
+        alert('No backups available');
+        return;
+      }
+      
+      const choice = prompt('Available backups:\n' + backups.map((b, i) => `${i + 1}. ${b}`).join('\n') + '\n\nEnter number to restore:');
+      const index = parseInt(choice) - 1;
+      
+      if (index >= 0 && index < backups.length) {
+        const confirmed = confirm(`Restore from ${backups[index]}?\nCurrent settings will be backed up first.`);
+        if (confirmed) {
+          const result = await window.api.restoreBackup(backups[index]);
+          if (result) {
+            addMessage('Settings restored! Restart app to apply.', 'success');
+          } else {
+            addMessage('Restore failed', 'error');
+          }
+        }
+      }
     });
     
     document.getElementById('feishuStatusBtn').addEventListener('click', async () => {

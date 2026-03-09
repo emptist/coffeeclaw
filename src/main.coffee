@@ -65,6 +65,81 @@ saveSettings = (settings) ->
   catch e
     console.error 'Error saving settings:', e
 
+backupSettings = ->
+  try
+    if fs.existsSync settingsFile
+      timestamp = new Date().toISOString().replace(/[:.]/g, '-')
+      backupFile = path.join secreteDir, "settings.backup.#{timestamp}.json"
+      fs.copyFileSync settingsFile, backupFile
+      
+      backups = fs.readdirSync(secreteDir)
+        .filter (f) -> f.startsWith 'settings.backup.' and f.endsWith '.json'
+        .sort()
+        .reverse()
+      
+      for backup, i in backups when i >= 5
+        fs.unlinkSync path.join(secreteDir, backup)
+      
+      console.log "Settings backed up: #{backupFile}"
+  catch e
+    console.error 'Error backing up settings:', e
+
+restoreSettings = (backupName) ->
+  try
+    backupPath = path.join secreteDir, backupName
+    if fs.existsSync backupPath
+      fs.copyFileSync backupPath, settingsFile
+      console.log "Settings restored from: #{backupName}"
+      return true
+    false
+  catch e
+    console.error 'Error restoring settings:', e
+    false
+
+listSettingsBackups = ->
+  try
+    fs.readdirSync(secreteDir)
+      .filter (f) -> f.startsWith 'settings.backup.' and f.endsWith '.json'
+      .sort()
+      .reverse()
+  catch
+    []
+
+exportAllSettings = ->
+  try
+    settings = loadSettings()
+    sessions = if fs.existsSync sessionsFile then JSON.parse(fs.readFileSync sessionsFile, 'utf8') else { sessions: [] }
+    bots = loadBots()
+    license = loadLicense()
+    
+    exportData =
+      version: '1.0'
+      exportedAt: new Date().toISOString()
+      settings: settings
+      sessions: sessions
+      bots: bots
+      license: license
+    
+    exportData
+  catch e
+    console.error 'Error exporting settings:', e
+    null
+
+importAllSettings = (data) ->
+  try
+    if data.settings
+      saveSettings data.settings
+    if data.sessions
+      fs.writeFileSync sessionsFile, JSON.stringify(data.sessions, null, 2)
+    if data.bots
+      fs.writeFileSync botsFile, JSON.stringify(data.bots, null, 2)
+    if data.license
+      saveLicense data.license
+    true
+  catch e
+    console.error 'Error importing settings:', e
+    false
+
 loadLicense = ->
   try
     if fs.existsSync licenseFile
@@ -863,11 +938,15 @@ createWindow = ->
     mainWindow = null
 
 app.whenReady().then ->
+  backupSettings()
   createWindow()
 
   app.on 'activate', ->
     if BrowserWindow.getAllWindows().length == 0
       createWindow()
+
+app.on 'before-quit', ->
+  backupSettings()
 
 app.on 'window-all-closed', ->
   if process.platform != 'darwin'
@@ -970,6 +1049,12 @@ ipcMain.handle 'import-bots', (event, data) ->
     { success: true, imported: imported, total: botsData.bots.length }
   catch e
     { success: false, error: e.message }
+
+ipcMain.handle 'backup-settings', -> backupSettings()
+ipcMain.handle 'list-backups', -> listSettingsBackups()
+ipcMain.handle 'restore-backup', (event, backupName) -> restoreSettings backupName
+ipcMain.handle 'export-all-settings', -> exportAllSettings()
+ipcMain.handle 'import-all-settings', (event, data) -> importAllSettings data
 
 ipcMain.handle 'get-feishu-status', ->
   settings = loadSettings()
