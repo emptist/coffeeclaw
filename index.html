@@ -881,12 +881,12 @@
       
       <label style="font-size:13px;margin-bottom:5px;display:block;">Payment Method:</label>
       <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:15px;">
-        <button class="payment-method-btn active" data-method="alipay">支付宝</button>
+        <button class="payment-method-btn" data-method="alipay">支付宝</button>
         <button class="payment-method-btn" data-method="btc">₿ Bitcoin</button>
         <button class="payment-method-btn" data-method="paypal">PayPal</button>
       </div>
       
-      <div id="paymentQrSection" style="text-align:center;margin:10px 0;padding:10px;background:#1a1a2e;border-radius:8px;">
+      <div id="paymentQrSection" style="text-align:center;margin:10px 0;padding:10px;background:#1a1a2e;border-radius:8px;display:none;">
           <img id="paymentQrImage" src="assets/alipay-qr.jpg" style="max-width:100px;max-height:100px;border-radius:8px;margin-bottom:5px;">
         <p id="paymentAddressText" style="font-family:monospace;font-size:11px;word-break:break-all;color:#888;display:none;">bc1qym7whe3q3puupxg475ds6kyusl7g6wn7ewa9jn</p>
       </div>
@@ -1958,6 +1958,8 @@
         
         document.querySelectorAll('.payment-method-btn').forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
+        
+        paymentQrSection.style.display = 'block';
         
         const prices = await window.api.getLicensePrices();
         
