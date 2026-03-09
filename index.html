@@ -612,6 +612,8 @@
             <button class="tool-btn" data-tool="read" style="padding:8px;background:#0f3460;color:#eee;border:none;border-radius:4px;cursor:pointer;text-align:left;">📂 读取文件</button>
             <button class="tool-btn" data-tool="write" style="padding:8px;background:#0f3460;color:#eee;border:none;border-radius:4px;cursor:pointer;text-align:left;">💾 写入文件</button>
             <button class="tool-btn" data-tool="edit" style="padding:8px;background:#0f3460;color:#eee;border:none;border-radius:4px;cursor:pointer;text-align:left;">✏️ 编辑文件</button>
+            <button class="tool-btn" data-tool="webfetch" style="padding:8px;background:#0f3460;color:#eee;border:none;border-radius:4px;cursor:pointer;text-align:left;">🌐 获取网页</button>
+            <button class="tool-btn" data-tool="screenshot" style="padding:8px;background:#0f3460;color:#eee;border:none;border-radius:4px;cursor:pointer;text-align:left;">📸 截图网页</button>
           </div>
         </div>
         <div class="bot-selector">
@@ -1384,6 +1386,40 @@
             addMessage(`[Edit File] ${filePath}`, 'user');
             const result = await window.api.runLocalCommand(`openclaw agent --local --session-id "edit-${Date.now()}" --message "Edit file ${filePath}: replace '${oldText}' with '${newText}'" --json`);
             addMessage(result.success ? 'File edited.' : `Error: ${result.error}`, 'bot');
+          }
+        } else if (tool === 'webfetch') {
+          const url = prompt('Enter URL to fetch:');
+          if (url) {
+            addMessage(`[Fetch Webpage] ${url}`, 'user');
+            const result = await window.api.runLocalCommand(`openclaw agent --local --session-id "fetch-${Date.now()}" --message "Fetch and summarize webpage: ${url}" --json`);
+            if (result.success) {
+              try {
+                const data = JSON.parse(result.stdout);
+                const text = data.payloads?.[0]?.text || 'No content';
+                addMessage(text, 'bot');
+              } catch (e) {
+                addMessage('Error parsing response', 'bot');
+              }
+            } else {
+              addMessage(`Error: ${result.error}`, 'bot');
+            }
+          }
+        } else if (tool === 'screenshot') {
+          const url = prompt('Enter URL to screenshot:');
+          if (url) {
+            addMessage(`[Screenshot] ${url}`, 'user');
+            const result = await window.api.runLocalCommand(`openclaw agent --local --session-id "screenshot-${Date.now()}" --message "Take a screenshot of webpage: ${url}" --json`);
+            if (result.success) {
+              try {
+                const data = JSON.parse(result.stdout);
+                const text = data.payloads?.[0]?.text || 'Screenshot taken';
+                addMessage(text, 'bot');
+              } catch (e) {
+                addMessage('Screenshot completed (check OpenClaw workspace)', 'bot');
+              }
+            } else {
+              addMessage(`Error: ${result.error}`, 'bot');
+            }
           }
         }
       });
