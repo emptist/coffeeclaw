@@ -27,9 +27,6 @@
     saveSettings: function(settings) {
       return ipcRenderer.invoke('save-settings', settings);
     },
-    saveApiKey: function(apiKey) {
-      return ipcRenderer.invoke('save-api-key', apiKey);
-    },
     getModels: function() {
       return ipcRenderer.invoke('get-models');
     },

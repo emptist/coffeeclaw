@@ -9,7 +9,6 @@ contextBridge.exposeInMainWorld 'api',
   runSetup: (apiKey) -> ipcRenderer.invoke 'run-setup', apiKey
   getSettings: -> ipcRenderer.invoke 'get-settings'
   saveSettings: (settings) -> ipcRenderer.invoke 'save-settings', settings
-  saveApiKey: (apiKey) -> ipcRenderer.invoke 'save-api-key', apiKey
   getModels: -> ipcRenderer.invoke 'get-models'
   createSession: -> ipcRenderer.invoke 'create-session'
   getSession: (sessionId) -> ipcRenderer.invoke 'get-session', sessionId

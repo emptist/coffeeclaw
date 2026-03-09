@@ -2431,33 +2431,6 @@ You are a helpful AI assistant running on the user's local machine. You are powe
     };
   };
 
-  // DEAD CODE: This handler is never called - UI uses 'save-settings' instead
-  // The 'save-settings' handler is the one that actually gets called
-  // ipcMain.handle 'save-api-key', (event, apiKey) ->
-  //   settings = loadSettings()
-  //   settings.apiKey = apiKey
-  //   saveSettings settings
-
-  //   if configExists()
-  //     config = JSON.parse fs.readFileSync configFile, 'utf8'
-  //     config.env ?= {}
-  //     config.env.ZHIPU_API_KEY = apiKey
-  //     config.models ?= {}
-  //     config.models.providers ?= {}
-  //     config.models.providers.glm =
-  //       baseUrl: 'https://open.bigmodel.cn/api/paas/v4'
-  //       apiKey: apiKey
-  //       api: 'openai-completions'
-  //       models: [
-  //         { id: 'GLM-4-Flash', name: 'GLM 4 Flash' }
-  //         { id: 'GLM-4.5-air', name: 'GLM 4.5 air' }
-  //         { id: 'GLM-4.7', name: 'GLM 4.7' }
-  //       ]
-  //     fs.writeFileSync configFile, JSON.stringify(config, null, 2)
-
-  //     createAgentConfig apiKey
-
-  //   true
   ipcMain.handle('call-openclaw-agent', async function(event, sessionId, message) {
     var e, result;
     try {
