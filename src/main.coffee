@@ -1105,6 +1105,10 @@ ipcMain.handle 'check-status', ->
   configured = isConfigured()
   settings = loadSettings()
   
+  # Ensure OpenClaw config is in sync with CoffeeClaw settings
+  # This handles cases where settings were modified or app was updated
+  ensureOpenClawConfig()
+  
   if not running and configured
     startOpenClaw()
     return { running: false, starting: true, configured: true, hasApiKey: !!settings.apiKey }
@@ -1284,11 +1288,170 @@ ipcMain.handle 'run-setup', (event, apiKey) ->
 ipcMain.handle 'get-settings', ->
   loadSettings()
 
+# Mapping from CoffeeClaw provider names to OpenClaw provider names
+# CoffeeClaw uses: zhipu, openrouter, openai, deepseek
+# OpenClaw uses: glm, openrouter, openai, deepseek (same except zhipu→glm)
+PROVIDER_NAME_MAP =
+  zhipu: 'glm'
+  openrouter: 'openrouter'
+  openai: 'openai'
+  deepseek: 'deepseek'
+
+# Get the OpenClaw-compatible provider config from MODELS
+getOpenClawProviderConfig = (providerId, apiKey) ->
+  modelConfig = MODELS[providerId]
+  return null unless modelConfig
+  
+  # Build the provider config that OpenClaw expects
+  providerConfig =
+    baseUrl: "https://#{modelConfig.baseUrl}#{modelConfig.apiPath}".replace('/chat/completions', '')
+    apiKey: apiKey
+    api: 'openai-completions'
+    models: modelConfig.models.map (m) ->
+      id: m.id
+      name: m.name
+  
+  # Special handling for zhipu (glm) - use full API path
+  if providerId is 'zhipu'
+    providerConfig.baseUrl = "https://open.bigmodel.cn/api/paas/v4"
+  
+  providerConfig
+
+# Backup OpenClaw config before modifying
+# Creates a timestamped backup in the same directory
+backupOpenClawConfig = ->
+  return unless configExists()
+  
+  try
+    timestamp = new Date().toISOString().replace(/[:.]/g, '-')
+    backupPath = "#{configFile}.backup.#{timestamp}"
+    fs.copyFileSync configFile, backupPath
+    console.log "Backed up OpenClaw config to: #{backupPath}"
+    
+    # Keep only last 5 backups
+    backups = fs.readdirSync(path.dirname(configFile))
+      .filter (f) -> f.startsWith('openclaw.json.backup.')
+      .sort()
+      .reverse()
+    
+    for oldBackup in backups[5...]
+      fs.unlinkSync(path.join(path.dirname(configFile), oldBackup))
+      console.log "Cleaned up old backup: #{oldBackup}"
+  catch e
+    console.error 'Failed to backup OpenClaw config:', e
+
+# Sync providers from CoffeeClaw settings to OpenClaw's config file
+# This ensures the OpenClaw agent uses the same API keys as the CoffeeClaw UI
+# Returns true if sync was performed, false otherwise
+syncProvidersToOpenClaw = (providers, activeProvider) ->
+  return false unless configExists()
+  return false unless providers
+  
+  # Check if there's actually something to sync
+  try
+    existingConfig = JSON.parse fs.readFileSync configFile, 'utf8'
+    existingConfig.models ?= {}
+    existingConfig.models.providers ?= {}
+    
+    # Check if any provider actually changed OR if active provider changed
+    needsSync = false
+    for providerId, providerData of providers
+      openClawProviderName = PROVIDER_NAME_MAP[providerId]
+      continue unless openClawProviderName
+      
+      existing = existingConfig.models.providers[openClawProviderName]
+      if not existing or existing.apiKey isnt providerData.apiKey
+        needsSync = true
+        break
+    
+    # Also check if active provider changed
+    if activeProvider
+      openClawProviderName = PROVIDER_NAME_MAP[activeProvider]
+      if openClawProviderName
+        currentPrimary = existingConfig.agents?.defaults?.model?.primary
+        newPrimary = "#{openClawProviderName}/#{providers[activeProvider]?.model}"
+        if currentPrimary isnt newPrimary
+          needsSync = true
+    
+    return false unless needsSync
+    
+    # Backup before writing
+    backupOpenClawConfig()
+    
+    # Perform the sync
+    config = existingConfig
+    config.models ?= {}
+    config.models.providers ?= {}
+    
+    for providerId, providerData of providers
+      openClawProviderName = PROVIDER_NAME_MAP[providerId]
+      continue unless openClawProviderName
+      
+      openClawConfig = getOpenClawProviderConfig(providerId, providerData.apiKey)
+      continue unless openClawConfig
+      
+      config.models.providers[openClawProviderName] = openClawConfig
+      console.log "Synced provider #{providerId} → #{openClawProviderName} to openclaw.json"
+    
+    # Update primary model to match active provider
+    # Note: OpenClaw uses agents.defaults.model.primary, format: "provider/modelId"
+    # e.g., "glm/GLM-4-Flash" or "openrouter/auto"
+    if providers and activeProvider and PROVIDER_NAME_MAP[activeProvider]
+      openClawProvider = PROVIDER_NAME_MAP[activeProvider]
+      providerData = providers[activeProvider]
+      if providerData and providerData.model
+        # For openrouter models, the id might be "openrouter/auto" so we use it directly
+        # For others like glm, it's "glm-4-flash" so we format as "provider/model"
+        modelId = providerData.model
+        unless modelId.startsWith(openClawProvider)
+          modelId = "#{openClawProvider}/#{modelId}"
+        config.agents ?= {}
+        config.agents.defaults ?= {}
+        config.agents.defaults.model ?= {}
+        config.agents.defaults.model.primary = modelId
+        console.log "Set primary model to: #{modelId}"
+    
+    fs.writeFileSync configFile, JSON.stringify(config, null, 2)
+    console.log 'Providers synced to OpenClaw config'
+    return true
+  catch e
+    console.error 'Failed to sync providers to OpenClaw:', e
+    return false
+
+# Ensure OpenClaw config is in sync with CoffeeClaw settings
+# Only syncs if CoffeeClaw settings are newer than OpenClaw config
+# Called at startup to handle cases where settings were modified outside the app
+ensureOpenClawConfig = ->
+  settings = loadSettings()
+  return unless settings.providers
+  
+  return unless configExists()
+  return unless fs.existsSync(settingsFile)
+  
+  try
+    openclawConfigMtime = fs.statSync(configFile).mtime.getTime()
+    settingsMtime = fs.statSync(settingsFile).mtime.getTime()
+    
+    if settingsMtime > openclawConfigMtime
+      console.log 'CoffeeClaw settings are newer than OpenClaw config, syncing...'
+      syncProvidersToOpenClaw(settings.providers, settings.activeProvider)
+    else
+      console.log 'OpenClaw config is up to date'
+  catch e
+    console.error 'Failed to ensure OpenClaw config:', e
+
 ipcMain.handle 'save-settings', (event, newSettings) ->
   settings = loadSettings()
   for key, value of newSettings
     settings[key] = value
   saveSettings settings
+  
+  # When providers are saved in CoffeeClaw settings, also sync them to OpenClaw's config
+  # This ensures the OpenClaw agent uses the same API keys configured in the UI
+  if newSettings.providers
+    activeProvider = newSettings.activeProvider or settings.activeProvider
+    syncProvidersToOpenClaw(newSettings.providers, activeProvider)
+  
   true
 
 ipcMain.handle 'get-license', ->
@@ -1488,31 +1651,33 @@ configureFeishu = (appId, appSecret, botName, enabled = true) ->
   
   { success: true }
 
-ipcMain.handle 'save-api-key', (event, apiKey) ->
-  settings = loadSettings()
-  settings.apiKey = apiKey
-  saveSettings settings
-  
-  if configExists()
-    config = JSON.parse fs.readFileSync configFile, 'utf8'
-    config.env ?= {}
-    config.env.ZHIPU_API_KEY = apiKey
-    config.models ?= {}
-    config.models.providers ?= {}
-    config.models.providers.glm =
-      baseUrl: 'https://open.bigmodel.cn/api/paas/v4'
-      apiKey: apiKey
-      api: 'openai-completions'
-      models: [
-        { id: 'GLM-4-Flash', name: 'GLM 4 Flash' }
-        { id: 'GLM-4.5-air', name: 'GLM 4.5 air' }
-        { id: 'GLM-4.7', name: 'GLM 4.7' }
-      ]
-    fs.writeFileSync configFile, JSON.stringify(config, null, 2)
-    
-    createAgentConfig apiKey
-  
-  true
+# DEAD CODE: This handler is never called - UI uses 'save-settings' instead
+# The 'save-settings' handler is the one that actually gets called
+# ipcMain.handle 'save-api-key', (event, apiKey) ->
+#   settings = loadSettings()
+#   settings.apiKey = apiKey
+#   saveSettings settings
+#   
+#   if configExists()
+#     config = JSON.parse fs.readFileSync configFile, 'utf8'
+#     config.env ?= {}
+#     config.env.ZHIPU_API_KEY = apiKey
+#     config.models ?= {}
+#     config.models.providers ?= {}
+#     config.models.providers.glm =
+#       baseUrl: 'https://open.bigmodel.cn/api/paas/v4'
+#       apiKey: apiKey
+#       api: 'openai-completions'
+#       models: [
+#         { id: 'GLM-4-Flash', name: 'GLM 4 Flash' }
+#         { id: 'GLM-4.5-air', name: 'GLM 4.5 air' }
+#         { id: 'GLM-4.7', name: 'GLM 4.7' }
+#       ]
+#     fs.writeFileSync configFile, JSON.stringify(config, null, 2)
+#     
+#     createAgentConfig apiKey
+#   
+#   true
 
 ipcMain.handle 'call-openclaw-agent', (event, sessionId, message) ->
   try

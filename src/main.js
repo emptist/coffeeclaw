@@ -2,7 +2,7 @@
 (function() {
   // CoffeeClaw - Main Process
   // Auto-configures OpenClaw on first run
-  var BOT_TEMPLATES, BrowserWindow, INITIAL_BALANCE_CNY, INITIAL_BALANCE_USD, LICENSE_PRICES, MAX_HISTORY, MAX_SESSIONS, MODELS, SKILLS, USD_TO_CNY, addToAgentSession, addToSession, agentDir, agentMdFile, agentModelsFile, agentSessionsFile, app, backupSettings, botsFile, callAPI, callAPIWithMessages, callOpenClawAgent, checkNodeInstalled, checkNpmInstalled, checkOpenClaw, checkOpenClawInstalled, checkOpenClawPromise, checkWSLInstalled, configExists, configFile, configureFeishu, createAgentConfig, createBot, createDefaultConfig, createIdentity, createSession, createWindow, crypto, deleteBot, deleteSession, detectExistingFeishuConfig, exec, executeSkillFunction, exportAllSettings, fs, generateId, generateToken, getActiveBot, getAgentSession, getBackupData, getBot, getBotTemplates, getLicenseStatus, getPlatform, getSession, getSkillFunctions, http, https, identityFile, importAllSettings, initLicense, installOpenClaw, ipcMain, isConfigured, isMac, isWindows, licenseFile, listSessions, listSettingsBackups, loadAgentSessions, loadBots, loadLicense, loadSessions, loadSettings, mainWindow, openclawDir, path, restoreSettings, saveAgentSessions, saveBots, saveLicense, saveSession, saveSessions, saveSettings, secreteDir, sendToOpenClaw, sessionsFile, setActiveBot, settingsFile, shell, spawn, startOpenClaw, syncFeishuConfigToOpenClaw, syncFeishuConfigToSettings, updateBot, workspaceDir;
+  var BOT_TEMPLATES, BrowserWindow, INITIAL_BALANCE_CNY, INITIAL_BALANCE_USD, LICENSE_PRICES, MAX_HISTORY, MAX_SESSIONS, MODELS, PROVIDER_NAME_MAP, SKILLS, USD_TO_CNY, addToAgentSession, addToSession, agentDir, agentMdFile, agentModelsFile, agentSessionsFile, app, backupOpenClawConfig, backupSettings, botsFile, callAPI, callAPIWithMessages, callOpenClawAgent, checkNodeInstalled, checkNpmInstalled, checkOpenClaw, checkOpenClawInstalled, checkOpenClawPromise, checkWSLInstalled, configExists, configFile, configureFeishu, createAgentConfig, createBot, createDefaultConfig, createIdentity, createSession, createWindow, crypto, deleteBot, deleteSession, detectExistingFeishuConfig, ensureOpenClawConfig, exec, executeSkillFunction, exportAllSettings, fs, generateId, generateToken, getActiveBot, getAgentSession, getBackupData, getBot, getBotTemplates, getLicenseStatus, getOpenClawProviderConfig, getPlatform, getSession, getSkillFunctions, http, https, identityFile, importAllSettings, initLicense, installOpenClaw, ipcMain, isConfigured, isMac, isWindows, licenseFile, listSessions, listSettingsBackups, loadAgentSessions, loadBots, loadLicense, loadSessions, loadSettings, mainWindow, openclawDir, path, restoreSettings, saveAgentSessions, saveBots, saveLicense, saveSession, saveSessions, saveSettings, secreteDir, sendToOpenClaw, sessionsFile, setActiveBot, settingsFile, shell, spawn, startOpenClaw, syncFeishuConfigToOpenClaw, syncFeishuConfigToSettings, syncProvidersToOpenClaw, updateBot, workspaceDir;
 
   ({app, BrowserWindow, ipcMain, shell} = require('electron'));
 
@@ -1239,6 +1239,33 @@ You are a helpful AI assistant running on the user's local machine. You are powe
       baseUrl: 'open.bigmodel.cn',
       apiPath: '/api/paas/v4/chat/completions'
     },
+    openrouter: {
+      name: 'OpenRouter',
+      models: [
+        {
+          id: 'openrouter/auto',
+          name: 'Auto (Best Free)',
+          free: true
+        },
+        {
+          id: 'google/gemini-2.0-flash-001',
+          name: 'Gemini 2.0 Flash',
+          free: true
+        },
+        {
+          id: 'meta-llama/llama-3.3-70b-instruct',
+          name: 'Llama 3.3 70B',
+          free: true
+        },
+        {
+          id: 'deepseek/deepseek-chat',
+          name: 'DeepSeek Chat',
+          free: true
+        }
+      ],
+      baseUrl: 'openrouter.ai',
+      apiPath: '/api/v1/chat/completions'
+    },
     openai: {
       name: 'OpenAI',
       models: [
@@ -1381,6 +1408,10 @@ You are a helpful AI assistant running on the user's local machine. You are powe
           'Content-Length': Buffer.byteLength(postData)
         }
       };
+      if (provider === 'openrouter') {
+        options.headers['HTTP-Referer'] = 'https://coffeeclaw.app';
+        options.headers['X-Title'] = 'CoffeeClaw';
+      }
       req = https.request(options, function(res) {
         var data;
         data = '';
@@ -1460,6 +1491,10 @@ You are a helpful AI assistant running on the user's local machine. You are powe
           'Content-Length': Buffer.byteLength(postData)
         }
       };
+      if (provider === 'openrouter') {
+        options.headers['HTTP-Referer'] = 'https://coffeeclaw.app';
+        options.headers['X-Title'] = 'CoffeeClaw';
+      }
       req = https.request(options, function(res) {
         var data;
         data = '';
@@ -1587,6 +1622,10 @@ You are a helpful AI assistant running on the user's local machine. You are powe
     running = (await checkOpenClawPromise());
     configured = isConfigured();
     settings = loadSettings();
+    
+    // Ensure OpenClaw config is in sync with CoffeeClaw settings
+    // This handles cases where settings were modified or app was updated
+    ensureOpenClawConfig();
     if (!running && configured) {
       startOpenClaw();
       return {
@@ -1887,14 +1926,233 @@ You are a helpful AI assistant running on the user's local machine. You are powe
     return loadSettings();
   });
 
+  // Mapping from CoffeeClaw provider names to OpenClaw provider names
+  // CoffeeClaw uses: zhipu, openrouter, openai, deepseek
+  // OpenClaw uses: glm, openrouter, openai, deepseek (same except zhipu→glm)
+  PROVIDER_NAME_MAP = {
+    zhipu: 'glm',
+    openrouter: 'openrouter',
+    openai: 'openai',
+    deepseek: 'deepseek'
+  };
+
+  // Get the OpenClaw-compatible provider config from MODELS
+  getOpenClawProviderConfig = function(providerId, apiKey) {
+    var modelConfig, providerConfig;
+    modelConfig = MODELS[providerId];
+    if (!modelConfig) {
+      return null;
+    }
+    
+    // Build the provider config that OpenClaw expects
+    providerConfig = {
+      baseUrl: `https://${modelConfig.baseUrl}${modelConfig.apiPath}`.replace('/chat/completions', ''),
+      apiKey: apiKey,
+      api: 'openai-completions',
+      models: modelConfig.models.map(function(m) {
+        return {
+          id: m.id,
+          name: m.name
+        };
+      })
+    };
+    
+    // Special handling for zhipu (glm) - use full API path
+    if (providerId === 'zhipu') {
+      providerConfig.baseUrl = "https://open.bigmodel.cn/api/paas/v4";
+    }
+    return providerConfig;
+  };
+
+  // Backup OpenClaw config before modifying
+  // Creates a timestamped backup in the same directory
+  backupOpenClawConfig = function() {
+    var backupPath, backups, e, j, len, oldBackup, ref, results1, timestamp;
+    if (!configExists()) {
+      return;
+    }
+    try {
+      timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+      backupPath = `${configFile}.backup.${timestamp}`;
+      fs.copyFileSync(configFile, backupPath);
+      console.log(`Backed up OpenClaw config to: ${backupPath}`);
+      
+      // Keep only last 5 backups
+      backups = fs.readdirSync(path.dirname(configFile)).filter(function(f) {
+        return f.startsWith('openclaw.json.backup.');
+      }).sort().reverse();
+      ref = backups.slice(5);
+      results1 = [];
+      for (j = 0, len = ref.length; j < len; j++) {
+        oldBackup = ref[j];
+        fs.unlinkSync(path.join(path.dirname(configFile), oldBackup));
+        results1.push(console.log(`Cleaned up old backup: ${oldBackup}`));
+      }
+      return results1;
+    } catch (error) {
+      e = error;
+      return console.error('Failed to backup OpenClaw config:', e);
+    }
+  };
+
+  // Sync providers from CoffeeClaw settings to OpenClaw's config file
+  // This ensures the OpenClaw agent uses the same API keys as the CoffeeClaw UI
+  // Returns true if sync was performed, false otherwise
+  syncProvidersToOpenClaw = function(providers, activeProvider) {
+    var base, base1, base2, base3, config, currentPrimary, e, existing, existingConfig, modelId, needsSync, newPrimary, openClawConfig, openClawProvider, openClawProviderName, providerData, providerId, ref, ref1, ref2, ref3;
+    if (!configExists()) {
+      return false;
+    }
+    if (!providers) {
+      return false;
+    }
+    try {
+      
+      // Check if there's actually something to sync
+      existingConfig = JSON.parse(fs.readFileSync(configFile, 'utf8'));
+      if (existingConfig.models == null) {
+        existingConfig.models = {};
+      }
+      if ((base = existingConfig.models).providers == null) {
+        base.providers = {};
+      }
+      
+      // Check if any provider actually changed OR if active provider changed
+      needsSync = false;
+      for (providerId in providers) {
+        providerData = providers[providerId];
+        openClawProviderName = PROVIDER_NAME_MAP[providerId];
+        if (!openClawProviderName) {
+          continue;
+        }
+        existing = existingConfig.models.providers[openClawProviderName];
+        if (!existing || existing.apiKey !== providerData.apiKey) {
+          needsSync = true;
+          break;
+        }
+      }
+      
+      // Also check if active provider changed
+      if (activeProvider) {
+        openClawProviderName = PROVIDER_NAME_MAP[activeProvider];
+        if (openClawProviderName) {
+          currentPrimary = (ref = existingConfig.agents) != null ? (ref1 = ref.defaults) != null ? (ref2 = ref1.model) != null ? ref2.primary : void 0 : void 0 : void 0;
+          newPrimary = `${openClawProviderName}/${(ref3 = providers[activeProvider]) != null ? ref3.model : void 0}`;
+          if (currentPrimary !== newPrimary) {
+            needsSync = true;
+          }
+        }
+      }
+      if (!needsSync) {
+        return false;
+      }
+      
+      // Backup before writing
+      backupOpenClawConfig();
+      
+      // Perform the sync
+      config = existingConfig;
+      if (config.models == null) {
+        config.models = {};
+      }
+      if ((base1 = config.models).providers == null) {
+        base1.providers = {};
+      }
+      for (providerId in providers) {
+        providerData = providers[providerId];
+        openClawProviderName = PROVIDER_NAME_MAP[providerId];
+        if (!openClawProviderName) {
+          continue;
+        }
+        openClawConfig = getOpenClawProviderConfig(providerId, providerData.apiKey);
+        if (!openClawConfig) {
+          continue;
+        }
+        config.models.providers[openClawProviderName] = openClawConfig;
+        console.log(`Synced provider ${providerId} → ${openClawProviderName} to openclaw.json`);
+      }
+      
+      // Update primary model to match active provider
+      // Note: OpenClaw uses agents.defaults.model.primary, format: "provider/modelId"
+      // e.g., "glm/GLM-4-Flash" or "openrouter/auto"
+      if (providers && activeProvider && PROVIDER_NAME_MAP[activeProvider]) {
+        openClawProvider = PROVIDER_NAME_MAP[activeProvider];
+        providerData = providers[activeProvider];
+        if (providerData && providerData.model) {
+          // For openrouter models, the id might be "openrouter/auto" so we use it directly
+          // For others like glm, it's "glm-4-flash" so we format as "provider/model"
+          modelId = providerData.model;
+          if (!modelId.startsWith(openClawProvider)) {
+            modelId = `${openClawProvider}/${modelId}`;
+          }
+          if (config.agents == null) {
+            config.agents = {};
+          }
+          if ((base2 = config.agents).defaults == null) {
+            base2.defaults = {};
+          }
+          if ((base3 = config.agents.defaults).model == null) {
+            base3.model = {};
+          }
+          config.agents.defaults.model.primary = modelId;
+          console.log(`Set primary model to: ${modelId}`);
+        }
+      }
+      fs.writeFileSync(configFile, JSON.stringify(config, null, 2));
+      console.log('Providers synced to OpenClaw config');
+      return true;
+    } catch (error) {
+      e = error;
+      console.error('Failed to sync providers to OpenClaw:', e);
+      return false;
+    }
+  };
+
+  // Ensure OpenClaw config is in sync with CoffeeClaw settings
+  // Only syncs if CoffeeClaw settings are newer than OpenClaw config
+  // Called at startup to handle cases where settings were modified outside the app
+  ensureOpenClawConfig = function() {
+    var e, openclawConfigMtime, settings, settingsMtime;
+    settings = loadSettings();
+    if (!settings.providers) {
+      return;
+    }
+    if (!configExists()) {
+      return;
+    }
+    if (!fs.existsSync(settingsFile)) {
+      return;
+    }
+    try {
+      openclawConfigMtime = fs.statSync(configFile).mtime.getTime();
+      settingsMtime = fs.statSync(settingsFile).mtime.getTime();
+      if (settingsMtime > openclawConfigMtime) {
+        console.log('CoffeeClaw settings are newer than OpenClaw config, syncing...');
+        return syncProvidersToOpenClaw(settings.providers, settings.activeProvider);
+      } else {
+        return console.log('OpenClaw config is up to date');
+      }
+    } catch (error) {
+      e = error;
+      return console.error('Failed to ensure OpenClaw config:', e);
+    }
+  };
+
   ipcMain.handle('save-settings', function(event, newSettings) {
-    var key, settings, value;
+    var activeProvider, key, settings, value;
     settings = loadSettings();
     for (key in newSettings) {
       value = newSettings[key];
       settings[key] = value;
     }
     saveSettings(settings);
+    
+    // When providers are saved in CoffeeClaw settings, also sync them to OpenClaw's config
+    // This ensures the OpenClaw agent uses the same API keys configured in the UI
+    if (newSettings.providers) {
+      activeProvider = newSettings.activeProvider || settings.activeProvider;
+      syncProvidersToOpenClaw(newSettings.providers, activeProvider);
+    }
     return true;
   });
 
@@ -2173,48 +2431,33 @@ You are a helpful AI assistant running on the user's local machine. You are powe
     };
   };
 
-  ipcMain.handle('save-api-key', function(event, apiKey) {
-    var base, config, settings;
-    settings = loadSettings();
-    settings.apiKey = apiKey;
-    saveSettings(settings);
-    if (configExists()) {
-      config = JSON.parse(fs.readFileSync(configFile, 'utf8'));
-      if (config.env == null) {
-        config.env = {};
-      }
-      config.env.ZHIPU_API_KEY = apiKey;
-      if (config.models == null) {
-        config.models = {};
-      }
-      if ((base = config.models).providers == null) {
-        base.providers = {};
-      }
-      config.models.providers.glm = {
-        baseUrl: 'https://open.bigmodel.cn/api/paas/v4',
-        apiKey: apiKey,
-        api: 'openai-completions',
-        models: [
-          {
-            id: 'GLM-4-Flash',
-            name: 'GLM 4 Flash'
-          },
-          {
-            id: 'GLM-4.5-air',
-            name: 'GLM 4.5 air'
-          },
-          {
-            id: 'GLM-4.7',
-            name: 'GLM 4.7'
-          }
-        ]
-      };
-      fs.writeFileSync(configFile, JSON.stringify(config, null, 2));
-      createAgentConfig(apiKey);
-    }
-    return true;
-  });
+  // DEAD CODE: This handler is never called - UI uses 'save-settings' instead
+  // The 'save-settings' handler is the one that actually gets called
+  // ipcMain.handle 'save-api-key', (event, apiKey) ->
+  //   settings = loadSettings()
+  //   settings.apiKey = apiKey
+  //   saveSettings settings
 
+  //   if configExists()
+  //     config = JSON.parse fs.readFileSync configFile, 'utf8'
+  //     config.env ?= {}
+  //     config.env.ZHIPU_API_KEY = apiKey
+  //     config.models ?= {}
+  //     config.models.providers ?= {}
+  //     config.models.providers.glm =
+  //       baseUrl: 'https://open.bigmodel.cn/api/paas/v4'
+  //       apiKey: apiKey
+  //       api: 'openai-completions'
+  //       models: [
+  //         { id: 'GLM-4-Flash', name: 'GLM 4 Flash' }
+  //         { id: 'GLM-4.5-air', name: 'GLM 4.5 air' }
+  //         { id: 'GLM-4.7', name: 'GLM 4.7' }
+  //       ]
+  //     fs.writeFileSync configFile, JSON.stringify(config, null, 2)
+
+  //     createAgentConfig apiKey
+
+  //   true
   ipcMain.handle('call-openclaw-agent', async function(event, sessionId, message) {
     var e, result;
     try {
