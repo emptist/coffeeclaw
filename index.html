@@ -864,17 +864,15 @@
       </div>
       
       <label style="font-size:13px;margin-bottom:10px;display:block;">Select Plan:</label>
-      <div style="margin-bottom:15px;">
-        <label style="display:flex;align-items:center;padding:10px;background:#1a1a2e;border-radius:8px;margin-bottom:8px;cursor:pointer;">
-          <input type="radio" name="paymentAmount" value="12" checked style="margin-right:10px;margin-left:0;">
-          <span class="plan-text-usd">$12 / year</span>
-          <span class="plan-text-cny" style="display:none;">¥72 / 年</span>
-        </label>
-        <label style="display:flex;align-items:center;padding:10px;background:#1a1a2e;border-radius:8px;cursor:pointer;">
-          <input type="radio" name="paymentAmount" value="36" style="margin-right:10px;margin-left:0;">
-          <span class="plan-text-usd">$36 / lifetime</span>
-          <span class="plan-text-cny" style="display:none;">¥216 / 终身</span>
-        </label>
+      <div style="display:flex;gap:8px;margin-bottom:15px;">
+        <button class="payment-method-btn plan-btn" data-plan="12" style="flex:1;">
+          <span class="plan-text-usd">$12/year</span>
+          <span class="plan-text-cny" style="display:none;">¥72/年</span>
+        </button>
+        <button class="payment-method-btn plan-btn" data-plan="36" style="flex:1;">
+          <span class="plan-text-usd">$36/lifetime</span>
+          <span class="plan-text-cny" style="display:none;">¥216/终身</span>
+        </button>
       </div>
       
       <label style="font-size:13px;margin-bottom:5px;display:block;">Payment Method:</label>
@@ -884,9 +882,8 @@
         <button class="payment-method-btn" data-method="alipay">支付宝</button>
       </div>
       
-      <div id="paymentQrSection" style="text-align:center;margin:10px 0;padding:10px;background:#1a1a2e;border-radius:8px;display:none;">
-          <img id="paymentQrImage" src="assets/alipay-qr.jpg" style="max-width:100px;max-height:100px;border-radius:8px;margin-bottom:5px;">
-        <p id="paymentAddressText" style="font-family:monospace;font-size:11px;word-break:break-all;color:#888;display:none;">bc1qym7whe3q3puupxg475ds6kyusl7g6wn7ewa9jn</p>
+      <div id="paymentQrSection" style="text-align:center;margin:10px 0;padding:15px;background:#1a1a2e;border-radius:8px;display:none;">
+        <div id="paymentQrContent"></div>
       </div>
       
       <button id="paymentCompleteBtn" style="width:100%;padding:12px;background:#666;color:white;border:none;border-radius:8px;font-size:14px;cursor:not-allowed;margin-bottom:10px;" disabled>
@@ -948,13 +945,11 @@
     const licenseDays = document.getElementById('licenseDays');
     const licenseModal = document.getElementById('licenseModal');
     const licenseStatusText = document.getElementById('licenseStatusText');
-    const paymentQrImage = document.getElementById('paymentQrImage');
-    const paymentAddressText = document.getElementById('paymentAddressText');
     const paymentQrSection = document.getElementById('paymentQrSection');
     
     let selectedPlan = 'lifetime';
     let licenseData = null;
-    let currentPaymentMethod = 'alipay';
+    let currentPaymentMethod = null;
     let currentCurrency = 'usd';
     
     const translations = {
@@ -1976,6 +1971,22 @@
       });
     });
     
+    let selectedPlanAmount = 12;
+    
+    document.querySelectorAll('.plan-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.plan-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        selectedPlanAmount = parseInt(btn.dataset.plan);
+      });
+    });
+    
+    const copyToClipboard = (text) => {
+      navigator.clipboard.writeText(text).then(() => {
+        addMessage('Copied to clipboard!', 'success');
+      });
+    };
+    
     document.querySelectorAll('[data-method]').forEach(btn => {
       btn.addEventListener('click', async () => {
         const method = btn.dataset.method;
@@ -1994,31 +2005,37 @@
         completeBtn.style.cursor = 'pointer';
         
         const prices = await window.api.getLicensePrices();
+        const qrContent = document.getElementById('paymentQrContent');
         
         if (method === 'alipay') {
-          paymentQrImage.src = 'assets/alipay-qr.jpg';
-          paymentQrImage.style.display = 'block';
-          paymentAddressText.style.display = 'none';
+          qrContent.innerHTML = `
+            <p style="font-size:12px;color:#888;margin-bottom:10px;">Scan with Alipay</p>
+            <img src="assets/alipay-qr.jpg" style="max-width:150px;max-height:150px;border-radius:8px;display:block;margin:0 auto;">
+          `;
         } else if (method === 'btc') {
-          paymentQrImage.src = 'assets/btc-qr.png';
-          paymentQrImage.style.display = 'block';
-          paymentAddressText.textContent = prices.btc_address || 'bc1qym7whe3q3puupxg475ds6kyusl7g6wn7ewa9jn';
-          paymentAddressText.style.display = 'block';
-        } else if (method === 'wise') {
-          paymentQrImage.style.display = 'none';
-          paymentAddressText.innerHTML = 'Wise: support@coffeeclaw.app<br><small style="color:#666;">Or contact for bank details</small>';
-          paymentAddressText.style.display = 'block';
+          const btcAddr = prices.btc_address || 'bc1qym7whe3q3puupxg475ds6kyusl7g6wn7ewa9jn';
+          qrContent.innerHTML = `
+            <p style="font-size:12px;color:#888;margin-bottom:10px;">Bitcoin Address:</p>
+            <img src="assets/btc-qr.png" style="max-width:120px;max-height:120px;border-radius:8px;display:block;margin:0 auto 10px;">
+            <div style="display:flex;align-items:center;gap:8px;justify-content:center;">
+              <code style="font-size:10px;word-break:break-all;color:#eee;background:#0f3460;padding:5px 8px;border-radius:4px;max-width:200px;">${btcAddr}</code>
+              <button onclick="navigator.clipboard.writeText('${btcAddr}').then(()=>addMessage('Copied!','success'))" style="padding:5px 10px;background:#0f3460;color:#eee;border:none;border-radius:4px;cursor:pointer;font-size:11px;">Copy</button>
+            </div>
+          `;
         } else if (method === 'paypal') {
-          paymentQrImage.style.display = 'none';
-          paymentAddressText.innerHTML = 'PayPal: abbeychan0214@gmail.com<br><small style="color:#666;">Can link to your bank account</small>';
-          paymentAddressText.style.display = 'block';
+          qrContent.innerHTML = `
+            <p style="font-size:12px;color:#888;margin-bottom:10px;">Send payment to:</p>
+            <div style="display:flex;align-items:center;gap:8px;justify-content:center;">
+              <code style="font-size:14px;color:#eee;background:#0f3460;padding:8px 12px;border-radius:4px;">abbeychan0214@gmail.com</code>
+              <button onclick="navigator.clipboard.writeText('abbeychan0214@gmail.com').then(()=>addMessage('Copied!','success'))" style="padding:8px 12px;background:#0f3460;color:#eee;border:none;border-radius:4px;cursor:pointer;font-size:12px;">Copy</button>
+            </div>
+          `;
         }
       });
     });
     
     document.getElementById('paymentCompleteBtn').addEventListener('click', async () => {
-      const selectedRadio = document.querySelector('input[name="paymentAmount"]:checked');
-      let amount = parseFloat(selectedRadio.value);
+      let amount = selectedPlanAmount;
       
       if (amount <= 0) {
         alert('Please enter a payment amount');
