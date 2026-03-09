@@ -125,6 +125,15 @@
     },
     openExternal: function(url) {
       return ipcRenderer.invoke('open-external', url);
+    },
+    callOpenClawAgent: function(sessionId, message) {
+      return ipcRenderer.invoke('call-openclaw-agent', sessionId, message);
+    },
+    getAgentSession: function(sessionId) {
+      return ipcRenderer.invoke('get-agent-session', sessionId);
+    },
+    listAgentSessions: function() {
+      return ipcRenderer.invoke('list-agent-sessions');
     }
   });
 

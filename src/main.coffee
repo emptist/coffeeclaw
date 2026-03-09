@@ -21,6 +21,7 @@ settingsFile = path.join secreteDir, 'settings.json'
 sessionsFile = path.join secreteDir, 'sessions.json'
 botsFile = path.join secreteDir, 'bots.json'
 licenseFile = path.join secreteDir, 'license.json'
+agentSessionsFile = path.join secreteDir, 'agent-sessions.json'
 
 USD_TO_CNY = 6
 
@@ -318,7 +319,53 @@ createSession = ->
   saveSession sessionId, session
   session
 
+loadAgentSessions = ->
+  try
+    if fs.existsSync agentSessionsFile
+      data = fs.readFileSync agentSessionsFile, 'utf8'
+      return JSON.parse data
+  catch e
+    console.error 'Error loading agent sessions:', e
+  {}
+
+saveAgentSessions = (sessions) ->
+  try
+    fs.mkdirSync secreteDir, { recursive: true }
+    fs.writeFileSync agentSessionsFile, JSON.stringify(sessions, null, 2)
+  catch e
+    console.error 'Error saving agent sessions:', e
+
+getAgentSession = (sessionId) ->
+  sessions = loadAgentSessions()
+  sessions[sessionId] or { id: sessionId, messages: [], openclawSessionId: sessionId, createdAt: Date.now() }
+
+addToAgentSession = (sessionId, role, content) ->
+  sessions = loadAgentSessions()
+  session = sessions[sessionId] or { id: sessionId, messages: [], openclawSessionId: sessionId }
+  session.messages.push
+    role: role
+    content: content
+    timestamp: Date.now()
+    source: 'openclaw-agent'
+  if not session.title and role == 'user'
+    session.title = content.substring(0, 50)
+  unless session.createdAt
+    session.createdAt = Date.now()
+  session.updatedAt = Date.now()
+  sessions[sessionId] = session
+  saveAgentSessions sessions
+  session
+
 BOT_TEMPLATES = [
+  {
+    id: 'openclaw-agent'
+    name: 'OpenClaw Agent'
+    description: 'Direct channel to OpenClaw Agent with full development tools'
+    model: 'openclaw-agent'
+    systemPrompt: 'You are the OpenClaw Agent, a powerful AI assistant with access to development tools, file system, and code analysis capabilities.'
+    skills: ['*']
+    isAgent: true
+  }
   {
     id: 'code-helper'
     name: 'Code Helper'
@@ -397,6 +444,8 @@ createBot = (botConfig) ->
     skills: botConfig.skills or ['*']
     enabled: true
     createdAt: new Date().toISOString()
+  if botConfig.isAgent
+    newBot.isAgent = true
   botsData.bots.push newBot
   saveBots botsData
   newBot
@@ -786,7 +835,33 @@ MODELS =
     baseUrl: 'api.deepseek.com'
     apiPath: '/v1/chat/completions'
 
+callOpenClawAgent = (sessionId, message) ->
+  new Promise (resolve, reject) ->
+    cmd = "openclaw agent --local --session-id \"#{sessionId}\" --message #{JSON.stringify(message)} --json 2>/dev/null"
+    exec cmd, { maxBuffer: 1024 * 1024 * 10 }, (err, stdout, stderr) ->
+      if err
+        console.error 'OpenClaw Agent error:', err
+        reject new Error(err.message)
+        return
+      try
+        result = JSON.parse stdout
+        payloads = result?.result?.payloads or []
+        text = ''
+        for p in payloads
+          if p.type == 'text' or p.text
+            text += p.text or p.content or ''
+        if not text and result?.result?.meta?.agentMeta
+          text = 'Response received (check session for details)'
+        resolve text or 'No response'
+      catch e
+        resolve stdout.trim() or 'Response received'
+
 callAPI = (sessionId, message, settings, bot = null) ->
+  model = bot?.model or settings.model or 'glm-4-flash'
+  
+  if model == 'openclaw-agent' or bot?.isAgent
+    return await callOpenClawAgent(sessionId, message)
+  
   new Promise (resolve, reject) ->
     provider = settings.activeProvider or settings.provider or 'zhipu'
     
@@ -955,9 +1030,16 @@ sendToOpenClaw = (sessionId, message) ->
     throw new Error 'No API key configured'
   
   bot = getActiveBot()
-  addToSession sessionId, 'user', message
-  response = await callAPI sessionId, message, settings, bot
-  addToSession sessionId, 'assistant', response
+  isAgent = bot?.isAgent or bot?.model == 'openclaw-agent'
+  
+  if isAgent
+    addToAgentSession sessionId, 'user', message
+    response = await callAPI sessionId, message, settings, bot
+    addToAgentSession sessionId, 'assistant', response
+  else
+    addToSession sessionId, 'user', message
+    response = await callAPI sessionId, message, settings, bot
+    addToSession sessionId, 'assistant', response
   response
 
 mainWindow = null
@@ -1140,6 +1222,12 @@ ipcMain.handle 'list-sessions', ->
 ipcMain.handle 'delete-session', (event, sessionId) ->
   deleteSession sessionId
   true
+
+ipcMain.handle 'get-agent-session', (event, sessionId) ->
+  getAgentSession sessionId
+
+ipcMain.handle 'list-agent-sessions', ->
+  loadAgentSessions()
 
 ipcMain.handle 'get-history', ->
   listSessions()
@@ -1407,3 +1495,10 @@ ipcMain.handle 'save-api-key', (event, apiKey) ->
     createAgentConfig apiKey
   
   true
+
+ipcMain.handle 'call-openclaw-agent', (event, sessionId, message) ->
+  try
+    result = await callOpenClawAgent sessionId, message
+    return result
+  catch e
+    throw e.message or e

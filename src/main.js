@@ -2,7 +2,7 @@
 (function() {
   // CoffeeClaw - Main Process
   // Auto-configures OpenClaw on first run
-  var BOT_TEMPLATES, BrowserWindow, INITIAL_BALANCE_CNY, INITIAL_BALANCE_USD, LICENSE_PRICES, MAX_HISTORY, MAX_SESSIONS, MODELS, SKILLS, USD_TO_CNY, addToSession, agentDir, agentMdFile, agentModelsFile, app, backupSettings, botsFile, callAPI, callAPIWithMessages, checkNodeInstalled, checkNpmInstalled, checkOpenClaw, checkOpenClawInstalled, checkOpenClawPromise, checkWSLInstalled, configExists, configFile, configureFeishu, createAgentConfig, createBot, createDefaultConfig, createIdentity, createSession, createWindow, crypto, deleteBot, deleteSession, detectExistingFeishuConfig, exec, executeSkillFunction, exportAllSettings, fs, generateId, generateToken, getActiveBot, getBackupData, getBot, getBotTemplates, getLicenseStatus, getPlatform, getSession, getSkillFunctions, http, https, identityFile, importAllSettings, initLicense, installOpenClaw, ipcMain, isConfigured, isMac, isWindows, licenseFile, listSessions, listSettingsBackups, loadBots, loadLicense, loadSessions, loadSettings, mainWindow, openclawDir, path, restoreSettings, saveBots, saveLicense, saveSession, saveSessions, saveSettings, secreteDir, sendToOpenClaw, sessionsFile, setActiveBot, settingsFile, shell, spawn, startOpenClaw, syncFeishuConfigToOpenClaw, syncFeishuConfigToSettings, updateBot, workspaceDir;
+  var BOT_TEMPLATES, BrowserWindow, INITIAL_BALANCE_CNY, INITIAL_BALANCE_USD, LICENSE_PRICES, MAX_HISTORY, MAX_SESSIONS, MODELS, SKILLS, USD_TO_CNY, addToAgentSession, addToSession, agentDir, agentMdFile, agentModelsFile, agentSessionsFile, app, backupSettings, botsFile, callAPI, callAPIWithMessages, callOpenClawAgent, checkNodeInstalled, checkNpmInstalled, checkOpenClaw, checkOpenClawInstalled, checkOpenClawPromise, checkWSLInstalled, configExists, configFile, configureFeishu, createAgentConfig, createBot, createDefaultConfig, createIdentity, createSession, createWindow, crypto, deleteBot, deleteSession, detectExistingFeishuConfig, exec, executeSkillFunction, exportAllSettings, fs, generateId, generateToken, getActiveBot, getAgentSession, getBackupData, getBot, getBotTemplates, getLicenseStatus, getPlatform, getSession, getSkillFunctions, http, https, identityFile, importAllSettings, initLicense, installOpenClaw, ipcMain, isConfigured, isMac, isWindows, licenseFile, listSessions, listSettingsBackups, loadAgentSessions, loadBots, loadLicense, loadSessions, loadSettings, mainWindow, openclawDir, path, restoreSettings, saveAgentSessions, saveBots, saveLicense, saveSession, saveSessions, saveSettings, secreteDir, sendToOpenClaw, sessionsFile, setActiveBot, settingsFile, shell, spawn, startOpenClaw, syncFeishuConfigToOpenClaw, syncFeishuConfigToSettings, updateBot, workspaceDir;
 
   ({app, BrowserWindow, ipcMain, shell} = require('electron'));
 
@@ -41,6 +41,8 @@
   botsFile = path.join(secreteDir, 'bots.json');
 
   licenseFile = path.join(secreteDir, 'license.json');
+
+  agentSessionsFile = path.join(secreteDir, 'agent-sessions.json');
 
   USD_TO_CNY = 6;
 
@@ -431,7 +433,80 @@
     return session;
   };
 
+  loadAgentSessions = function() {
+    var data, e;
+    try {
+      if (fs.existsSync(agentSessionsFile)) {
+        data = fs.readFileSync(agentSessionsFile, 'utf8');
+        return JSON.parse(data);
+      }
+    } catch (error) {
+      e = error;
+      console.error('Error loading agent sessions:', e);
+    }
+    return {};
+  };
+
+  saveAgentSessions = function(sessions) {
+    var e;
+    try {
+      fs.mkdirSync(secreteDir, {
+        recursive: true
+      });
+      return fs.writeFileSync(agentSessionsFile, JSON.stringify(sessions, null, 2));
+    } catch (error) {
+      e = error;
+      return console.error('Error saving agent sessions:', e);
+    }
+  };
+
+  getAgentSession = function(sessionId) {
+    var sessions;
+    sessions = loadAgentSessions();
+    return sessions[sessionId] || {
+      id: sessionId,
+      messages: [],
+      openclawSessionId: sessionId,
+      createdAt: Date.now()
+    };
+  };
+
+  addToAgentSession = function(sessionId, role, content) {
+    var session, sessions;
+    sessions = loadAgentSessions();
+    session = sessions[sessionId] || {
+      id: sessionId,
+      messages: [],
+      openclawSessionId: sessionId
+    };
+    session.messages.push({
+      role: role,
+      content: content,
+      timestamp: Date.now(),
+      source: 'openclaw-agent'
+    });
+    if (!session.title && role === 'user') {
+      session.title = content.substring(0, 50);
+    }
+    if (!session.createdAt) {
+      session.createdAt = Date.now();
+    }
+    session.updatedAt = Date.now();
+    sessions[sessionId] = session;
+    saveAgentSessions(sessions);
+    return session;
+  };
+
   BOT_TEMPLATES = [
+    {
+      id: 'openclaw-agent',
+      name: 'OpenClaw Agent',
+      description: 'Direct channel to OpenClaw Agent with full development tools',
+      model: 'openclaw-agent',
+      systemPrompt: 'You are the OpenClaw Agent, a powerful AI assistant with access to development tools, file system, and code analysis capabilities.',
+      skills: ['*'],
+      isAgent: true
+    },
     {
       id: 'code-helper',
       name: 'Code Helper',
@@ -540,6 +615,9 @@
       enabled: true,
       createdAt: new Date().toISOString()
     };
+    if (botConfig.isAgent) {
+      newBot.isAgent = true;
+    }
     botsData.bots.push(newBot);
     saveBots(botsData);
     return newBot;
@@ -1197,9 +1275,49 @@ You are a helpful AI assistant running on the user's local machine. You are powe
     }
   };
 
-  callAPI = function(sessionId, message, settings, bot = null) {
+  callOpenClawAgent = function(sessionId, message) {
     return new Promise(function(resolve, reject) {
-      var apiKey, config, functions, j, len, messages, model, msg, options, postData, provider, providerConfig, ref, req, session, systemPrompt;
+      var cmd;
+      cmd = `openclaw agent --local --session-id \"${sessionId}\" --message ${JSON.stringify(message)} --json 2>/dev/null`;
+      return exec(cmd, {
+        maxBuffer: 1024 * 1024 * 10
+      }, function(err, stdout, stderr) {
+        var e, j, len, p, payloads, ref, ref1, ref2, result, text;
+        if (err) {
+          console.error('OpenClaw Agent error:', err);
+          reject(new Error(err.message));
+          return;
+        }
+        try {
+          result = JSON.parse(stdout);
+          payloads = (result != null ? (ref = result.result) != null ? ref.payloads : void 0 : void 0) || [];
+          text = '';
+          for (j = 0, len = payloads.length; j < len; j++) {
+            p = payloads[j];
+            if (p.type === 'text' || p.text) {
+              text += p.text || p.content || '';
+            }
+          }
+          if (!text && (result != null ? (ref1 = result.result) != null ? (ref2 = ref1.meta) != null ? ref2.agentMeta : void 0 : void 0 : void 0)) {
+            text = 'Response received (check session for details)';
+          }
+          return resolve(text || 'No response');
+        } catch (error) {
+          e = error;
+          return resolve(stdout.trim() || 'Response received');
+        }
+      });
+    });
+  };
+
+  callAPI = async function(sessionId, message, settings, bot = null) {
+    var model;
+    model = (bot != null ? bot.model : void 0) || settings.model || 'glm-4-flash';
+    if (model === 'openclaw-agent' || (bot != null ? bot.isAgent : void 0)) {
+      return (await callOpenClawAgent(sessionId, message));
+    }
+    return new Promise(function(resolve, reject) {
+      var apiKey, config, functions, j, len, messages, msg, options, postData, provider, providerConfig, ref, req, session, systemPrompt;
       provider = settings.activeProvider || settings.provider || 'zhipu';
       if (settings.providers && settings.providers[provider]) {
         providerConfig = settings.providers[provider];
@@ -1393,16 +1511,23 @@ You are a helpful AI assistant running on the user's local machine. You are powe
   };
 
   sendToOpenClaw = async function(sessionId, message) {
-    var apiKey, bot, response, settings;
+    var apiKey, bot, isAgent, response, settings;
     settings = loadSettings();
     apiKey = settings.apiKey;
     if (!apiKey) {
       throw new Error('No API key configured');
     }
     bot = getActiveBot();
-    addToSession(sessionId, 'user', message);
-    response = (await callAPI(sessionId, message, settings, bot));
-    addToSession(sessionId, 'assistant', response);
+    isAgent = (bot != null ? bot.isAgent : void 0) || (bot != null ? bot.model : void 0) === 'openclaw-agent';
+    if (isAgent) {
+      addToAgentSession(sessionId, 'user', message);
+      response = (await callAPI(sessionId, message, settings, bot));
+      addToAgentSession(sessionId, 'assistant', response);
+    } else {
+      addToSession(sessionId, 'user', message);
+      response = (await callAPI(sessionId, message, settings, bot));
+      addToSession(sessionId, 'assistant', response);
+    }
     return response;
   };
 
@@ -1707,6 +1832,14 @@ You are a helpful AI assistant running on the user's local machine. You are powe
   ipcMain.handle('delete-session', function(event, sessionId) {
     deleteSession(sessionId);
     return true;
+  });
+
+  ipcMain.handle('get-agent-session', function(event, sessionId) {
+    return getAgentSession(sessionId);
+  });
+
+  ipcMain.handle('list-agent-sessions', function() {
+    return loadAgentSessions();
   });
 
   ipcMain.handle('get-history', function() {
@@ -2080,6 +2213,17 @@ You are a helpful AI assistant running on the user's local machine. You are powe
       createAgentConfig(apiKey);
     }
     return true;
+  });
+
+  ipcMain.handle('call-openclaw-agent', async function(event, sessionId, message) {
+    var e, result;
+    try {
+      result = (await callOpenClawAgent(sessionId, message));
+      return result;
+    } catch (error) {
+      e = error;
+      throw e.message || e;
+    }
   });
 
 }).call(this);

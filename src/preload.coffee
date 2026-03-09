@@ -42,3 +42,6 @@ contextBridge.exposeInMainWorld 'api',
   exportAllSettings: -> ipcRenderer.invoke 'export-all-settings'
   importAllSettings: (data, options) -> ipcRenderer.invoke 'import-all-settings', data, options
   openExternal: (url) -> ipcRenderer.invoke 'open-external', url
+  callOpenClawAgent: (sessionId, message) -> ipcRenderer.invoke 'call-openclaw-agent', sessionId, message
+  getAgentSession: (sessionId) -> ipcRenderer.invoke 'get-agent-session', sessionId
+  listAgentSessions: -> ipcRenderer.invoke 'list-agent-sessions'
