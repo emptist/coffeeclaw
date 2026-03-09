@@ -645,6 +645,15 @@
         </div>
       </div>
       
+      <div id="stepBackup" class="hidden">
+        <h2>💾 Backup Found</h2>
+        <p style="font-size:13px;color:#888;margin-bottom:15px;">Configuration backup detected. Would you like to restore it?</p>
+        <div class="btn-group">
+          <button id="restoreBackupBtn">Restore Backup</button>
+          <button class="btn-secondary" id="skipRestoreBtn">New Setup</button>
+        </div>
+      </div>
+      
       <div id="step1" class="hidden">
         <h2>📋 System Check</h2>
         <div id="systemCheckList" style="margin:15px 0;"></div>
@@ -1285,6 +1294,11 @@
       
       if (!status.hasApiKey) {
         setupOverlay.classList.remove('hidden');
+        const hasBackup = await window.api.hasBackup();
+        if (hasBackup) {
+          document.getElementById('step0').classList.add('hidden');
+          document.getElementById('stepBackup').classList.remove('hidden');
+        }
       } else if (!status.running && !status.configured) {
         setupOverlay.classList.remove('hidden');
       }
@@ -1306,6 +1320,21 @@
       document.getElementById('dot1').classList.add('done');
       document.getElementById('dot2').classList.add('active');
       await checkPrerequisites();
+    });
+    
+    document.getElementById('restoreBackupBtn').addEventListener('click', async () => {
+      const backups = await window.api.listBackups();
+      if (backups && backups.length > 0) {
+        const result = await window.api.restoreBackup(backups[0].name, { settings: true, sessions: true, bots: true, license: true });
+        if (result) {
+          location.reload();
+        }
+      }
+    });
+    
+    document.getElementById('skipRestoreBtn').addEventListener('click', () => {
+      document.getElementById('stepBackup').classList.add('hidden');
+      document.getElementById('step0').classList.remove('hidden');
     });
     
     async function checkPrerequisites() {

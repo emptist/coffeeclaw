@@ -15,6 +15,9 @@
     checkPrerequisites: function() {
       return ipcRenderer.invoke('check-prerequisites');
     },
+    hasBackup: function() {
+      return ipcRenderer.invoke('has-backup');
+    },
     runSetup: function(apiKey) {
       return ipcRenderer.invoke('run-setup', apiKey);
     },

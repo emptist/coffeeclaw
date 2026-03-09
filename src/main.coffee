@@ -1020,6 +1020,15 @@ ipcMain.handle 'check-prerequisites', ->
   openclawInstalled: await checkOpenClawInstalled()
   wslInstalled: if isWindows then await checkWSLInstalled() else false
 
+ipcMain.handle 'has-backup', ->
+  try
+    if fs.existsSync settingsFile
+      return false
+    files = fs.readdirSync(secreteDir).filter (f) -> f.startsWith('backup.') and f.endsWith('.json')
+    return files.length > 0
+  catch
+    false
+
 ipcMain.handle 'create-session', ->
   createSession()
 

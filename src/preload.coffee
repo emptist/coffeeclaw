@@ -5,6 +5,7 @@ contextBridge.exposeInMainWorld 'api',
   sendMessage: (sessionId, message) -> ipcRenderer.invoke 'send-message', sessionId, message
   checkStatus: -> ipcRenderer.invoke 'check-status'
   checkPrerequisites: -> ipcRenderer.invoke 'check-prerequisites'
+  hasBackup: -> ipcRenderer.invoke 'has-backup'
   runSetup: (apiKey) -> ipcRenderer.invoke 'run-setup', apiKey
   getSettings: -> ipcRenderer.invoke 'get-settings'
   saveSettings: (settings) -> ipcRenderer.invoke 'save-settings', settings

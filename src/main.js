@@ -1491,6 +1491,21 @@ You are a helpful AI assistant running on the user's local machine. You are powe
     };
   });
 
+  ipcMain.handle('has-backup', function() {
+    var files;
+    try {
+      if (fs.existsSync(settingsFile)) {
+        return false;
+      }
+      files = fs.readdirSync(secreteDir).filter(function(f) {
+        return f.startsWith('backup.') && f.endsWith('.json');
+      });
+      return files.length > 0;
+    } catch (error) {
+      return false;
+    }
+  });
+
   ipcMain.handle('create-session', function() {
     return createSession();
   });
