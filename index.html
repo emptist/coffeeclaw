@@ -728,6 +728,7 @@
       
       <label>Model:</label>
       <select id="botModelSelect">
+        <option value="openclaw-agent">OpenClaw Agent (Direct)</option>
         <option value="glm-4-flash">GLM-4-Flash (Fast)</option>
         <option value="glm-4-plus">GLM-4-Plus</option>
         <option value="glm-4-air">GLM-4-Air</option>
@@ -1618,6 +1619,7 @@
       document.getElementById('botPromptInput').value = template.systemPrompt;
       document.getElementById('botSkillsInput').value = template.skills.join(', ');
       document.getElementById('templateSection').style.display = 'none';
+      window.currentTemplateIsAgent = template.isAgent || false;
     }
     
     document.getElementById('addBotBtn').addEventListener('click', async () => {
@@ -1877,12 +1879,13 @@
       }
       
       const skills = skillsInput.split(',').map(s => s.trim()).filter(s => s);
+      const isAgent = model === 'openclaw-agent' || window.currentTemplateIsAgent;
       
       try {
         if (currentEditingBotId) {
-          await window.api.updateBot(currentEditingBotId, { name, description, model, systemPrompt, skills });
+          await window.api.updateBot(currentEditingBotId, { name, description, model, systemPrompt, skills, isAgent });
         } else {
-          await window.api.createBot({ name, description, model, systemPrompt, skills });
+          await window.api.createBot({ name, description, model, systemPrompt, skills, isAgent });
         }
         
         document.getElementById('botEditorModal').style.display = 'none';
