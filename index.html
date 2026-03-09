@@ -634,32 +634,23 @@
         <div class="step-dot" id="dot2"></div>
         <div class="step-dot" id="dot3"></div>
         <div class="step-dot" id="dot4"></div>
-        <div class="step-dot" id="dot5"></div>
       </div>
       
       <div id="step0">
         <h2>☕ Welcome to CoffeeClaw</h2>
         <p>Let's check your system and set everything up. This will only take a minute.</p>
+        
+        <div style="background:#0f3460;padding:15px;border-radius:8px;margin:15px 0;">
+          <label style="font-size:13px;">Email (optional, for updates):</label>
+          <input type="email" id="setupEmailInput" placeholder="your@email.com" style="margin-top:8px;">
+        </div>
+        
         <div class="btn-group">
           <button id="checkSystemBtn">Check System</button>
         </div>
       </div>
       
       <div id="step1" class="hidden">
-        <h2>👤 User Registration</h2>
-        <p style="font-size:13px;color:#888;margin-bottom:15px;">
-          Enter your email for updates and support.
-        </p>
-        
-        <label>Email (optional):</label>
-        <input type="email" id="setupEmailInput" placeholder="your@email.com">
-        
-        <div class="btn-group">
-          <button id="continueToCheckBtn">Continue</button>
-        </div>
-      </div>
-      
-      <div id="step2" class="hidden">
         <h2>📋 System Check</h2>
         <div id="systemCheckList" style="margin:15px 0;"></div>
         <div id="manualSteps" class="hidden" style="background:#0f3460;padding:15px;border-radius:8px;margin:15px 0;font-size:13px;line-height:1.8;"></div>
@@ -669,7 +660,7 @@
         </div>
       </div>
       
-      <div id="step3" class="hidden">
+      <div id="step2" class="hidden">
         <h2>🔑 API Configuration</h2>
         <p style="font-size:13px;color:#888;margin-bottom:15px;">
           Choose your AI provider and enter API key. 
@@ -697,7 +688,7 @@
         </div>
       </div>
       
-      <div id="step4" class="hidden">
+      <div id="step3" class="hidden">
         <h2>⚙️ Setting Up</h2>
         <p>Configuring CoffeeClaw...</p>
         <div class="progress-bar">
@@ -706,7 +697,7 @@
         <p class="progress-text" id="progressText">Initializing...</p>
       </div>
       
-      <div id="step5" class="hidden">
+      <div id="step4" class="hidden">
         <h2>✅ Ready!</h2>
         <p>CoffeeClaw is now configured and ready to use. You can start chatting!</p>
         <div class="btn-group">
@@ -1319,13 +1310,6 @@
     let prereqResult = null;
     
     document.getElementById('checkSystemBtn').addEventListener('click', async () => {
-      document.getElementById('step0').classList.add('hidden');
-      document.getElementById('step1').classList.remove('hidden');
-      document.getElementById('dot1').classList.add('done');
-      document.getElementById('dot2').classList.add('active');
-    });
-    
-    document.getElementById('continueToCheckBtn').addEventListener('click', async () => {
       const email = document.getElementById('setupEmailInput').value.trim();
       if (email) {
         const settings = await window.api.getSettings();
@@ -1333,10 +1317,10 @@
         await window.api.saveSettings(settings);
       }
       
-      document.getElementById('step1').classList.add('hidden');
-      document.getElementById('step2').classList.remove('hidden');
-      document.getElementById('dot2').classList.add('done');
-      document.getElementById('dot3').classList.add('active');
+      document.getElementById('step0').classList.add('hidden');
+      document.getElementById('step1').classList.remove('hidden');
+      document.getElementById('dot1').classList.add('done');
+      document.getElementById('dot2').classList.add('active');
       await checkPrerequisites();
     });
     
@@ -1500,10 +1484,10 @@
     });
     
     document.getElementById('continueBtn').addEventListener('click', async () => {
-      document.getElementById('step2').classList.add('hidden');
-      document.getElementById('step3').classList.remove('hidden');
-      document.getElementById('dot3').classList.add('done');
-      document.getElementById('dot4').classList.add('active');
+      document.getElementById('step1').classList.add('hidden');
+      document.getElementById('step2').classList.remove('hidden');
+      document.getElementById('dot2').classList.add('done');
+      document.getElementById('dot3').classList.add('active');
       await loadModels();
     });
     
@@ -1527,10 +1511,10 @@
     });
     
     async function startInstallation(apiKey) {
-      document.getElementById('step3').classList.add('hidden');
-      document.getElementById('step4').classList.remove('hidden');
-      document.getElementById('dot4').classList.add('done');
-      document.getElementById('dot5').classList.add('active');
+      document.getElementById('step2').classList.add('hidden');
+      document.getElementById('step3').classList.remove('hidden');
+      document.getElementById('dot3').classList.add('done');
+      document.getElementById('dot4').classList.add('active');
       
       const progressBar = document.getElementById('progressBar');
       const progressText = document.getElementById('progressText');
@@ -1559,8 +1543,8 @@
         
         await new Promise(r => setTimeout(r, 500));
         
-        document.getElementById('step4').classList.add('hidden');
-        document.getElementById('step5').classList.remove('hidden');
+        document.getElementById('step3').classList.add('hidden');
+        document.getElementById('step4').classList.remove('hidden');
         
       } catch (e) {
         progressText.textContent = 'Error: ' + e.message;
