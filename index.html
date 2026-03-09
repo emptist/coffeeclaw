@@ -627,6 +627,7 @@
         <button id="newSessionBtn" title="New Chat / 新对话 / Nova Babilado" style="background:#0f3460;padding:12px 14px;font-size:16px;">➕</button>
         <input type="text" id="messageInput" placeholder="Type your message..." autofocus>
         <button id="sendButton">Send</button>
+        <button id="exportSessionBtn" title="Export Session / 导出会话 / Eksporti Seancon" style="background:#0f3460;padding:12px 14px;font-size:16px;">📤</button>
       </div>
     </div>
   </div>
@@ -1195,6 +1196,40 @@
     sendButton.addEventListener('click', sendMessage);
     messageInput.addEventListener('keypress', (e) => {
       if (e.key === 'Enter') sendMessage();
+    });
+
+    document.getElementById('exportSessionBtn').addEventListener('click', async () => {
+      if (!currentSessionId) {
+        addMessage(translations[currentLang].noSession || 'No active session', 'error');
+        return;
+      }
+      const data = await window.api.getSession(currentSessionId);
+      const json = JSON.stringify(data, null, 2);
+      const blob = new Blob([json], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      const date = new Date().toISOString().slice(0, 10);
+      a.href = url;
+      a.download = `session-${currentSessionId}-${date}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+      addMessage(translations[currentLang].exportSuccess || 'Session exported!', 'success');
+    });
+
+    document.addEventListener('keydown', (e) => {
+      const isInputFocused = document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA';
+      if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+        e.preventDefault();
+        sendMessage();
+      } else if ((e.metaKey || e.ctrlKey) && e.key === 'n' && !isInputFocused) {
+        e.preventDefault();
+        document.getElementById('newSessionBtn').click();
+      } else if (e.key === 'Escape') {
+        const settingsPanel = document.getElementById('settingsPanel');
+        if (settingsPanel && !settingsPanel.classList.contains('hidden')) {
+          closeSettings();
+        }
+      }
     });
     
     async function loadSessionList() {
