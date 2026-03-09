@@ -637,18 +637,18 @@
         <div class="step-dot" id="dot5"></div>
       </div>
       
+      <div id="stepBackup" class="hidden">
+        <h2>💾 Backup Found</h2>
+        <p style="font-size:13px;color:#888;margin-bottom:15px;">Configuration backup detected. Would you like to restore it?</p>
+        <div class="btn-group">
+          <button id="restoreBackupBtn">Restore Backup</button>
+          <button class="btn-secondary" id="skipRestoreBtn">New Setup</button>
+        </div>
+      </div>
+      
       <div id="step0">
         <h2>☕ Welcome to CoffeeClaw</h2>
         <p>Let's check your system and set everything up. This will only take a minute.</p>
-        
-        <div id="stepBackup" style="background:#0f3460;padding:15px;border-radius:8px;margin:15px 0;">
-          <p style="font-size:13px;margin-bottom:10px;">💾 Backup found. Would you like to restore it?</p>
-          <div class="btn-group" style="margin-top:0;">
-            <button id="restoreBackupBtn">Restore Backup</button>
-            <button class="btn-secondary" id="skipRestoreBtn">New Setup</button>
-          </div>
-        </div>
-        
         <div class="btn-group">
           <button id="checkSystemBtn">Check System</button>
         </div>
@@ -1295,7 +1295,10 @@
       if (!status.hasApiKey) {
         setupOverlay.classList.remove('hidden');
         const hasBackup = await window.api.hasBackup();
-        document.getElementById('stepBackup').style.display = hasBackup ? 'block' : 'none';
+        if (hasBackup) {
+          document.getElementById('step0').classList.add('hidden');
+          document.getElementById('stepBackup').classList.remove('hidden');
+        }
       } else if (!status.running && !status.configured) {
         setupOverlay.classList.remove('hidden');
       }
@@ -1330,7 +1333,8 @@
     });
     
     document.getElementById('skipRestoreBtn').addEventListener('click', () => {
-      document.getElementById('stepBackup').style.display = 'none';
+      document.getElementById('stepBackup').classList.add('hidden');
+      document.getElementById('step0').classList.remove('hidden');
     });
     
     async function checkPrerequisites() {
