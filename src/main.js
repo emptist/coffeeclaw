@@ -2440,4 +2440,28 @@ You are a helpful AI assistant running on the user's local machine. You are powe
     }
   });
 
+  ipcMain.handle('run-local-command', function(event, command, cwd) {
+    return new Promise(function(resolve, reject) {
+      return exec(command, {
+        cwd: cwd || process.cwd(),
+        maxBuffer: 1024 * 1024
+      }, function(err, stdout, stderr) {
+        if (err) {
+          return resolve({
+            success: false,
+            error: err.message,
+            stdout: stdout,
+            stderr: stderr
+          });
+        } else {
+          return resolve({
+            success: true,
+            stdout: stdout,
+            stderr: stderr
+          });
+        }
+      });
+    });
+  });
+
 }).call(this);

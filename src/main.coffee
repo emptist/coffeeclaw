@@ -1655,3 +1655,11 @@ ipcMain.handle 'call-openclaw-agent', (event, sessionId, message) ->
     return result
   catch e
     throw e.message or e
+
+ipcMain.handle 'run-local-command', (event, command, cwd) ->
+  new Promise (resolve, reject) ->
+    exec command, { cwd: cwd or process.cwd(), maxBuffer: 1024 * 1024 }, (err, stdout, stderr) ->
+      if err
+        resolve { success: false, error: err.message, stdout: stdout, stderr: stderr }
+      else
+        resolve { success: true, stdout: stdout, stderr: stderr }

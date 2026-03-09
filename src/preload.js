@@ -131,6 +131,9 @@
     },
     listAgentSessions: function() {
       return ipcRenderer.invoke('list-agent-sessions');
+    },
+    runLocalCommand: function(command, cwd) {
+      return ipcRenderer.invoke('run-local-command', command, cwd);
     }
   });
 

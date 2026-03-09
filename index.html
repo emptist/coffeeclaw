@@ -593,6 +593,7 @@
       <div class="header">
         <button class="toggle-sidebar" id="showSidebarBtn" style="display:none;">☰</button>
         <h1><span class="title-emoji">☕</span>CoffeeClaw</h1>
+        <button id="runCommandBtn" title="Run Local Command" style="padding:5px 10px;background:#0f3460;color:#888;border:none;border-radius:4px;cursor:pointer;font-size:12px;">🖥️</button>
         <div class="bot-selector">
           <select id="botSelect" title="Select Bot">
             <option value="default">General Assistant</option>
@@ -1229,6 +1230,18 @@
         if (settingsPanel && !settingsPanel.classList.contains('hidden')) {
           closeSettings();
         }
+      }
+    });
+
+    document.getElementById('runCommandBtn').addEventListener('click', async () => {
+      const command = prompt(translations[currentLang].enterCommand || 'Enter command to run:');
+      if (!command) return;
+      addMessage(`$ ${command}`, 'user');
+      const result = await window.api.runLocalCommand(command);
+      if (result.success) {
+        addMessage(result.stdout || '(no output)', 'bot');
+      } else {
+        addMessage(`Error: ${result.error}\n${result.stderr}`, 'error');
       }
     });
     

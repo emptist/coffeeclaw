@@ -44,3 +44,4 @@ contextBridge.exposeInMainWorld 'api',
   callOpenClawAgent: (sessionId, message) -> ipcRenderer.invoke 'call-openclaw-agent', sessionId, message
   getAgentSession: (sessionId) -> ipcRenderer.invoke 'get-agent-session', sessionId
   listAgentSessions: -> ipcRenderer.invoke 'list-agent-sessions'
+  runLocalCommand: (command, cwd) -> ipcRenderer.invoke 'run-local-command', command, cwd
