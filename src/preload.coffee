@@ -35,6 +35,7 @@ contextBridge.exposeInMainWorld 'api',
   getGitEmail: -> ipcRenderer.invoke 'get-git-email'
   backupSettings: -> ipcRenderer.invoke 'backup-settings'
   listBackups: -> ipcRenderer.invoke 'list-backups'
-  restoreBackup: (backupName) -> ipcRenderer.invoke 'restore-backup', backupName
+  restoreBackup: (backupName, options) -> ipcRenderer.invoke 'restore-backup', backupName, options
+  getBackupData: (backupName) -> ipcRenderer.invoke 'get-backup-data', backupName
   exportAllSettings: -> ipcRenderer.invoke 'export-all-settings'
-  importAllSettings: (data) -> ipcRenderer.invoke 'import-all-settings', data
+  importAllSettings: (data, options) -> ipcRenderer.invoke 'import-all-settings', data, options

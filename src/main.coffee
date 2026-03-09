@@ -94,27 +94,43 @@ backupSettings = ->
     console.error 'Error backing up:', e
     false
 
-restoreSettings = (backupName) ->
+restoreSettings = (backupName, options = {}) ->
   try
     backupPath = path.join secreteDir, backupName
     if fs.existsSync backupPath
       data = JSON.parse fs.readFileSync backupPath, 'utf8'
       
-      if data.settings
+      restoreSettings = if options.settings? then options.settings else true
+      restoreSessions = if options.sessions? then options.sessions else true
+      restoreBots = if options.bots? then options.bots else true
+      restoreLicense = if options.license? then options.license else true
+      
+      if data.settings and restoreSettings
         fs.writeFileSync settingsFile, JSON.stringify(data.settings, null, 2)
-      if data.sessions
+      if data.sessions and restoreSessions
         fs.writeFileSync sessionsFile, JSON.stringify(data.sessions, null, 2)
-      if data.bots
+      if data.bots and restoreBots
         fs.writeFileSync botsFile, JSON.stringify(data.bots, null, 2)
-      if data.license
+      if data.license and restoreLicense
         fs.writeFileSync licenseFile, JSON.stringify(data.license, null, 2)
       
-      console.log "Full backup restored from: #{backupName}"
+      console.log "Backup restored from: #{backupName}"
       return true
     false
   catch e
     console.error 'Error restoring backup:', e
     false
+
+getBackupData = (backupName) ->
+  try
+    backupPath = path.join secreteDir, backupName
+    if fs.existsSync backupPath
+      JSON.parse fs.readFileSync backupPath, 'utf8'
+    else
+      null
+  catch e
+    console.error 'Error reading backup:', e
+    null
 
 listSettingsBackups = ->
   try
@@ -145,15 +161,20 @@ exportAllSettings = ->
     console.error 'Error exporting settings:', e
     null
 
-importAllSettings = (data) ->
+importAllSettings = (data, options = {}) ->
   try
-    if data.settings
+    importSettings = if options.settings? then options.settings else true
+    importSessions = if options.sessions? then options.sessions else true
+    importBots = if options.bots? then options.bots else true
+    importLicense = if options.license? then options.license else true
+    
+    if data.settings and importSettings
       saveSettings data.settings
-    if data.sessions
+    if data.sessions and importSessions
       fs.writeFileSync sessionsFile, JSON.stringify(data.sessions, null, 2)
-    if data.bots
+    if data.bots and importBots
       fs.writeFileSync botsFile, JSON.stringify(data.bots, null, 2)
-    if data.license
+    if data.license and importLicense
       saveLicense data.license
     true
   catch e
@@ -1072,9 +1093,10 @@ ipcMain.handle 'import-bots', (event, data) ->
 
 ipcMain.handle 'backup-settings', -> backupSettings()
 ipcMain.handle 'list-backups', -> listSettingsBackups()
-ipcMain.handle 'restore-backup', (event, backupName) -> restoreSettings backupName
+ipcMain.handle 'restore-backup', (event, backupName, options) -> restoreSettings backupName, options
+ipcMain.handle 'get-backup-data', (event, backupName) -> getBackupData backupName
 ipcMain.handle 'export-all-settings', -> exportAllSettings()
-ipcMain.handle 'import-all-settings', (event, data) -> importAllSettings data
+ipcMain.handle 'import-all-settings', (event, data, options) -> importAllSettings data, options
 
 ipcMain.handle 'get-feishu-status', ->
   settings = loadSettings()

@@ -909,6 +909,41 @@
     </div>
   </div>
   
+  <div id="restoreSelectModal" class="setup-overlay" style="display:none;">
+    <div class="setup-card" style="max-width:400px;">
+      <h2 id="restoreSelectTitle">🔄 Select What to Restore</h2>
+      <p style="font-size:12px;color:#888;margin-bottom:15px;">Choose which parts to restore. Unchecked items will keep current values.</p>
+      
+      <div id="restoreBackupInfo" style="background:#0f3460;padding:10px;border-radius:8px;margin-bottom:15px;font-size:12px;display:none;">
+        <span style="color:#888;">From:</span> <span id="restoreBackupName"></span>
+      </div>
+      
+      <div id="restoreChoices" style="margin-bottom:15px;">
+        <label style="display:flex;align-items:center;padding:10px;background:#1a1a2e;border-radius:8px;margin-bottom:8px;cursor:pointer;">
+          <input type="checkbox" id="restoreSettings" checked style="margin-right:10px;">
+          <span>⚙️ Settings (API keys, email, etc.)</span>
+        </label>
+        <label style="display:flex;align-items:center;padding:10px;background:#1a1a2e;border-radius:8px;margin-bottom:8px;cursor:pointer;">
+          <input type="checkbox" id="restoreSessions" checked style="margin-right:10px;">
+          <span>💬 Sessions (chat history)</span>
+        </label>
+        <label style="display:flex;align-items:center;padding:10px;background:#1a1a2e;border-radius:8px;margin-bottom:8px;cursor:pointer;">
+          <input type="checkbox" id="restoreBots" checked style="margin-right:10px;">
+          <span>🤖 Bots (bot configurations)</span>
+        </label>
+        <label style="display:flex;align-items:center;padding:10px;background:#1a1a2e;border-radius:8px;cursor:pointer;">
+          <input type="checkbox" id="restoreLicense" checked style="margin-right:10px;">
+          <span>☕ License (balance, payment info)</span>
+        </label>
+      </div>
+      
+      <div class="btn-group">
+        <button class="btn-secondary" id="cancelRestoreBtn">Cancel</button>
+        <button id="confirmRestoreBtn">Restore Selected</button>
+      </div>
+    </div>
+  </div>
+  
   <script>
     const chatContainer = document.getElementById('chatContainer');
     const messageInput = document.getElementById('messageInput');
@@ -1712,6 +1747,8 @@
       }
     });
     
+    let pendingRestoreBackup = null;
+    
     document.getElementById('restoreFromBackupBtn').addEventListener('click', async () => {
       const backups = await window.api.listBackups();
       if (backups.length === 0) {
@@ -1723,15 +1760,18 @@
       const index = parseInt(choice) - 1;
       
       if (index >= 0 && index < backups.length) {
-        const confirmed = confirm(`Restore from ${backups[index]}?\nCurrent settings will be backed up first.`);
-        if (confirmed) {
-          const result = await window.api.restoreBackup(backups[index]);
-          if (result) {
-            addMessage('Settings restored! Restart app to apply.', 'success');
-            document.getElementById('systemSettingsModal').style.display = 'none';
-          }
-        }
+        pendingRestoreBackup = backups[index];
+        document.getElementById('restoreBackupName').textContent = backups[index];
+        document.getElementById('restoreBackupInfo').style.display = 'block';
+        document.getElementById('restoreSelectModal').style.display = 'flex';
       }
+    });
+    
+    document.getElementById('cancelRestoreBtn').addEventListener('click', () => {
+      document.getElementById('restoreSelectModal').style.display = 'none';
+      pendingRestoreBackup = null;
+      pendingImportData = null;
+      document.getElementById('restoreSelectTitle').textContent = '🔄 Select What to Restore';
     });
     
     document.getElementById('exportAllBtn').addEventListener('click', async () => {
@@ -1752,6 +1792,8 @@
       document.getElementById('importAllFile').click();
     });
     
+    let pendingImportData = null;
+    
     document.getElementById('importAllFile').addEventListener('change', async (e) => {
       const file = e.target.files[0];
       if (!file) return;
@@ -1759,19 +1801,46 @@
       try {
         const text = await file.text();
         const data = JSON.parse(text);
-        const confirmed = confirm('This will replace all current settings. Continue?');
-        if (confirmed) {
-          const result = await window.api.importAllSettings(data);
-          if (result) {
-            addMessage('Settings imported! Restart app to apply.', 'success');
-            document.getElementById('systemSettingsModal').style.display = 'none';
-          }
-        }
+        pendingImportData = data;
+        
+        document.getElementById('restoreSelectTitle').textContent = '📥 Select What to Import';
+        document.getElementById('restoreBackupName').textContent = file.name;
+        document.getElementById('restoreBackupInfo').style.display = 'block';
+        document.getElementById('restoreSelectModal').style.display = 'flex';
       } catch (err) {
         alert('Invalid file: ' + err.message);
       }
       
       e.target.value = '';
+    });
+    
+    document.getElementById('confirmRestoreBtn').addEventListener('click', async () => {
+      const options = {
+        settings: document.getElementById('restoreSettings').checked,
+        sessions: document.getElementById('restoreSessions').checked,
+        bots: document.getElementById('restoreBots').checked,
+        license: document.getElementById('restoreLicense').checked
+      };
+      
+      if (pendingRestoreBackup) {
+        const result = await window.api.restoreBackup(pendingRestoreBackup, options);
+        if (result) {
+          addMessage('Selected items restored! Restart app to apply.', 'success');
+          document.getElementById('restoreSelectModal').style.display = 'none';
+          document.getElementById('systemSettingsModal').style.display = 'none';
+        }
+        pendingRestoreBackup = null;
+      } else if (pendingImportData) {
+        const result = await window.api.importAllSettings(pendingImportData, options);
+        if (result) {
+          addMessage('Selected items imported! Restart app to apply.', 'success');
+          document.getElementById('restoreSelectModal').style.display = 'none';
+          document.getElementById('systemSettingsModal').style.display = 'none';
+        }
+        pendingImportData = null;
+      }
+      
+      document.getElementById('restoreSelectTitle').textContent = '🔄 Select What to Restore';
     });
     
     document.getElementById('cancelBotEditorBtn').addEventListener('click', () => {
