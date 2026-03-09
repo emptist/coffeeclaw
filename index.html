@@ -606,6 +606,8 @@
             <button class="tool-btn" data-tool="weather" style="padding:8px;background:#0f3460;color:#eee;border:none;border-radius:4px;cursor:pointer;text-align:left;">🌤️ Weather</button>
             <button class="tool-btn" data-tool="exec" style="padding:8px;background:#0f3460;color:#eee;border:none;border-radius:4px;cursor:pointer;text-align:left;">💻 Run Command</button>
             <button class="tool-btn" data-tool="feishu" style="padding:8px;background:#0f3460;color:#eee;border:none;border-radius:4px;cursor:pointer;text-align:left;">📧 飞书消息</button>
+            <button class="tool-btn" data-tool="feishu-doc" style="padding:8px;background:#0f3460;color:#eee;border:none;border-radius:4px;cursor:pointer;text-align:left;">📄 飞书文档</button>
+            <button class="tool-btn" data-tool="feishu-drive" style="padding:8px;background:#0f3460;color:#eee;border:none;border-radius:4px;cursor:pointer;text-align:left;">📁 飞书云盘</button>
             <button class="tool-btn" data-tool="cron" style="padding:8px;background:#0f3460;color:#eee;border:none;border-radius:4px;cursor:pointer;text-align:left;">⏰ 定时任务</button>
             <button class="tool-btn" data-tool="create" style="padding:8px;background:#0f3460;color:#eee;border:none;border-radius:4px;cursor:pointer;text-align:left;">📝 创建文件</button>
             <button class="tool-btn" data-tool="shorturl" style="padding:8px;background:#0f3460;color:#eee;border:none;border-radius:4px;cursor:pointer;text-align:left;">🔗 短链接</button>
@@ -1322,23 +1324,47 @@
           const msg = prompt('Enter Feishu message to send:');
           if (msg) {
             addMessage(`[Feishu] ${msg}`, 'user');
-            // Placeholder: actual implementation would call Feishu API
-            addMessage('Feishu message sent (placeholder).', 'bot');
+            const result = await window.api.runLocalCommand(`openclaw agent --local --session-id "feishu-${Date.now()}" --message "Send feishu message: ${msg}" --json`);
+            if (result.success) {
+              try {
+                const data = JSON.parse(result.stdout);
+                const text = data.payloads?.[0]?.text || 'Message sent';
+                addMessage(text, 'bot');
+              } catch (e) {
+                addMessage('Feishu message sent.', 'bot');
+              }
+            } else {
+              addMessage(`Error: ${result.error}`, 'bot');
+            }
+          }
+        } else if (tool === 'feishu-doc') {
+          const title = prompt('Document title:');
+          const content = prompt('Document content:');
+          if (title) {
+            addMessage(`[Feishu Doc] ${title}`, 'user');
+            const result = await window.api.runLocalCommand(`openclaw agent --local --session-id "feishu-doc-${Date.now()}" --message "Create feishu document with title: ${title}, content: ${content || ''}" --json`);
+            addMessage(result.success ? 'Document created.' : `Error: ${result.error}`, 'bot');
+          }
+        } else if (tool === 'feishu-drive') {
+          const filePath = prompt('File path to upload:');
+          if (filePath) {
+            addMessage(`[Feishu Drive] Upload: ${filePath}`, 'user');
+            const result = await window.api.runLocalCommand(`openclaw agent --local --session-id "feishu-drive-${Date.now()}" --message "Upload file to feishu drive: ${filePath}" --json`);
+            addMessage(result.success ? 'File uploaded.' : `Error: ${result.error}`, 'bot');
           }
         } else if (tool === 'cron') {
           const schedule = prompt('Cron schedule (e.g., "0 9 * * *")');
           const command = prompt('Command to run:');
           if (schedule && command) {
             addMessage(`[Cron] Schedule: ${schedule}, Command: ${command}`, 'user');
-            // Placeholder: actual cron creation would use backend API
-            addMessage('Cron job created (placeholder).', 'bot');
+            const result = await window.api.runLocalCommand(`openclaw agent --local --session-id "cron-${Date.now()}" --message "Create cron job with schedule '${schedule}' to run: ${command}" --json`);
+            addMessage(result.success ? 'Cron job created.' : `Error: ${result.error}`, 'bot');
           }
         } else if (tool === 'create') {
           const filePath = prompt('Enter file path to create:');
           const content = prompt('Enter content (leave empty for empty file):');
           if (filePath) {
             addMessage(`[Create File] Path: ${filePath}`, 'user');
-            // Use writeFile via backend if available
             const result = await window.api.runLocalCommand(`printf \"${content || ''}\" > \"${filePath}\"`);
             addMessage(result.success ? 'File created.' : `Error: ${result.error}`, 'bot');
           }
