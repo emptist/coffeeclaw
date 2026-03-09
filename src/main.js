@@ -2129,8 +2129,6 @@ You are a helpful AI assistant running on the user's local machine. You are powe
       if (settingsMtime > openclawConfigMtime) {
         console.log('CoffeeClaw settings are newer than OpenClaw config, syncing...');
         return syncProvidersToOpenClaw(settings.providers, settings.activeProvider);
-      } else {
-        return console.log('OpenClaw config is up to date');
       }
     } catch (error) {
       e = error;

@@ -1435,8 +1435,6 @@ ensureOpenClawConfig = ->
     if settingsMtime > openclawConfigMtime
       console.log 'CoffeeClaw settings are newer than OpenClaw config, syncing...'
       syncProvidersToOpenClaw(settings.providers, settings.activeProvider)
-    else
-      console.log 'OpenClaw config is up to date'
   catch e
     console.error 'Failed to ensure OpenClaw config:', e
 
