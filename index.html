@@ -606,6 +606,9 @@
             <button class="tool-btn" data-tool="cron" style="padding:8px;background:#0f3460;color:#eee;border:none;border-radius:4px;cursor:pointer;text-align:left;">⏰ 定时任务</button>
             <button class="tool-btn" data-tool="create" style="padding:8px;background:#0f3460;color:#eee;border:none;border-radius:4px;cursor:pointer;text-align:left;">📝 创建文件</button>
             <button class="tool-btn" data-tool="shorturl" style="padding:8px;background:#0f3460;color:#eee;border:none;border-radius:4px;cursor:pointer;text-align:left;">🔗 短链接</button>
+            <button class="tool-btn" data-tool="read" style="padding:8px;background:#0f3460;color:#eee;border:none;border-radius:4px;cursor:pointer;text-align:left;">📂 读取文件</button>
+            <button class="tool-btn" data-tool="write" style="padding:8px;background:#0f3460;color:#eee;border:none;border-radius:4px;cursor:pointer;text-align:left;">💾 写入文件</button>
+            <button class="tool-btn" data-tool="edit" style="padding:8px;background:#0f3460;color:#eee;border:none;border-radius:4px;cursor:pointer;text-align:left;">✏️ 编辑文件</button>
           </div>
         </div>
         <div class="bot-selector">
@@ -1317,13 +1320,46 @@
           const url = prompt('Enter URL to shorten:');
           if (url) {
             addMessage(`[Short URL] ${url}`, 'user');
-            // Simple placeholder using tinyurl API via curl
             const result = await window.api.runLocalCommand(`curl -s https://tinyurl.com/api-create.php?url=${encodeURIComponent(url)}`);
             if (result.success) {
               addMessage(`Short URL: ${result.stdout.trim()}`, 'bot');
             } else {
               addMessage('Error generating short URL.', 'bot');
             }
+          }
+        } else if (tool === 'read') {
+          const filePath = prompt('Enter file path to read:');
+          if (filePath) {
+            addMessage(`[Read File] ${filePath}`, 'user');
+            const result = await window.api.runLocalCommand(`openclaw agent --local --session-id "read-${Date.now()}" --message "Read file: ${filePath}" --json`);
+            if (result.success) {
+              try {
+                const data = JSON.parse(result.stdout);
+                const text = data.payloads?.[0]?.text || 'No content';
+                addMessage(text, 'bot');
+              } catch (e) {
+                addMessage('Error parsing response', 'bot');
+              }
+            } else {
+              addMessage(`Error: ${result.error}`, 'bot');
+            }
+          }
+        } else if (tool === 'write') {
+          const filePath = prompt('Enter file path to write:');
+          const content = prompt('Enter content:');
+          if (filePath && content !== null) {
+            addMessage(`[Write File] ${filePath}`, 'user');
+            const result = await window.api.runLocalCommand(`openclaw agent --local --session-id "write-${Date.now()}" --message "Write to file ${filePath}: ${content}" --json`);
+            addMessage(result.success ? 'File written.' : `Error: ${result.error}`, 'bot');
+          }
+        } else if (tool === 'edit') {
+          const filePath = prompt('Enter file path to edit:');
+          const oldText = prompt('Text to find:');
+          const newText = prompt('Replace with:');
+          if (filePath && oldText !== null) {
+            addMessage(`[Edit File] ${filePath}`, 'user');
+            const result = await window.api.runLocalCommand(`openclaw agent --local --session-id "edit-${Date.now()}" --message "Edit file ${filePath}: replace '${oldText}' with '${newText}'" --json`);
+            addMessage(result.success ? 'File edited.' : `Error: ${result.error}`, 'bot');
           }
         }
       });
