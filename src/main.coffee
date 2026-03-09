@@ -817,6 +817,16 @@ MODELS =
     ]
     baseUrl: 'open.bigmodel.cn'
     apiPath: '/api/paas/v4/chat/completions'
+  openrouter:
+    name: 'OpenRouter'
+    models: [
+      { id: 'openrouter/auto', name: 'Auto (Best Free)', free: true }
+      { id: 'google/gemini-2.0-flash-001', name: 'Gemini 2.0 Flash', free: true }
+      { id: 'meta-llama/llama-3.3-70b-instruct', name: 'Llama 3.3 70B', free: true }
+      { id: 'deepseek/deepseek-chat', name: 'DeepSeek Chat', free: true }
+    ]
+    baseUrl: 'openrouter.ai'
+    apiPath: '/api/v1/chat/completions'
   openai:
     name: 'OpenAI'
     models: [
@@ -915,6 +925,10 @@ callAPI = (sessionId, message, settings, bot = null) ->
         'Content-Type': 'application/json'
         'Authorization': "Bearer #{apiKey}"
         'Content-Length': Buffer.byteLength(postData)
+    
+    if provider == 'openrouter'
+      options.headers['HTTP-Referer'] = 'https://coffeeclaw.app'
+      options.headers['X-Title'] = 'CoffeeClaw'
 
     req = https.request options, (res) ->
       data = ''
@@ -983,6 +997,10 @@ callAPIWithMessages = (sessionId, messages, settings, bot, apiKey) ->
         'Content-Type': 'application/json'
         'Authorization': "Bearer #{apiKey}"
         'Content-Length': Buffer.byteLength(postData)
+    
+    if provider == 'openrouter'
+      options.headers['HTTP-Referer'] = 'https://coffeeclaw.app'
+      options.headers['X-Title'] = 'CoffeeClaw'
 
     req = https.request options, (res) ->
       data = ''
