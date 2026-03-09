@@ -2062,17 +2062,41 @@
             <p style="font-size:12px;color:#888;margin-bottom:10px;">Send Bitcoin to:</p>
             <div style="display:flex;align-items:center;gap:8px;justify-content:center;flex-wrap:wrap;">
               <code style="font-size:11px;word-break:break-all;color:#eee;background:#0f3460;padding:8px 10px;border-radius:4px;max-width:250px;text-align:center;">${btcAddr}</code>
-              <button onclick="navigator.clipboard.writeText('${btcAddr}').then(()=>addMessage('Copied!','success'))" style="padding:8px 12px;background:#0f3460;color:#eee;border:none;border-radius:4px;cursor:pointer;font-size:12px;">Copy</button>
+              <button id="copyBtcBtn" style="padding:8px 12px;background:#0f3460;color:#eee;border:none;border-radius:4px;cursor:pointer;font-size:12px;">Copy</button>
             </div>
           `;
+          document.getElementById('copyBtcBtn').addEventListener('click', function() {
+            navigator.clipboard.writeText('${btcAddr}').then(() => {
+              this.textContent = '✓ Copied!';
+              this.style.background = '#00ff88';
+              this.style.color = '#000';
+              setTimeout(() => {
+                this.textContent = 'Copy';
+                this.style.background = '#0f3460';
+                this.style.color = '#eee';
+              }, 2000);
+            });
+          });
         } else if (method === 'paypal') {
           qrContent.innerHTML = `
             <p style="font-size:12px;color:#888;margin-bottom:10px;">Send payment to:</p>
             <div style="display:flex;align-items:center;gap:8px;justify-content:center;">
               <code style="font-size:14px;color:#eee;background:#0f3460;padding:8px 12px;border-radius:4px;">abbeychan0214@gmail.com</code>
-              <button onclick="navigator.clipboard.writeText('abbeychan0214@gmail.com').then(()=>addMessage('Copied!','success'))" style="padding:8px 12px;background:#0f3460;color:#eee;border:none;border-radius:4px;cursor:pointer;font-size:12px;">Copy</button>
+              <button id="copyPaypalBtn" style="padding:8px 12px;background:#0f3460;color:#eee;border:none;border-radius:4px;cursor:pointer;font-size:12px;">Copy</button>
             </div>
           `;
+          document.getElementById('copyPaypalBtn').addEventListener('click', function() {
+            navigator.clipboard.writeText('abbeychan0214@gmail.com').then(() => {
+              this.textContent = '✓ Copied!';
+              this.style.background = '#00ff88';
+              this.style.color = '#000';
+              setTimeout(() => {
+                this.textContent = 'Copy';
+                this.style.background = '#0f3460';
+                this.style.color = '#eee';
+              }, 2000);
+            });
+          });
         }
       });
     });
