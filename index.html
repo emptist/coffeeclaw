@@ -602,6 +602,10 @@
             <button class="tool-btn" data-tool="search" style="padding:8px;background:#0f3460;color:#eee;border:none;border-radius:4px;cursor:pointer;text-align:left;">🔍 Web Search</button>
             <button class="tool-btn" data-tool="weather" style="padding:8px;background:#0f3460;color:#eee;border:none;border-radius:4px;cursor:pointer;text-align:left;">🌤️ Weather</button>
             <button class="tool-btn" data-tool="exec" style="padding:8px;background:#0f3460;color:#eee;border:none;border-radius:4px;cursor:pointer;text-align:left;">💻 Run Command</button>
+            <button class="tool-btn" data-tool="feishu" style="padding:8px;background:#0f3460;color:#eee;border:none;border-radius:4px;cursor:pointer;text-align:left;">📧 飞书消息</button>
+            <button class="tool-btn" data-tool="cron" style="padding:8px;background:#0f3460;color:#eee;border:none;border-radius:4px;cursor:pointer;text-align:left;">⏰ 定时任务</button>
+            <button class="tool-btn" data-tool="create" style="padding:8px;background:#0f3460;color:#eee;border:none;border-radius:4px;cursor:pointer;text-align:left;">📝 创建文件</button>
+            <button class="tool-btn" data-tool="shorturl" style="padding:8px;background:#0f3460;color:#eee;border:none;border-radius:4px;cursor:pointer;text-align:left;">🔗 短链接</button>
           </div>
         </div>
         <div class="bot-selector">
@@ -1275,20 +1279,55 @@
           const query = prompt('Search query:');
           if (query) {
             addMessage(`[Search] ${query}`, 'user');
-            const result = await window.api.runLocalCommand(`openclaw agent --local --session-id "search-${Date.now()}" --message "Search the web for: ${query}" --json`);
+            const result = await window.api.runLocalCommand(`openclaw agent --local --session-id \"search-${Date.now()}\" --message \"Search the web for: ${query}\" --json`);
             addMessage(result.success ? 'Search completed' : `Error: ${result.error}`, 'bot');
           }
         } else if (tool === 'weather') {
           const location = prompt('Location (or leave empty for auto):') || '';
           addMessage(`[Weather] ${location || 'auto detect'}`, 'user');
-          const result = await window.api.runLocalCommand(`curl -s "https://wttr.in/${location}?format=3"`);
+          const result = await window.api.runLocalCommand(`curl -s \"https://wttr.in/${location}?format=3\"`);
           addMessage(result.success ? result.stdout : 'Weather unavailable', 'bot');
         } else if (tool === 'exec') {
           document.getElementById('runCommandBtn').click();
+        } else if (tool === 'feishu') {
+          const msg = prompt('Enter Feishu message to send:');
+          if (msg) {
+            addMessage(`[Feishu] ${msg}`, 'user');
+            // Placeholder: actual implementation would call Feishu API
+            addMessage('Feishu message sent (placeholder).', 'bot');
+          }
+        } else if (tool === 'cron') {
+          const schedule = prompt('Cron schedule (e.g., "0 9 * * *")');
+          const command = prompt('Command to run:');
+          if (schedule && command) {
+            addMessage(`[Cron] Schedule: ${schedule}, Command: ${command}`, 'user');
+            // Placeholder: actual cron creation would use backend API
+            addMessage('Cron job created (placeholder).', 'bot');
+          }
+        } else if (tool === 'create') {
+          const filePath = prompt('Enter file path to create:');
+          const content = prompt('Enter content (leave empty for empty file):');
+          if (filePath) {
+            addMessage(`[Create File] Path: ${filePath}`, 'user');
+            // Use writeFile via backend if available
+            const result = await window.api.runLocalCommand(`printf \"${content || ''}\" > \"${filePath}\"`);
+            addMessage(result.success ? 'File created.' : `Error: ${result.error}`, 'bot');
+          }
+        } else if (tool === 'shorturl') {
+          const url = prompt('Enter URL to shorten:');
+          if (url) {
+            addMessage(`[Short URL] ${url}`, 'user');
+            // Simple placeholder using tinyurl API via curl
+            const result = await window.api.runLocalCommand(`curl -s https://tinyurl.com/api-create.php?url=${encodeURIComponent(url)}`);
+            if (result.success) {
+              addMessage(`Short URL: ${result.stdout.trim()}`, 'bot');
+            } else {
+              addMessage('Error generating short URL.', 'bot');
+            }
+          }
         }
       });
-    });
-    
+    });    
     async function loadSessionList() {
       const sessions = await window.api.listSessions();
       const sessionList = document.getElementById('sessionList');
