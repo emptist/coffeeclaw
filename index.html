@@ -588,8 +588,9 @@
             <option value="default">General Assistant</option>
           </select>
           <button id="addBotBtn" title="Add New Bot">+</button>
-          <button id="editBotBtn" title="Edit Bot">⚙️</button>
+          <button id="editBotBtn" title="Edit Bot">✏️</button>
           <button id="providerSettingsBtn" title="API Keys">🔑</button>
+          <button id="systemSettingsBtn" title="System Settings">⚙️</button>
         </div>
         <div class="lang-select">
           <button class="lang-btn active" data-lang="en">EN</button>
@@ -744,8 +745,6 @@
       <div class="btn-group">
         <button class="btn-secondary" id="exportBotsBtn" title="Export all bots to JSON">📤 Export</button>
         <button class="btn-secondary" id="importBotsBtn" title="Import bots from JSON">📥 Import</button>
-        <button class="btn-secondary" id="backupSettingsBtn" title="Backup all settings">💾 Backup</button>
-        <button class="btn-secondary" id="restoreSettingsBtn" title="Restore from backup">🔄 Restore</button>
         <button class="btn-secondary" id="cancelBotEditorBtn">Cancel</button>
         <button class="btn-secondary" id="deleteBotBtn" style="background:#e94560;display:none;">Delete</button>
         <button id="saveBotBtn">Save</button>
@@ -766,6 +765,57 @@
       
       <div class="btn-group">
         <button class="btn-secondary" id="closeProviderSettingsBtn">Close</button>
+      </div>
+    </div>
+  </div>
+  
+  <div id="systemSettingsModal" class="setup-overlay" style="display:none;">
+    <div class="setup-card" style="max-width:450px;">
+      <h2>⚙️ System Settings</h2>
+      
+      <div style="margin-bottom:20px;">
+        <h3 style="font-size:14px;margin-bottom:10px;">📧 Email Settings</h3>
+        <label style="font-size:12px;color:#888;">Your Email (for notifications):</label>
+        <input type="email" id="settingsEmailInput" placeholder="your@email.com" style="width:100%;padding:10px;background:#1a1a2e;color:#eee;border:1px solid #0f3460;border-radius:8px;margin-top:5px;">
+      </div>
+      
+      <div style="margin-bottom:20px;">
+        <h3 style="font-size:14px;margin-bottom:10px;">💾 Backup & Restore</h3>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;">
+          <button id="backupNowBtn" style="flex:1;padding:12px;background:#0f3460;color:#eee;border:none;border-radius:8px;cursor:pointer;">
+            💾 Backup Now
+          </button>
+          <button id="restoreFromBackupBtn" style="flex:1;padding:12px;background:#0f3460;color:#eee;border:none;border-radius:8px;cursor:pointer;">
+            🔄 Restore
+          </button>
+        </div>
+        <p id="backupStatusText" style="font-size:11px;color:#888;margin-top:8px;"></p>
+      </div>
+      
+      <div style="margin-bottom:20px;">
+        <h3 style="font-size:14px;margin-bottom:10px;">📤 Export / Import</h3>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;">
+          <button id="exportAllBtn" style="flex:1;padding:12px;background:#0f3460;color:#eee;border:none;border-radius:8px;cursor:pointer;">
+            📤 Export All
+          </button>
+          <button id="importAllBtn" style="flex:1;padding:12px;background:#0f3460;color:#eee;border:none;border-radius:8px;cursor:pointer;">
+            📥 Import All
+          </button>
+        </div>
+        <input type="file" id="importAllFile" accept=".json" style="display:none;">
+      </div>
+      
+      <div id="feishuSettingsSection" style="margin-bottom:20px;">
+        <h3 style="font-size:14px;margin-bottom:10px;">📱 Feishu Integration</h3>
+        <div id="feishuStatusDisplay" style="background:#1a1a2e;padding:10px;border-radius:8px;font-size:12px;">
+          <span style="color:#888;">Status: </span>
+          <span id="feishuStatusText">Checking...</span>
+        </div>
+      </div>
+      
+      <div class="btn-group">
+        <button class="btn-secondary" id="closeSystemSettingsBtn">Close</button>
+        <button id="saveSystemSettingsBtn">Save</button>
       </div>
     </div>
   </div>
@@ -1625,6 +1675,105 @@
       document.getElementById('providerSettingsModal').style.display = 'none';
     });
     
+    document.getElementById('systemSettingsBtn').addEventListener('click', async () => {
+      const settings = await window.api.getSettings();
+      document.getElementById('settingsEmailInput').value = settings.userEmail || '';
+      
+      const feishuStatus = await window.api.getFeishuStatus();
+      document.getElementById('feishuStatusText').textContent = feishuStatus.enabled ? 'Enabled' : 'Disabled';
+      
+      const backups = await window.api.listBackups();
+      document.getElementById('backupStatusText').textContent = backups.length > 0 
+        ? `${backups.length} backup(s) available. Latest: ${backups[0]}`
+        : 'No backups yet';
+      
+      document.getElementById('systemSettingsModal').style.display = 'flex';
+    });
+    
+    document.getElementById('closeSystemSettingsBtn').addEventListener('click', () => {
+      document.getElementById('systemSettingsModal').style.display = 'none';
+    });
+    
+    document.getElementById('saveSystemSettingsBtn').addEventListener('click', async () => {
+      const email = document.getElementById('settingsEmailInput').value.trim();
+      const settings = await window.api.getSettings();
+      settings.userEmail = email;
+      await window.api.saveSettings(settings);
+      addMessage('Settings saved!', 'success');
+      document.getElementById('systemSettingsModal').style.display = 'none';
+    });
+    
+    document.getElementById('backupNowBtn').addEventListener('click', async () => {
+      const result = await window.api.backupSettings();
+      if (result) {
+        const backups = await window.api.listBackups();
+        document.getElementById('backupStatusText').textContent = `Backup created! ${backups.length} backup(s) available.`;
+        addMessage('Backup created!', 'success');
+      }
+    });
+    
+    document.getElementById('restoreFromBackupBtn').addEventListener('click', async () => {
+      const backups = await window.api.listBackups();
+      if (backups.length === 0) {
+        alert('No backups available');
+        return;
+      }
+      
+      const choice = prompt('Available backups:\n' + backups.map((b, i) => `${i + 1}. ${b}`).join('\n') + '\n\nEnter number to restore:');
+      const index = parseInt(choice) - 1;
+      
+      if (index >= 0 && index < backups.length) {
+        const confirmed = confirm(`Restore from ${backups[index]}?\nCurrent settings will be backed up first.`);
+        if (confirmed) {
+          const result = await window.api.restoreBackup(backups[index]);
+          if (result) {
+            addMessage('Settings restored! Restart app to apply.', 'success');
+            document.getElementById('systemSettingsModal').style.display = 'none';
+          }
+        }
+      }
+    });
+    
+    document.getElementById('exportAllBtn').addEventListener('click', async () => {
+      const data = await window.api.exportAllSettings();
+      if (data) {
+        const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `coffeeclaw-full-backup-${new Date().toISOString().split('T')[0]}.json`;
+        a.click();
+        URL.revokeObjectURL(url);
+        addMessage('All settings exported!', 'success');
+      }
+    });
+    
+    document.getElementById('importAllBtn').addEventListener('click', () => {
+      document.getElementById('importAllFile').click();
+    });
+    
+    document.getElementById('importAllFile').addEventListener('change', async (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      
+      try {
+        const text = await file.text();
+        const data = JSON.parse(text);
+        const confirmed = confirm('This will replace all current settings. Continue?');
+        if (confirmed) {
+          const result = await window.api.importAllSettings(data);
+          if (result) {
+            addMessage('Settings imported! Restart app to apply.', 'success');
+            document.getElementById('systemSettingsModal').style.display = 'none';
+          }
+        }
+      } catch (err) {
+        alert('Invalid file: ' + err.message);
+      }
+      
+      e.target.value = '';
+    });
+    
     document.getElementById('cancelBotEditorBtn').addEventListener('click', () => {
       document.getElementById('botEditorModal').style.display = 'none';
     });
@@ -1856,38 +2005,6 @@
       }
       
       e.target.value = '';
-    });
-    
-    document.getElementById('backupSettingsBtn').addEventListener('click', async () => {
-      const result = await window.api.backupSettings();
-      if (result) {
-        addMessage('Settings backed up successfully!', 'success');
-      } else {
-        addMessage('Backup failed', 'error');
-      }
-    });
-    
-    document.getElementById('restoreSettingsBtn').addEventListener('click', async () => {
-      const backups = await window.api.listBackups();
-      if (backups.length === 0) {
-        alert('No backups available');
-        return;
-      }
-      
-      const choice = prompt('Available backups:\n' + backups.map((b, i) => `${i + 1}. ${b}`).join('\n') + '\n\nEnter number to restore:');
-      const index = parseInt(choice) - 1;
-      
-      if (index >= 0 && index < backups.length) {
-        const confirmed = confirm(`Restore from ${backups[index]}?\nCurrent settings will be backed up first.`);
-        if (confirmed) {
-          const result = await window.api.restoreBackup(backups[index]);
-          if (result) {
-            addMessage('Settings restored! Restart app to apply.', 'success');
-          } else {
-            addMessage('Restore failed', 'error');
-          }
-        }
-      }
     });
     
     document.getElementById('feishuStatusBtn').addEventListener('click', async () => {
