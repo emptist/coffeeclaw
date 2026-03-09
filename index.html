@@ -857,26 +857,24 @@
       
       <h3 style="font-size:16px;margin-bottom:15px;">Support CoffeeClaw</h3>
       
-      <label style="font-size:13px;margin-bottom:10px;display:block;">Select Amount:</label>
+      <label style="font-size:13px;margin-bottom:10px;display:block;">Currency:</label>
+      <div style="display:flex;gap:8px;margin-bottom:15px;">
+        <button class="payment-method-btn" data-currency="usd" style="flex:1;">USD $</button>
+        <button class="payment-method-btn" data-currency="cny" style="flex:1;">CNY ¥</button>
+      </div>
+      
+      <label style="font-size:13px;margin-bottom:10px;display:block;">Select Plan:</label>
       <div style="margin-bottom:15px;">
         <label style="display:flex;align-items:center;padding:10px;background:#1a1a2e;border-radius:8px;margin-bottom:8px;cursor:pointer;">
           <input type="radio" name="paymentAmount" value="12" checked style="margin-right:10px;margin-left:0;">
-          <span>$12 / year</span>
-          <span style="margin-left:auto;color:#888;font-size:12px;">¥72/年</span>
-        </label>
-        <label style="display:flex;align-items:center;padding:10px;background:#1a1a2e;border-radius:8px;margin-bottom:8px;cursor:pointer;">
-          <input type="radio" name="paymentAmount" value="36" style="margin-right:10px;margin-left:0;">
-          <span>$36 / lifetime</span>
-          <span style="margin-left:auto;color:#888;font-size:12px;">¥216/终身</span>
+          <span class="plan-text-usd">$12 / year</span>
+          <span class="plan-text-cny" style="display:none;">¥72 / 年</span>
         </label>
         <label style="display:flex;align-items:center;padding:10px;background:#1a1a2e;border-radius:8px;cursor:pointer;">
-          <input type="radio" name="paymentAmount" value="custom" style="margin-right:10px;margin-left:0;">
-          <span>Custom amount</span>
+          <input type="radio" name="paymentAmount" value="36" style="margin-right:10px;margin-left:0;">
+          <span class="plan-text-usd">$36 / lifetime</span>
+          <span class="plan-text-cny" style="display:none;">¥216 / 终身</span>
         </label>
-      </div>
-      
-      <div id="customAmountSection" style="display:none;margin-bottom:15px;">
-        <input type="number" id="customAmountInput" placeholder="Enter amount" min="1" max="1000" style="width:100%;padding:10px;background:#0f3460;color:#eee;border:1px solid #0f3460;border-radius:8px;">
       </div>
       
       <label style="font-size:13px;margin-bottom:5px;display:block;">Payment Method:</label>
@@ -891,7 +889,7 @@
         <p id="paymentAddressText" style="font-family:monospace;font-size:11px;word-break:break-all;color:#888;display:none;">bc1qym7whe3q3puupxg475ds6kyusl7g6wn7ewa9jn</p>
       </div>
       
-      <button id="paymentCompleteBtn" style="width:100%;padding:12px;background:#00bfa5;color:white;border:none;border-radius:8px;font-size:14px;cursor:pointer;margin-bottom:10px;">
+      <button id="paymentCompleteBtn" style="width:100%;padding:12px;background:#e94560;color:white;border:none;border-radius:8px;font-size:14px;cursor:pointer;margin-bottom:10px;">
         ✓ Payment Complete
       </button>
       
@@ -1950,13 +1948,33 @@
         }
       });
     });
+      
+      document.querySelectorAll('[data-currency]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const currency = btn.dataset.currency;
+        currentCurrency = currency;
+        
+        document.querySelectorAll('[data-currency]').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        
+        if (currency === 'usd') {
+          document.querySelectorAll('.plan-text-usd').forEach(el => el.style.display = 'inline');
+          document.querySelectorAll('.plan-text-cny').forEach(el => el.style.display = 'none');
+        } else {
+          document.querySelectorAll('.plan-text-usd').forEach(el => el.style.display = 'none');
+          document.querySelectorAll('.plan-text-cny').forEach(el => el.style.display = 'inline');
+        }
+      });
+    });
     
-    document.querySelectorAll('.payment-method-btn').forEach(btn => {
+    document.querySelectorAll('[data-method]').forEach(btn => {
       btn.addEventListener('click', async () => {
         const method = btn.dataset.method;
+        if (!method) return;
+        
         currentPaymentMethod = method;
         
-        document.querySelectorAll('.payment-method-btn').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('[data-method]').forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
         
         paymentQrSection.style.display = 'block';
@@ -1986,13 +2004,7 @@
     
     document.getElementById('paymentCompleteBtn').addEventListener('click', async () => {
       const selectedRadio = document.querySelector('input[name="paymentAmount"]:checked');
-      let amount;
-      
-      if (selectedRadio.value === 'custom') {
-        amount = parseFloat(document.getElementById('customAmountInput').value) || 0;
-      } else {
-        amount = parseFloat(selectedRadio.value);
-      }
+      let amount = parseFloat(selectedRadio.value);
       
       if (amount <= 0) {
         alert('Please enter a payment amount');
