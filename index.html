@@ -275,6 +275,215 @@
       padding: 20px;
     }
     
+    .tool-view {
+      display: none;
+      flex: 1;
+      flex-direction: column;
+      overflow-y: auto;
+      padding: 20px;
+    }
+    
+    .tool-view.active {
+      display: flex;
+    }
+    
+    .tool-view-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 20px;
+      padding-bottom: 15px;
+      border-bottom: 1px solid #0f3460;
+    }
+    
+    .tool-view-header h2 {
+      margin: 0;
+      font-size: 20px;
+      color: #eee;
+    }
+    
+    .tool-view-header .back-btn {
+      background: #0f3460;
+      border: none;
+      color: #888;
+      padding: 8px 12px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 14px;
+    }
+    
+    .tool-view-header .back-btn:hover {
+      background: #e94560;
+      color: white;
+    }
+    
+    .google-search-container {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 40px;
+    }
+    
+    .google-logo {
+      font-size: 72px;
+      margin-bottom: 30px;
+      background: linear-gradient(135deg, #e94560, #4285f4, #34a853, #fbbc05);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    
+    .google-search-box {
+      width: 100%;
+      max-width: 600px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+    
+    .google-search-input {
+      width: 100%;
+      padding: 15px 20px;
+      font-size: 16px;
+      background: #0f3460;
+      border: 2px solid #1a1a2e;
+      border-radius: 25px;
+      color: #eee;
+      outline: none;
+      transition: all 0.3s;
+    }
+    
+    .google-search-input:focus {
+      border-color: #e94560;
+      box-shadow: 0 0 20px rgba(233, 69, 96, 0.2);
+    }
+    
+    .google-search-btns {
+      display: flex;
+      gap: 15px;
+      justify-content: center;
+    }
+    
+    .google-search-btns button {
+      padding: 10px 25px;
+      background: #1a1a2e;
+      border: 1px solid #0f3460;
+      border-radius: 6px;
+      color: #888;
+      cursor: pointer;
+      font-size: 14px;
+      transition: all 0.2s;
+    }
+    
+    .google-search-btns button:hover {
+      background: #0f3460;
+      border-color: #e94560;
+      color: #eee;
+    }
+    
+    .tool-cards-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 20px;
+      padding: 10px;
+    }
+    
+    .tool-card {
+      background: #0f3460;
+      border: 1px solid #1a1a2e;
+      border-radius: 12px;
+      padding: 20px;
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+    
+    .tool-card:hover {
+      border-color: #e94560;
+      transform: translateY(-2px);
+      box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+    }
+    
+    .tool-card-icon {
+      font-size: 32px;
+      margin-bottom: 12px;
+    }
+    
+    .tool-card-title {
+      font-size: 16px;
+      color: #eee;
+      margin-bottom: 8px;
+    }
+    
+    .tool-card-desc {
+      font-size: 13px;
+      color: #888;
+      line-height: 1.5;
+    }
+    
+    .file-list-view {
+      background: #0f0f1a;
+      border-radius: 12px;
+      overflow: hidden;
+    }
+    
+    .file-list-header {
+      display: grid;
+      grid-template-columns: 2fr 1fr 1fr 100px;
+      padding: 12px 15px;
+      background: #1a1a2e;
+      font-size: 12px;
+      color: #888;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+    
+    .file-list-item {
+      display: grid;
+      grid-template-columns: 2fr 1fr 1fr 100px;
+      padding: 12px 15px;
+      border-bottom: 1px solid #1a1a2e;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    
+    .file-list-item:hover {
+      background: #16213e;
+    }
+    
+    .file-list-item .name {
+      color: #eee;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    
+    .file-list-item .size,
+    .file-list-item .date {
+      color: #888;
+      font-size: 13px;
+    }
+    
+    .file-list-item .actions {
+      display: flex;
+      gap: 8px;
+    }
+    
+    .file-list-item .actions button {
+      background: transparent;
+      border: none;
+      color: #666;
+      cursor: pointer;
+      padding: 4px 8px;
+      border-radius: 4px;
+    }
+    
+    .file-list-item .actions button:hover {
+      background: #0f3460;
+      color: #e94560;
+    }
+    
     .message {
       margin-bottom: 15px;
       max-width: 85%;
@@ -684,33 +893,12 @@
         </div>
         <div class="sidebar-panel" id="toolsPanel">
           <div class="tools-list">
-            <div class="tools-category">GitHub</div>
-            <button class="tool-btn-sidebar" data-tool="github">🐙 GitHub 命令</button>
-            <button class="tool-btn-sidebar" data-tool="gh-create-issue">🐛 创建 Issue</button>
-            <button class="tool-btn-sidebar" data-tool="gh-create-pr">🔀 创建 PR</button>
-            <button class="tool-btn-sidebar" data-tool="gh-view-issues">📋 查看 Issues</button>
-            
-            <div class="tools-category">网络</div>
-            <button class="tool-btn-sidebar" data-tool="search">🔍 Web Search</button>
-            <button class="tool-btn-sidebar" data-tool="weather">🌤️ Weather</button>
-            <button class="tool-btn-sidebar" data-tool="webfetch">🌐 获取网页</button>
-            <button class="tool-btn-sidebar" data-tool="screenshot">📸 截图网页</button>
-            <button class="tool-btn-sidebar" data-tool="shorturl">🔗 短链接</button>
-            
-            <div class="tools-category">文件</div>
-            <button class="tool-btn-sidebar" data-tool="read">📂 读取文件</button>
-            <button class="tool-btn-sidebar" data-tool="write">💾 写入文件</button>
-            <button class="tool-btn-sidebar" data-tool="edit">✏️ 编辑文件</button>
-            <button class="tool-btn-sidebar" data-tool="create">📝 创建文件</button>
-            
-            <div class="tools-category">飞书</div>
-            <button class="tool-btn-sidebar" data-tool="feishu">📧 飞书消息</button>
-            <button class="tool-btn-sidebar" data-tool="feishu-doc">📄 飞书文档</button>
-            <button class="tool-btn-sidebar" data-tool="feishu-drive">📁 飞书云盘</button>
-            
-            <div class="tools-category">系统</div>
-            <button class="tool-btn-sidebar" data-tool="exec">💻 Run Command</button>
-            <button class="tool-btn-sidebar" data-tool="cron">⏰ 定时任务</button>
+            <div class="tools-category">快捷入口</div>
+            <button class="tool-btn-sidebar" data-view="search">🔍 Web 搜索</button>
+            <button class="tool-btn-sidebar" data-view="github">🐙 GitHub</button>
+            <button class="tool-btn-sidebar" data-view="feishu">📧 飞书工作台</button>
+            <button class="tool-btn-sidebar" data-view="file">📁 文件管理</button>
+            <button class="tool-btn-sidebar" data-view="system">⚙️ 系统工具</button>
           </div>
         </div>
       </div>
@@ -748,6 +936,159 @@
       <div class="chat-container" id="chatContainer">
         <div class="message bot" id="welcomeMsg">
           Hello! I'm CoffeeClaw, your OpenClaw assistant. How can I help you today?
+        </div>
+      </div>
+      
+      <div class="tool-view" id="searchView">
+        <div class="tool-view-header">
+          <button class="back-btn" onclick="showChatView()">← 返回</button>
+          <h2>Web 搜索</h2>
+        </div>
+        <div class="google-search-container">
+          <div class="google-logo">🔍</div>
+          <div class="google-search-box">
+            <input type="text" class="google-search-input" id="googleSearchInput" placeholder="搜索互联网..." autofocus>
+            <div class="google-search-btns">
+              <button onclick="performSearch()">🔍 搜索</button>
+              <button onclick="performSearch('lucky')">🍀 手气不错</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <div class="tool-view" id="githubView">
+        <div class="tool-view-header">
+          <button class="back-btn" onclick="showChatView()">← 返回</button>
+          <h2>GitHub</h2>
+        </div>
+        <div class="tool-cards-grid">
+          <div class="tool-card" onclick="githubAction('issue list')">
+            <div class="tool-card-icon">📋</div>
+            <div class="tool-card-title">查看 Issues</div>
+            <div class="tool-card-desc">浏览项目中的所有 Issue</div>
+          </div>
+          <div class="tool-card" onclick="githubAction('pr list')">
+            <div class="tool-card-icon">🔀</div>
+            <div class="tool-card-title">查看 PR</div>
+            <div class="tool-card-desc">浏览项目中的所有 Pull Request</div>
+          </div>
+          <div class="tool-card" onclick="showGithubCreateIssue()">
+            <div class="tool-card-icon">🐛</div>
+            <div class="tool-card-title">创建 Issue</div>
+            <div class="tool-card-desc">报告 Bug 或提出新功能建议</div>
+          </div>
+          <div class="tool-card" onclick="showGithubCreatePR()">
+            <div class="tool-card-icon">✨</div>
+            <div class="tool-card-title">创建 PR</div>
+            <div class="tool-card-desc">提交代码变更请求</div>
+          </div>
+          <div class="tool-card" onclick="githubAction('repo view')">
+            <div class="tool-card-icon">📦</div>
+            <div class="tool-card-title">仓库信息</div>
+            <div class="tool-card-desc">查看仓库详细信息和统计</div>
+          </div>
+          <div class="tool-card" onclick="githubAction('branch list')">
+            <div class="tool-card-icon">🌿</div>
+            <div class="tool-card-title">分支管理</div>
+            <div class="tool-card-desc">查看和管理代码分支</div>
+          </div>
+        </div>
+      </div>
+      
+      <div class="tool-view" id="feishuView">
+        <div class="tool-view-header">
+          <button class="back-btn" onclick="showChatView()">← 返回</button>
+          <h2>飞书工作台</h2>
+        </div>
+        <div class="tool-cards-grid">
+          <div class="tool-card" onclick="showFeishuMessage()">
+            <div class="tool-card-icon">💬</div>
+            <div class="tool-card-title">发送消息</div>
+            <div class="tool-card-desc">向飞书群组或个人发送消息</div>
+          </div>
+          <div class="tool-card" onclick="showFeishuDoc()">
+            <div class="tool-card-icon">📄</div>
+            <div class="tool-card-title">飞书文档</div>
+            <div class="tool-card-desc">创建和编辑飞书文档</div>
+          </div>
+          <div class="tool-card" onclick="showFeishuDrive()">
+            <div class="tool-card-icon">📁</div>
+            <div class="tool-card-title">云盘文件</div>
+            <div class="tool-card-desc">上传和管理云盘文件</div>
+          </div>
+          <div class="tool-card" onclick="showFeishuWiki()">
+            <div class="tool-card-icon">📚</div>
+            <div class="tool-card-title">知识库</div>
+            <div class="tool-card-desc">浏览和管理知识库</div>
+          </div>
+        </div>
+      </div>
+      
+      <div class="tool-view" id="fileView">
+        <div class="tool-view-header">
+          <button class="back-btn" onclick="showChatView()">← 返回</button>
+          <h2>文件管理</h2>
+        </div>
+        <div class="tool-cards-grid" style="margin-bottom: 20px;">
+          <div class="tool-card" onclick="showFileRead()">
+            <div class="tool-card-icon">📂</div>
+            <div class="tool-card-title">读取文件</div>
+            <div class="tool-card-desc">查看文件内容</div>
+          </div>
+          <div class="tool-card" onclick="showFileWrite()">
+            <div class="tool-card-icon">💾</div>
+            <div class="tool-card-title">写入文件</div>
+            <div class="tool-card-desc">创建或覆盖文件</div>
+          </div>
+          <div class="tool-card" onclick="showFileEdit()">
+            <div class="tool-card-icon">✏️</div>
+            <div class="tool-card-title">编辑文件</div>
+            <div class="tool-card-desc">查找替换文件内容</div>
+          </div>
+          <div class="tool-card" onclick="showFileCreate()">
+            <div class="tool-card-icon">📝</div>
+            <div class="tool-card-title">新建文件</div>
+            <div class="tool-card-desc">创建新文件或文件夹</div>
+          </div>
+        </div>
+      </div>
+      
+      <div class="tool-view" id="systemView">
+        <div class="tool-view-header">
+          <button class="back-btn" onclick="showChatView()">← 返回</button>
+          <h2>系统工具</h2>
+        </div>
+        <div class="tool-cards-grid">
+          <div class="tool-card" onclick="showRunCommand()">
+            <div class="tool-card-icon">💻</div>
+            <div class="tool-card-title">运行命令</div>
+            <div class="tool-card-desc">执行终端命令</div>
+          </div>
+          <div class="tool-card" onclick="showCronJob()">
+            <div class="tool-card-icon">⏰</div>
+            <div class="tool-card-title">定时任务</div>
+            <div class="tool-card-desc">创建和管理定时任务</div>
+          </div>
+          <div class="tool-card" onclick="showWeather()">
+            <div class="tool-card-icon">🌤️</div>
+            <div class="tool-card-title">天气查询</div>
+            <div class="tool-card-desc">查看当前天气</div>
+          </div>
+          <div class="tool-card" onclick="showWebFetch()">
+            <div class="tool-card-icon">🌐</div>
+            <div class="tool-card-title">获取网页</div>
+            <div class="tool-card-desc">抓取网页内容</div>
+          </div>
+          <div class="tool-card" onclick="showScreenshot()">
+            <div class="tool-card-icon">📸</div>
+            <div class="tool-card-title">网页截图</div>
+            <div class="tool-card-desc">截取网页画面</div>
+          </div>
+          <div class="tool-card" onclick="showShortUrl()">
+            <div class="tool-card-icon">🔗</div>
+            <div class="tool-card-title">短链接</div>
+            <div class="tool-card-desc">生成短链接</div>
+          </div>
         </div>
       </div>
       
@@ -1383,181 +1724,259 @@
     });
 
     document.querySelectorAll('.tool-btn-sidebar').forEach(btn => {
-      btn.addEventListener('click', async () => {
-        const tool = btn.dataset.tool;
-        
-        if (tool === 'github') {
-          const action = prompt('GitHub action (issues/repos/prs):');
-          if (action) {
-            addMessage(`[GitHub] ${action}`, 'user');
-            const result = await window.api.runLocalCommand(`gh ${action} --repo emptist/coffeeclaw`);
-            addMessage(result.success ? result.stdout : `Error: ${result.error}`, 'bot');
-          }
-        } else if (tool === 'gh-create-issue') {
-          const title = prompt('Issue title:');
-          const body = prompt('Issue body (optional):') || '';
-          if (title) {
-            addMessage(`[Create Issue] ${title}`, 'user');
-            const result = await window.api.runLocalCommand(`gh issue create --title "${title}" --body "${body}" --repo emptist/coffeeclaw`);
-            addMessage(result.success ? `Issue created: ${result.stdout.trim()}` : `Error: ${result.error}`, 'bot');
-          }
-        } else if (tool === 'gh-create-pr') {
-          const title = prompt('PR title:');
-          const body = prompt('PR body (optional):') || '';
-          const base = prompt('Base branch (default: main):') || 'main';
-          if (title) {
-            addMessage(`[Create PR] ${title}`, 'user');
-            const result = await window.api.runLocalCommand(`gh pr create --title "${title}" --body "${body}" --base ${base} --repo emptist/coffeeclaw`);
-            addMessage(result.success ? `PR created: ${result.stdout.trim()}` : `Error: ${result.error}`, 'bot');
-          }
-        } else if (tool === 'gh-view-issues') {
-          addMessage('[View Issues]', 'user');
-          const result = await window.api.runLocalCommand('gh issue list --repo emptist/coffeeclaw --limit 10');
-          addMessage(result.success ? result.stdout || 'No issues found' : `Error: ${result.error}`, 'bot');
-        } else if (tool === 'search') {
-          const query = prompt('Search query:');
-          if (query) {
-            addMessage(`[Search] ${query}`, 'user');
-            const result = await window.api.runLocalCommand(`openclaw agent --local --session-id \"search-${Date.now()}\" --message \"Search the web for: ${query}\" --json`);
-            addMessage(result.success ? 'Search completed' : `Error: ${result.error}`, 'bot');
-          }
-        } else if (tool === 'weather') {
-          const location = prompt('Location (or leave empty for auto):') || '';
-          addMessage(`[Weather] ${location || 'auto detect'}`, 'user');
-          const result = await window.api.runLocalCommand(`curl -s \"https://wttr.in/${location}?format=3\"`);
-          addMessage(result.success ? result.stdout : 'Weather unavailable', 'bot');
-        } else if (tool === 'exec') {
-          document.getElementById('runCommandBtn').click();
-        } else if (tool === 'feishu') {
-          const msg = prompt('Enter Feishu message to send:');
-          if (msg) {
-            addMessage(`[Feishu] ${msg}`, 'user');
-            const result = await window.api.runLocalCommand(`openclaw agent --local --session-id "feishu-${Date.now()}" --message "Send feishu message: ${msg}" --json`);
-            if (result.success) {
-              try {
-                const data = JSON.parse(result.stdout);
-                const text = data.payloads?.[0]?.text || 'Message sent';
-                addMessage(text, 'bot');
-              } catch (e) {
-                addMessage('Feishu message sent.', 'bot');
-              }
-            } else {
-              addMessage(`Error: ${result.error}`, 'bot');
-            }
-          }
-        } else if (tool === 'feishu-doc') {
-          const title = prompt('Document title:');
-          const content = prompt('Document content:');
-          if (title) {
-            addMessage(`[Feishu Doc] ${title}`, 'user');
-            const result = await window.api.runLocalCommand(`openclaw agent --local --session-id "feishu-doc-${Date.now()}" --message "Create feishu document with title: ${title}, content: ${content || ''}" --json`);
-            addMessage(result.success ? 'Document created.' : `Error: ${result.error}`, 'bot');
-          }
-        } else if (tool === 'feishu-drive') {
-          const filePath = prompt('File path to upload:');
-          if (filePath) {
-            addMessage(`[Feishu Drive] Upload: ${filePath}`, 'user');
-            const result = await window.api.runLocalCommand(`openclaw agent --local --session-id "feishu-drive-${Date.now()}" --message "Upload file to feishu drive: ${filePath}" --json`);
-            addMessage(result.success ? 'File uploaded.' : `Error: ${result.error}`, 'bot');
-          }
-        } else if (tool === 'cron') {
-          const schedule = prompt('Cron schedule (e.g., "0 9 * * *")');
-          const command = prompt('Command to run:');
-          if (schedule && command) {
-            addMessage(`[Cron] Schedule: ${schedule}, Command: ${command}`, 'user');
-            const result = await window.api.runLocalCommand(`openclaw agent --local --session-id "cron-${Date.now()}" --message "Create cron job with schedule '${schedule}' to run: ${command}" --json`);
-            addMessage(result.success ? 'Cron job created.' : `Error: ${result.error}`, 'bot');
-          }
-        } else if (tool === 'create') {
-          const filePath = prompt('Enter file path to create:');
-          const content = prompt('Enter content (leave empty for empty file):');
-          if (filePath) {
-            addMessage(`[Create File] Path: ${filePath}`, 'user');
-            const result = await window.api.runLocalCommand(`printf \"${content || ''}\" > \"${filePath}\"`);
-            addMessage(result.success ? 'File created.' : `Error: ${result.error}`, 'bot');
-          }
-        } else if (tool === 'shorturl') {
-          const url = prompt('Enter URL to shorten:');
-          if (url) {
-            addMessage(`[Short URL] ${url}`, 'user');
-            const result = await window.api.runLocalCommand(`curl -s https://tinyurl.com/api-create.php?url=${encodeURIComponent(url)}`);
-            if (result.success) {
-              addMessage(`Short URL: ${result.stdout.trim()}`, 'bot');
-            } else {
-              addMessage('Error generating short URL.', 'bot');
-            }
-          }
-        } else if (tool === 'read') {
-          const filePath = prompt('Enter file path to read:');
-          if (filePath) {
-            addMessage(`[Read File] ${filePath}`, 'user');
-            const result = await window.api.runLocalCommand(`openclaw agent --local --session-id "read-${Date.now()}" --message "Read file: ${filePath}" --json`);
-            if (result.success) {
-              try {
-                const data = JSON.parse(result.stdout);
-                const text = data.payloads?.[0]?.text || 'No content';
-                addMessage(text, 'bot');
-              } catch (e) {
-                addMessage('Error parsing response', 'bot');
-              }
-            } else {
-              addMessage(`Error: ${result.error}`, 'bot');
-            }
-          }
-        } else if (tool === 'write') {
-          const filePath = prompt('Enter file path to write:');
-          const content = prompt('Enter content:');
-          if (filePath && content !== null) {
-            addMessage(`[Write File] ${filePath}`, 'user');
-            const result = await window.api.runLocalCommand(`openclaw agent --local --session-id "write-${Date.now()}" --message "Write to file ${filePath}: ${content}" --json`);
-            addMessage(result.success ? 'File written.' : `Error: ${result.error}`, 'bot');
-          }
-        } else if (tool === 'edit') {
-          const filePath = prompt('Enter file path to edit:');
-          const oldText = prompt('Text to find:');
-          const newText = prompt('Replace with:');
-          if (filePath && oldText !== null) {
-            addMessage(`[Edit File] ${filePath}`, 'user');
-            const result = await window.api.runLocalCommand(`openclaw agent --local --session-id "edit-${Date.now()}" --message "Edit file ${filePath}: replace '${oldText}' with '${newText}'" --json`);
-            addMessage(result.success ? 'File edited.' : `Error: ${result.error}`, 'bot');
-          }
-        } else if (tool === 'webfetch') {
-          const url = prompt('Enter URL to fetch:');
-          if (url) {
-            addMessage(`[Fetch Webpage] ${url}`, 'user');
-            const result = await window.api.runLocalCommand(`openclaw agent --local --session-id "fetch-${Date.now()}" --message "Fetch and summarize webpage: ${url}" --json`);
-            if (result.success) {
-              try {
-                const data = JSON.parse(result.stdout);
-                const text = data.payloads?.[0]?.text || 'No content';
-                addMessage(text, 'bot');
-              } catch (e) {
-                addMessage('Error parsing response', 'bot');
-              }
-            } else {
-              addMessage(`Error: ${result.error}`, 'bot');
-            }
-          }
-        } else if (tool === 'screenshot') {
-          const url = prompt('Enter URL to screenshot:');
-          if (url) {
-            addMessage(`[Screenshot] ${url}`, 'user');
-            const result = await window.api.runLocalCommand(`openclaw agent --local --session-id "screenshot-${Date.now()}" --message "Take a screenshot of webpage: ${url}" --json`);
-            if (result.success) {
-              try {
-                const data = JSON.parse(result.stdout);
-                const text = data.payloads?.[0]?.text || 'Screenshot taken';
-                addMessage(text, 'bot');
-              } catch (e) {
-                addMessage('Screenshot completed (check OpenClaw workspace)', 'bot');
-              }
-            } else {
-              addMessage(`Error: ${result.error}`, 'bot');
-            }
-          }
+      btn.addEventListener('click', () => {
+        const view = btn.dataset.view;
+        if (view) {
+          showToolView(view);
         }
       });
-    });    
+    });
+
+    function showToolView(viewName) {
+      document.getElementById('chatContainer').style.display = 'none';
+      document.querySelectorAll('.tool-view').forEach(v => v.classList.remove('active'));
+      const viewId = viewName + 'View';
+      const view = document.getElementById(viewId);
+      if (view) {
+        view.classList.add('active');
+      }
+    }
+
+    window.showChatView = function() {
+      document.getElementById('chatContainer').style.display = 'block';
+      document.querySelectorAll('.tool-view').forEach(v => v.classList.remove('active'));
+    };
+
+    window.performSearch = async function(type) {
+      const input = document.getElementById('googleSearchInput');
+      const query = input.value.trim();
+      if (!query) return;
+      
+      showChatView();
+      addMessage(`[搜索] ${query}`, 'user');
+      
+      if (type === 'lucky') {
+        const result = await window.api.runLocalCommand(`openclaw agent --local --session-id "search-${Date.now()}" --message "Search the web for: ${query} and give me the best result" --json`);
+        if (result.success) {
+          try {
+            const data = JSON.parse(result.stdout);
+            const text = data.payloads?.[0]?.text || '搜索完成';
+            addMessage(text, 'bot');
+          } catch (e) {
+            addMessage('搜索完成', 'bot');
+          }
+        } else {
+          addMessage(`错误: ${result.error}`, 'bot');
+        }
+      } else {
+        const result = await window.api.runLocalCommand(`openclaw agent --local --session-id "search-${Date.now()}" --message "Search the web for: ${query}" --json`);
+        if (result.success) {
+          try {
+            const data = JSON.parse(result.stdout);
+            const text = data.payloads?.[0]?.text || '搜索完成';
+            addMessage(text, 'bot');
+          } catch (e) {
+            addMessage('搜索完成', 'bot');
+          }
+        } else {
+          addMessage(`错误: ${result.error}`, 'bot');
+        }
+      }
+      input.value = '';
+    };
+
+    document.getElementById('googleSearchInput').addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') performSearch();
+    });
+
+    window.githubAction = async function(action) {
+      showChatView();
+      addMessage(`[GitHub] ${action}`, 'user');
+      const result = await window.api.runLocalCommand(`gh ${action} --repo emptist/coffeeclaw`);
+      addMessage(result.success ? result.stdout || '完成' : `错误: ${result.error}`, 'bot');
+    };
+
+    window.showGithubCreateIssue = async function() {
+      const title = await showCustomDialog('Issue 标题', '输入 Issue 标题');
+      if (!title) return;
+      const body = await showCustomDialog('Issue 内容 (可选)', '输入详细描述', true) || '';
+      showChatView();
+      addMessage(`[创建 Issue] ${title}`, 'user');
+      const result = await window.api.runLocalCommand(`gh issue create --title "${title}" --body "${body}" --repo emptist/coffeeclaw`);
+      addMessage(result.success ? `Issue 已创建: ${result.stdout.trim()}` : `错误: ${result.error}`, 'bot');
+    };
+
+    window.showGithubCreatePR = async function() {
+      const title = await showCustomDialog('PR 标题', '输入 PR 标题');
+      if (!title) return;
+      const body = await showCustomDialog('PR 内容 (可选)', '输入详细描述', true) || '';
+      const base = await showCustomDialog('目标分支', '默认: main') || 'main';
+      showChatView();
+      addMessage(`[创建 PR] ${title}`, 'user');
+      const result = await window.api.runLocalCommand(`gh pr create --title "${title}" --body "${body}" --base ${base} --repo emptist/coffeeclaw`);
+      addMessage(result.success ? `PR 已创建: ${result.stdout.trim()}` : `错误: ${result.error}`, 'bot');
+    };
+
+    window.showFeishuMessage = async function() {
+      const msg = await showCustomDialog('飞书消息', '输入要发送的消息', true);
+      if (!msg) return;
+      showChatView();
+      addMessage(`[飞书] ${msg}`, 'user');
+      const result = await window.api.runLocalCommand(`openclaw agent --local --session-id "feishu-${Date.now()}" --message "Send feishu message: ${msg}" --json`);
+      if (result.success) {
+        try {
+          const data = JSON.parse(result.stdout);
+          addMessage(data.payloads?.[0]?.text || '消息已发送', 'bot');
+        } catch (e) {
+          addMessage('消息已发送', 'bot');
+        }
+      } else {
+        addMessage(`错误: ${result.error}`, 'bot');
+      }
+    };
+
+    window.showFeishuDoc = async function() {
+      const title = await showCustomDialog('飞书文档标题', '输入文档标题');
+      if (!title) return;
+      const content = await showCustomDialog('文档内容', '输入文档内容', true);
+      showChatView();
+      addMessage(`[飞书文档] ${title}`, 'user');
+      const result = await window.api.runLocalCommand(`openclaw agent --local --session-id "feishu-doc-${Date.now()}" --message "Create feishu document with title: ${title}, content: ${content || ''}" --json`);
+      addMessage(result.success ? '文档已创建' : `错误: ${result.error}`, 'bot');
+    };
+
+    window.showFeishuDrive = async function() {
+      const filePath = await showCustomDialog('飞书云盘上传', '输入文件路径');
+      if (!filePath) return;
+      showChatView();
+      addMessage(`[飞书云盘] 上传: ${filePath}`, 'user');
+      const result = await window.api.runLocalCommand(`openclaw agent --local --session-id "feishu-drive-${Date.now()}" --message "Upload file to feishu drive: ${filePath}" --json`);
+      addMessage(result.success ? '文件已上传' : `错误: ${result.error}`, 'bot');
+    };
+
+    window.showFeishuWiki = function() {
+      showChatView();
+      addMessage('[飞书知识库] 功能开发中...', 'bot');
+    };
+
+    window.showFileRead = async function() {
+      const filePath = await showCustomDialog('读取文件', '输入文件路径');
+      if (!filePath) return;
+      showChatView();
+      addMessage(`[读取文件] ${filePath}`, 'user');
+      const result = await window.api.runLocalCommand(`openclaw agent --local --session-id "read-${Date.now()}" --message "Read file: ${filePath}" --json`);
+      if (result.success) {
+        try {
+          const data = JSON.parse(result.stdout);
+          addMessage(data.payloads?.[0]?.text || '无内容', 'bot');
+        } catch (e) {
+          addMessage('解析响应失败', 'bot');
+        }
+      } else {
+        addMessage(`错误: ${result.error}`, 'bot');
+      }
+    };
+
+    window.showFileWrite = async function() {
+      const filePath = await showCustomDialog('写入文件', '输入文件路径');
+      if (!filePath) return;
+      const content = await showCustomDialog('文件内容', '输入要写入的内容', true);
+      if (content === null) return;
+      showChatView();
+      addMessage(`[写入文件] ${filePath}`, 'user');
+      const result = await window.api.runLocalCommand(`openclaw agent --local --session-id "write-${Date.now()}" --message "Write to file ${filePath}: ${content}" --json`);
+      addMessage(result.success ? '文件已写入' : `错误: ${result.error}`, 'bot');
+    };
+
+    window.showFileEdit = async function() {
+      const filePath = await showCustomDialog('编辑文件', '输入文件路径');
+      if (!filePath) return;
+      const oldText = await showCustomDialog('查找文本', '输入要查找的文本');
+      if (oldText === null) return;
+      const newText = await showCustomDialog('替换为', '输入替换文本');
+      showChatView();
+      addMessage(`[编辑文件] ${filePath}`, 'user');
+      const result = await window.api.runLocalCommand(`openclaw agent --local --session-id "edit-${Date.now()}" --message "Edit file ${filePath}: replace '${oldText}' with '${newText}'" --json`);
+      addMessage(result.success ? '文件已编辑' : `错误: ${result.error}`, 'bot');
+    };
+
+    window.showFileCreate = async function() {
+      const filePath = await showCustomDialog('创建文件', '输入文件路径');
+      if (!filePath) return;
+      const content = await showCustomDialog('文件内容', '输入内容 (留空创建空文件)', true);
+      showChatView();
+      addMessage(`[创建文件] ${filePath}`, 'user');
+      const result = await window.api.runLocalCommand(`printf "${content || ''}" > "${filePath}"`);
+      addMessage(result.success ? '文件已创建' : `错误: ${result.error}`, 'bot');
+    };
+
+    window.showRunCommand = function() {
+      document.getElementById('runCommandBtn').click();
+    };
+
+    window.showCronJob = async function() {
+      const schedule = await showCustomDialog('定时任务', 'Cron 表达式 (如: 0 9 * * *)');
+      if (!schedule) return;
+      const command = await showCustomDialog('执行命令', '输入要执行的命令');
+      if (!command) return;
+      showChatView();
+      addMessage(`[定时任务] ${schedule}: ${command}`, 'user');
+      const result = await window.api.runLocalCommand(`openclaw agent --local --session-id "cron-${Date.now()}" --message "Create cron job with schedule '${schedule}' to run: ${command}" --json`);
+      addMessage(result.success ? '定时任务已创建' : `错误: ${result.error}`, 'bot');
+    };
+
+    window.showWeather = async function() {
+      const location = await showCustomDialog('天气查询', '输入城市名 (留空自动定位)');
+      showChatView();
+      addMessage(`[天气] ${location || '自动定位'}`, 'user');
+      const result = await window.api.runLocalCommand(`curl -s "https://wttr.in/${location || ''}?format=3"`);
+      addMessage(result.success ? result.stdout : '天气信息不可用', 'bot');
+    };
+
+    window.showWebFetch = async function() {
+      const url = await showCustomDialog('获取网页', '输入 URL');
+      if (!url) return;
+      showChatView();
+      addMessage(`[获取网页] ${url}`, 'user');
+      const result = await window.api.runLocalCommand(`openclaw agent --local --session-id "fetch-${Date.now()}" --message "Fetch and summarize webpage: ${url}" --json`);
+      if (result.success) {
+        try {
+          const data = JSON.parse(result.stdout);
+          addMessage(data.payloads?.[0]?.text || '无内容', 'bot');
+        } catch (e) {
+          addMessage('解析响应失败', 'bot');
+        }
+      } else {
+        addMessage(`错误: ${result.error}`, 'bot');
+      }
+    };
+
+    window.showScreenshot = async function() {
+      const url = await showCustomDialog('截图网页', '输入要截图的 URL');
+      if (!url) return;
+      showChatView();
+      addMessage(`[截图] ${url}`, 'user');
+      const result = await window.api.runLocalCommand(`openclaw agent --local --session-id "screenshot-${Date.now()}" --message "Take a screenshot of webpage: ${url}" --json`);
+      if (result.success) {
+        try {
+          const data = JSON.parse(result.stdout);
+          addMessage(data.payloads?.[0]?.text || '截图完成', 'bot');
+        } catch (e) {
+          addMessage('截图完成 (查看 OpenClaw workspace)', 'bot');
+        }
+      } else {
+        addMessage(`错误: ${result.error}`, 'bot');
+      }
+    };
+
+    window.showShortUrl = async function() {
+      const url = await showCustomDialog('短链接', '输入要缩短的 URL');
+      if (!url) return;
+      showChatView();
+      addMessage(`[短链接] ${url}`, 'user');
+      const result = await window.api.runLocalCommand(`curl -s https://tinyurl.com/api-create.php?url=${encodeURIComponent(url)}`);
+      addMessage(result.success ? `短链接: ${result.stdout.trim()}` : '生成短链接失败', 'bot');
+    };    
     async function loadSessionList() {
       const sessions = await window.api.listSessions();
       const sessionList = document.getElementById('sessionList');
