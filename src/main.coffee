@@ -67,39 +67,59 @@ saveSettings = (settings) ->
 
 backupSettings = ->
   try
-    if fs.existsSync settingsFile
-      timestamp = new Date().toISOString().replace(/[:.]/g, '-')
-      backupFile = path.join secreteDir, "settings.backup.#{timestamp}.json"
-      fs.copyFileSync settingsFile, backupFile
-      
-      backups = fs.readdirSync(secreteDir)
-        .filter (f) -> f.startsWith 'settings.backup.' and f.endsWith '.json'
-        .sort()
-        .reverse()
-      
-      for backup, i in backups when i >= 5
-        fs.unlinkSync path.join(secreteDir, backup)
-      
-      console.log "Settings backed up: #{backupFile}"
+    timestamp = new Date().toISOString().replace(/[:.]/g, '-')
+    backupFile = path.join secreteDir, "backup.#{timestamp}.json"
+    
+    backupData =
+      version: '1.0'
+      backedUpAt: new Date().toISOString()
+      settings: if fs.existsSync(settingsFile) then JSON.parse(fs.readFileSync settingsFile, 'utf8') else {}
+      sessions: if fs.existsSync(sessionsFile) then JSON.parse(fs.readFileSync sessionsFile, 'utf8') else { sessions: [] }
+      bots: loadBots()
+      license: loadLicense()
+    
+    fs.writeFileSync backupFile, JSON.stringify(backupData, null, 2)
+    
+    backups = fs.readdirSync(secreteDir)
+      .filter (f) -> f.startsWith('backup.') and f.endsWith('.json') and f isnt 'bots.json'
+      .sort()
+      .reverse()
+    
+    for backup, i in backups when i >= 5
+      fs.unlinkSync path.join(secreteDir, backup)
+    
+    console.log "Full backup created: #{backupFile}"
+    true
   catch e
-    console.error 'Error backing up settings:', e
+    console.error 'Error backing up:', e
+    false
 
 restoreSettings = (backupName) ->
   try
     backupPath = path.join secreteDir, backupName
     if fs.existsSync backupPath
-      fs.copyFileSync backupPath, settingsFile
-      console.log "Settings restored from: #{backupName}"
+      data = JSON.parse fs.readFileSync backupPath, 'utf8'
+      
+      if data.settings
+        fs.writeFileSync settingsFile, JSON.stringify(data.settings, null, 2)
+      if data.sessions
+        fs.writeFileSync sessionsFile, JSON.stringify(data.sessions, null, 2)
+      if data.bots
+        fs.writeFileSync botsFile, JSON.stringify(data.bots, null, 2)
+      if data.license
+        fs.writeFileSync licenseFile, JSON.stringify(data.license, null, 2)
+      
+      console.log "Full backup restored from: #{backupName}"
       return true
     false
   catch e
-    console.error 'Error restoring settings:', e
+    console.error 'Error restoring backup:', e
     false
 
 listSettingsBackups = ->
   try
     fs.readdirSync(secreteDir)
-      .filter (f) -> f.startsWith 'settings.backup.' and f.endsWith '.json'
+      .filter (f) -> f.startsWith('backup.') and f.endsWith('.json') and f isnt 'bots.json'
       .sort()
       .reverse()
   catch

@@ -95,6 +95,24 @@
     },
     addPayment: function(paymentData) {
       return ipcRenderer.invoke('add-payment', paymentData);
+    },
+    getGitEmail: function() {
+      return ipcRenderer.invoke('get-git-email');
+    },
+    backupSettings: function() {
+      return ipcRenderer.invoke('backup-settings');
+    },
+    listBackups: function() {
+      return ipcRenderer.invoke('list-backups');
+    },
+    restoreBackup: function(backupName) {
+      return ipcRenderer.invoke('restore-backup', backupName);
+    },
+    exportAllSettings: function() {
+      return ipcRenderer.invoke('export-all-settings');
+    },
+    importAllSettings: function(data) {
+      return ipcRenderer.invoke('import-all-settings', data);
     }
   });
 

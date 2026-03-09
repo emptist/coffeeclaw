@@ -2,7 +2,7 @@
 (function() {
   // CoffeeClaw - Main Process
   // Auto-configures OpenClaw on first run
-  var BOT_TEMPLATES, BrowserWindow, INITIAL_BALANCE_CNY, INITIAL_BALANCE_USD, LICENSE_PRICES, MAX_HISTORY, MAX_SESSIONS, MODELS, SKILLS, USD_TO_CNY, addToSession, agentDir, agentMdFile, agentModelsFile, app, botsFile, callAPI, callAPIWithMessages, checkNodeInstalled, checkNpmInstalled, checkOpenClaw, checkOpenClawInstalled, checkOpenClawPromise, checkWSLInstalled, configExists, configFile, configureFeishu, createAgentConfig, createBot, createDefaultConfig, createIdentity, createSession, createWindow, crypto, deleteBot, deleteSession, detectExistingFeishuConfig, exec, executeSkillFunction, fs, generateId, generateToken, getActiveBot, getBot, getBotTemplates, getLicenseStatus, getPlatform, getSession, getSkillFunctions, http, https, identityFile, initLicense, installOpenClaw, ipcMain, isConfigured, isMac, isWindows, licenseFile, listSessions, loadBots, loadLicense, loadSessions, loadSettings, mainWindow, openclawDir, path, saveBots, saveLicense, saveSession, saveSessions, saveSettings, secreteDir, sendToOpenClaw, sessionsFile, setActiveBot, settingsFile, spawn, startOpenClaw, syncFeishuConfigToOpenClaw, syncFeishuConfigToSettings, updateBot, workspaceDir;
+  var BOT_TEMPLATES, BrowserWindow, INITIAL_BALANCE_CNY, INITIAL_BALANCE_USD, LICENSE_PRICES, MAX_HISTORY, MAX_SESSIONS, MODELS, SKILLS, USD_TO_CNY, addToSession, agentDir, agentMdFile, agentModelsFile, app, backupSettings, botsFile, callAPI, callAPIWithMessages, checkNodeInstalled, checkNpmInstalled, checkOpenClaw, checkOpenClawInstalled, checkOpenClawPromise, checkWSLInstalled, configExists, configFile, configureFeishu, createAgentConfig, createBot, createDefaultConfig, createIdentity, createSession, createWindow, crypto, deleteBot, deleteSession, detectExistingFeishuConfig, exec, executeSkillFunction, exportAllSettings, fs, generateId, generateToken, getActiveBot, getBot, getBotTemplates, getLicenseStatus, getPlatform, getSession, getSkillFunctions, http, https, identityFile, importAllSettings, initLicense, installOpenClaw, ipcMain, isConfigured, isMac, isWindows, licenseFile, listSessions, listSettingsBackups, loadBots, loadLicense, loadSessions, loadSettings, mainWindow, openclawDir, path, restoreSettings, saveBots, saveLicense, saveSession, saveSessions, saveSettings, secreteDir, sendToOpenClaw, sessionsFile, setActiveBot, settingsFile, spawn, startOpenClaw, syncFeishuConfigToOpenClaw, syncFeishuConfigToSettings, updateBot, workspaceDir;
 
   ({app, BrowserWindow, ipcMain} = require('electron'));
 
@@ -101,6 +101,105 @@
     } catch (error) {
       e = error;
       return console.error('Error saving settings:', e);
+    }
+  };
+
+  backupSettings = function() {
+    var backup, backupFile, backups, e, i, j, len, timestamp;
+    try {
+      if (fs.existsSync(settingsFile)) {
+        timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+        backupFile = path.join(secreteDir, `settings.backup.${timestamp}.json`);
+        fs.copyFileSync(settingsFile, backupFile);
+        backups = fs.readdirSync(secreteDir).filter(function(f) {
+          return f.startsWith('settings.backup.' && f.endsWith('.json'));
+        }).sort().reverse();
+        for (i = j = 0, len = backups.length; j < len; i = ++j) {
+          backup = backups[i];
+          if (i >= 5) {
+            fs.unlinkSync(path.join(secreteDir, backup));
+          }
+        }
+        return console.log(`Settings backed up: ${backupFile}`);
+      }
+    } catch (error) {
+      e = error;
+      return console.error('Error backing up settings:', e);
+    }
+  };
+
+  restoreSettings = function(backupName) {
+    var backupPath, e;
+    try {
+      backupPath = path.join(secreteDir, backupName);
+      if (fs.existsSync(backupPath)) {
+        fs.copyFileSync(backupPath, settingsFile);
+        console.log(`Settings restored from: ${backupName}`);
+        return true;
+      }
+      return false;
+    } catch (error) {
+      e = error;
+      console.error('Error restoring settings:', e);
+      return false;
+    }
+  };
+
+  listSettingsBackups = function() {
+    try {
+      return fs.readdirSync(secreteDir).filter(function(f) {
+        return f.startsWith('settings.backup.' && f.endsWith('.json'));
+      }).sort().reverse();
+    } catch (error) {
+      return [];
+    }
+  };
+
+  exportAllSettings = function() {
+    var bots, e, exportData, license, sessions, settings;
+    try {
+      settings = loadSettings();
+      sessions = fs.existsSync(sessionsFile) ? JSON.parse(fs.readFileSync(sessionsFile, 'utf8')) : {
+        sessions: []
+      };
+      bots = loadBots();
+      license = loadLicense();
+      exportData = {
+        version: '1.0',
+        exportedAt: new Date().toISOString(),
+        settings: settings,
+        sessions: sessions,
+        bots: bots,
+        license: license
+      };
+      return exportData;
+    } catch (error) {
+      e = error;
+      console.error('Error exporting settings:', e);
+      return null;
+    }
+  };
+
+  importAllSettings = function(data) {
+    var e;
+    try {
+      if (data.settings) {
+        saveSettings(data.settings);
+      }
+      if (data.sessions) {
+        fs.writeFileSync(sessionsFile, JSON.stringify(data.sessions, null, 2));
+      }
+      if (data.bots) {
+        fs.writeFileSync(botsFile, JSON.stringify(data.bots, null, 2));
+      }
+      if (data.license) {
+        saveLicense(data.license);
+      }
+      return true;
+    } catch (error) {
+      e = error;
+      console.error('Error importing settings:', e);
+      return false;
     }
   };
 
@@ -636,13 +735,13 @@
   };
 
   getSkillFunctions = function(botSkills) {
-    var funcDef, funcName, functions, i, len, skill, skillName;
+    var funcDef, funcName, functions, j, len, skill, skillName;
     if (!(botSkills && botSkills[0] !== '*')) {
       return [];
     }
     functions = [];
-    for (i = 0, len = botSkills.length; i < len; i++) {
-      skillName = botSkills[i];
+    for (j = 0, len = botSkills.length; j < len; j++) {
+      skillName = botSkills[j];
       skill = SKILLS[skillName];
       if (!skill) {
         continue;
@@ -660,10 +759,10 @@
   };
 
   executeSkillFunction = function(name, args, botSkills) {
-    var i, len, ref, skill, skillName, skillName2;
+    var j, len, ref, skill, skillName, skillName2;
     ref = botSkills || ['*'];
-    for (i = 0, len = ref.length; i < len; i++) {
-      skillName = ref[i];
+    for (j = 0, len = ref.length; j < len; j++) {
+      skillName = ref[j];
       if (skillName === '*') {
         for (skillName2 in SKILLS) {
           skill = SKILLS[skillName2];
@@ -1054,7 +1153,7 @@ You are a helpful AI assistant running on the user's local machine. You are powe
 
   callAPI = function(sessionId, message, settings, bot = null) {
     return new Promise(function(resolve, reject) {
-      var apiKey, config, functions, i, len, messages, model, msg, options, postData, provider, providerConfig, ref, req, session, systemPrompt;
+      var apiKey, config, functions, j, len, messages, model, msg, options, postData, provider, providerConfig, ref, req, session, systemPrompt;
       provider = settings.activeProvider || settings.provider || 'zhipu';
       if (settings.providers && settings.providers[provider]) {
         providerConfig = settings.providers[provider];
@@ -1078,8 +1177,8 @@ You are a helpful AI assistant running on the user's local machine. You are powe
       ];
       if (session.messages) {
         ref = session.messages;
-        for (i = 0, len = ref.length; i < len; i++) {
-          msg = ref[i];
+        for (j = 0, len = ref.length; j < len; j++) {
+          msg = ref[j];
           messages.push({
             role: msg.role,
             content: msg.content
@@ -1282,12 +1381,17 @@ You are a helpful AI assistant running on the user's local machine. You are powe
   };
 
   app.whenReady().then(function() {
+    backupSettings();
     createWindow();
     return app.on('activate', function() {
       if (BrowserWindow.getAllWindows().length === 0) {
         return createWindow();
       }
     });
+  });
+
+  app.on('before-quit', function() {
+    return backupSettings();
   });
 
   app.on('window-all-closed', function() {
@@ -1409,7 +1513,7 @@ You are a helpful AI assistant running on the user's local machine. You are powe
   });
 
   ipcMain.handle('import-bots', function(event, data) {
-    var bot, botsData, e, existing, i, imported, len, ref, settings;
+    var bot, botsData, e, existing, imported, j, len, ref, settings;
     try {
       if (!(data.bots && Array.isArray(data.bots))) {
         return {
@@ -1420,8 +1524,8 @@ You are a helpful AI assistant running on the user's local machine. You are powe
       botsData = loadBots();
       imported = 0;
       ref = data.bots;
-      for (i = 0, len = ref.length; i < len; i++) {
-        bot = ref[i];
+      for (j = 0, len = ref.length; j < len; j++) {
+        bot = ref[j];
         if (bot.id && bot.name) {
           existing = botsData.bots.find(function(b) {
             return b.id === bot.id;
@@ -1466,6 +1570,26 @@ You are a helpful AI assistant running on the user's local machine. You are powe
         error: e.message
       };
     }
+  });
+
+  ipcMain.handle('backup-settings', function() {
+    return backupSettings();
+  });
+
+  ipcMain.handle('list-backups', function() {
+    return listSettingsBackups();
+  });
+
+  ipcMain.handle('restore-backup', function(event, backupName) {
+    return restoreSettings(backupName);
+  });
+
+  ipcMain.handle('export-all-settings', function() {
+    return exportAllSettings();
+  });
+
+  ipcMain.handle('import-all-settings', function(event, data) {
+    return importAllSettings(data);
   });
 
   ipcMain.handle('get-feishu-status', function() {
