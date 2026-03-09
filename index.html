@@ -1747,6 +1747,18 @@
       document.querySelectorAll('.tool-view').forEach(v => v.classList.remove('active'));
     };
 
+    function extractOpenClawResponse(stdout) {
+      try {
+        const jsonMatch = stdout.match(/\{[\s\S]*"payloads"[\s\S]*\}/);
+        if (jsonMatch) {
+          return JSON.parse(jsonMatch[0]);
+        }
+        return null;
+      } catch (e) {
+        return null;
+      }
+    }
+
     window.performSearch = async function(type) {
       const input = document.getElementById('googleSearchInput');
       const query = input.value.trim();
@@ -1755,32 +1767,20 @@
       showChatView();
       addMessage(`[搜索] ${query}`, 'user');
       
-      if (type === 'lucky') {
-        const result = await window.api.runLocalCommand(`openclaw agent --local --session-id "search-${Date.now()}" --message "Search the web for: ${query} and give me the best result" --json`);
-        if (result.success) {
-          try {
-            const data = JSON.parse(result.stdout);
-            const text = data.payloads?.[0]?.text || '搜索完成';
-            addMessage(text, 'bot');
-          } catch (e) {
-            addMessage('搜索完成', 'bot');
-          }
+      const searchQuery = type === 'lucky' 
+        ? `Search the web for: ${query} and give me the best result`
+        : `Search the web for: ${query}`;
+      
+      const result = await window.api.runLocalCommand(`openclaw agent --local --session-id "search-${Date.now()}" --message "${searchQuery}" --json`);
+      if (result.success) {
+        const data = extractOpenClawResponse(result.stdout);
+        if (data && data.payloads && data.payloads[0]) {
+          addMessage(data.payloads[0].text, 'bot');
         } else {
-          addMessage(`错误: ${result.error}`, 'bot');
+          addMessage('搜索完成，但无法解析结果', 'bot');
         }
       } else {
-        const result = await window.api.runLocalCommand(`openclaw agent --local --session-id "search-${Date.now()}" --message "Search the web for: ${query}" --json`);
-        if (result.success) {
-          try {
-            const data = JSON.parse(result.stdout);
-            const text = data.payloads?.[0]?.text || '搜索完成';
-            addMessage(text, 'bot');
-          } catch (e) {
-            addMessage('搜索完成', 'bot');
-          }
-        } else {
-          addMessage(`错误: ${result.error}`, 'bot');
-        }
+        addMessage(`错误: ${result.error}`, 'bot');
       }
       input.value = '';
     };
@@ -1824,12 +1824,8 @@
       addMessage(`[飞书] ${msg}`, 'user');
       const result = await window.api.runLocalCommand(`openclaw agent --local --session-id "feishu-${Date.now()}" --message "Send feishu message: ${msg}" --json`);
       if (result.success) {
-        try {
-          const data = JSON.parse(result.stdout);
-          addMessage(data.payloads?.[0]?.text || '消息已发送', 'bot');
-        } catch (e) {
-          addMessage('消息已发送', 'bot');
-        }
+        const data = extractOpenClawResponse(result.stdout);
+        addMessage(data?.payloads?.[0]?.text || '消息已发送', 'bot');
       } else {
         addMessage(`错误: ${result.error}`, 'bot');
       }
@@ -1866,12 +1862,8 @@
       addMessage(`[读取文件] ${filePath}`, 'user');
       const result = await window.api.runLocalCommand(`openclaw agent --local --session-id "read-${Date.now()}" --message "Read file: ${filePath}" --json`);
       if (result.success) {
-        try {
-          const data = JSON.parse(result.stdout);
-          addMessage(data.payloads?.[0]?.text || '无内容', 'bot');
-        } catch (e) {
-          addMessage('解析响应失败', 'bot');
-        }
+        const data = extractOpenClawResponse(result.stdout);
+        addMessage(data?.payloads?.[0]?.text || '无内容', 'bot');
       } else {
         addMessage(`错误: ${result.error}`, 'bot');
       }
@@ -1940,12 +1932,8 @@
       addMessage(`[获取网页] ${url}`, 'user');
       const result = await window.api.runLocalCommand(`openclaw agent --local --session-id "fetch-${Date.now()}" --message "Fetch and summarize webpage: ${url}" --json`);
       if (result.success) {
-        try {
-          const data = JSON.parse(result.stdout);
-          addMessage(data.payloads?.[0]?.text || '无内容', 'bot');
-        } catch (e) {
-          addMessage('解析响应失败', 'bot');
-        }
+        const data = extractOpenClawResponse(result.stdout);
+        addMessage(data?.payloads?.[0]?.text || '无内容', 'bot');
       } else {
         addMessage(`错误: ${result.error}`, 'bot');
       }
@@ -1958,12 +1946,8 @@
       addMessage(`[截图] ${url}`, 'user');
       const result = await window.api.runLocalCommand(`openclaw agent --local --session-id "screenshot-${Date.now()}" --message "Take a screenshot of webpage: ${url}" --json`);
       if (result.success) {
-        try {
-          const data = JSON.parse(result.stdout);
-          addMessage(data.payloads?.[0]?.text || '截图完成', 'bot');
-        } catch (e) {
-          addMessage('截图完成 (查看 OpenClaw workspace)', 'bot');
-        }
+        const data = extractOpenClawResponse(result.stdout);
+        addMessage(data?.payloads?.[0]?.text || '截图完成', 'bot');
       } else {
         addMessage(`错误: ${result.error}`, 'bot');
       }
