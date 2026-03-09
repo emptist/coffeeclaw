@@ -889,7 +889,7 @@
         <p id="paymentAddressText" style="font-family:monospace;font-size:11px;word-break:break-all;color:#888;display:none;">bc1qym7whe3q3puupxg475ds6kyusl7g6wn7ewa9jn</p>
       </div>
       
-      <button id="paymentCompleteBtn" style="width:100%;padding:12px;background:#e94560;color:white;border:none;border-radius:8px;font-size:14px;cursor:pointer;margin-bottom:10px;">
+      <button id="paymentCompleteBtn" style="width:100%;padding:12px;background:#666;color:white;border:none;border-radius:8px;font-size:14px;cursor:not-allowed;margin-bottom:10px;" disabled>
         ✓ Payment Complete
       </button>
       
@@ -1908,6 +1908,15 @@
       
       const prices = await window.api.getLicensePrices();
       
+      const completeBtn = document.getElementById('paymentCompleteBtn');
+      completeBtn.disabled = true;
+      completeBtn.style.background = '#666';
+      completeBtn.style.cursor = 'not-allowed';
+      
+      document.querySelectorAll('[data-method]').forEach(b => b.classList.remove('active'));
+      document.getElementById('paymentQrSection').style.display = 'none';
+      currentPaymentMethod = null;
+      
       licenseModal.style.display = 'flex';
     });
     
@@ -1978,6 +1987,11 @@
         btn.classList.add('active');
         
         paymentQrSection.style.display = 'block';
+        
+        const completeBtn = document.getElementById('paymentCompleteBtn');
+        completeBtn.disabled = false;
+        completeBtn.style.background = '#e94560';
+        completeBtn.style.cursor = 'pointer';
         
         const prices = await window.api.getLicensePrices();
         
