@@ -2,9 +2,9 @@
 (function() {
   // CoffeeClaw - Main Process
   // Auto-configures OpenClaw on first run
-  var BOT_TEMPLATES, BrowserWindow, INITIAL_BALANCE_CNY, INITIAL_BALANCE_USD, LICENSE_PRICES, MAX_HISTORY, MAX_SESSIONS, MODELS, SKILLS, USD_TO_CNY, addToSession, agentDir, agentMdFile, agentModelsFile, app, backupSettings, botsFile, callAPI, callAPIWithMessages, checkNodeInstalled, checkNpmInstalled, checkOpenClaw, checkOpenClawInstalled, checkOpenClawPromise, checkWSLInstalled, configExists, configFile, configureFeishu, createAgentConfig, createBot, createDefaultConfig, createIdentity, createSession, createWindow, crypto, deleteBot, deleteSession, detectExistingFeishuConfig, exec, executeSkillFunction, exportAllSettings, fs, generateId, generateToken, getActiveBot, getBackupData, getBot, getBotTemplates, getLicenseStatus, getPlatform, getSession, getSkillFunctions, http, https, identityFile, importAllSettings, initLicense, installOpenClaw, ipcMain, isConfigured, isMac, isWindows, licenseFile, listSessions, listSettingsBackups, loadBots, loadLicense, loadSessions, loadSettings, mainWindow, openclawDir, path, restoreSettings, saveBots, saveLicense, saveSession, saveSessions, saveSettings, secreteDir, sendToOpenClaw, sessionsFile, setActiveBot, settingsFile, spawn, startOpenClaw, syncFeishuConfigToOpenClaw, syncFeishuConfigToSettings, updateBot, workspaceDir;
+  var BOT_TEMPLATES, BrowserWindow, INITIAL_BALANCE_CNY, INITIAL_BALANCE_USD, LICENSE_PRICES, MAX_HISTORY, MAX_SESSIONS, MODELS, SKILLS, USD_TO_CNY, addToSession, agentDir, agentMdFile, agentModelsFile, app, backupSettings, botsFile, callAPI, callAPIWithMessages, checkNodeInstalled, checkNpmInstalled, checkOpenClaw, checkOpenClawInstalled, checkOpenClawPromise, checkWSLInstalled, configExists, configFile, configureFeishu, createAgentConfig, createBot, createDefaultConfig, createIdentity, createSession, createWindow, crypto, deleteBot, deleteSession, detectExistingFeishuConfig, exec, executeSkillFunction, exportAllSettings, fs, generateId, generateToken, getActiveBot, getBackupData, getBot, getBotTemplates, getLicenseStatus, getPlatform, getSession, getSkillFunctions, http, https, identityFile, importAllSettings, initLicense, installOpenClaw, ipcMain, isConfigured, isMac, isWindows, licenseFile, listSessions, listSettingsBackups, loadBots, loadLicense, loadSessions, loadSettings, mainWindow, openclawDir, path, restoreSettings, saveBots, saveLicense, saveSession, saveSessions, saveSettings, secreteDir, sendToOpenClaw, sessionsFile, setActiveBot, settingsFile, shell, spawn, startOpenClaw, syncFeishuConfigToOpenClaw, syncFeishuConfigToSettings, updateBot, workspaceDir;
 
-  ({app, BrowserWindow, ipcMain} = require('electron'));
+  ({app, BrowserWindow, ipcMain, shell} = require('electron'));
 
   path = require('path');
 
@@ -1640,6 +1640,10 @@ You are a helpful AI assistant running on the user's local machine. You are powe
 
   ipcMain.handle('import-all-settings', function(event, data, options) {
     return importAllSettings(data, options);
+  });
+
+  ipcMain.handle('open-external', function(event, url) {
+    return shell.openExternal(url);
   });
 
   ipcMain.handle('get-feishu-status', function() {

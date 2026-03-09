@@ -116,6 +116,9 @@
     },
     importAllSettings: function(data, options) {
       return ipcRenderer.invoke('import-all-settings', data, options);
+    },
+    openExternal: function(url) {
+      return ipcRenderer.invoke('open-external', url);
     }
   });
 

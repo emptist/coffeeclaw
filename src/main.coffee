@@ -1,7 +1,7 @@
 # CoffeeClaw - Main Process
 # Auto-configures OpenClaw on first run
 
-{ app, BrowserWindow, ipcMain } = require 'electron'
+{ app, BrowserWindow, ipcMain, shell } = require 'electron'
 path = require 'path'
 fs = require 'fs'
 http = require 'http'
@@ -1097,6 +1097,9 @@ ipcMain.handle 'restore-backup', (event, backupName, options) -> restoreSettings
 ipcMain.handle 'get-backup-data', (event, backupName) -> getBackupData backupName
 ipcMain.handle 'export-all-settings', -> exportAllSettings()
 ipcMain.handle 'import-all-settings', (event, data, options) -> importAllSettings data, options
+
+ipcMain.handle 'open-external', (event, url) ->
+  shell.openExternal url
 
 ipcMain.handle 'get-feishu-status', ->
   settings = loadSettings()

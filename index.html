@@ -834,6 +834,10 @@
         </div>
       </div>
       
+      <button id="openFeishuBtn" style="width:100%;padding:10px;background:#0f3460;color:#eee;border:none;border-radius:8px;cursor:pointer;margin-bottom:15px;">
+        🌐 Open Feishu in Browser
+      </button>
+      
       <div id="pairingSection" style="display:none;">
         <p style="font-size:13px;color:#e94560;margin-bottom:15px;">⚠️ A user is waiting for pairing approval.</p>
         
@@ -1890,6 +1894,10 @@
       document.getElementById('feishuPairingModal').style.display = 'none';
     });
     
+    document.getElementById('openFeishuBtn').addEventListener('click', () => {
+      window.api.openExternal('https://feishu.cn');
+    });
+    
     licenseIndicator.addEventListener('click', async () => {
       await updateLicenseIndicator();
       
@@ -2172,11 +2180,16 @@
     async function checkFeishuStatus() {
       const status = await window.api.getFeishuStatus();
       const btn = document.getElementById('feishuStatusBtn');
-      if (status.enabled) {
-        btn.style.display = 'inline-block';
-        btn.style.background = status.configured ? '#00ff88' : '#e94560';
+      btn.style.display = 'inline-block';
+      if (status.enabled && status.configured) {
+        btn.style.background = '#00ff88';
+        btn.title = 'Feishu Connected';
+      } else if (status.enabled) {
+        btn.style.background = '#e94560';
+        btn.title = 'Feishu Not Configured';
       } else {
-        btn.style.display = 'none';
+        btn.style.background = '#888';
+        btn.title = 'Feishu Disabled - Click to setup';
       }
     }
     

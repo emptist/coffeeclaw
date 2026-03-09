@@ -39,3 +39,4 @@ contextBridge.exposeInMainWorld 'api',
   getBackupData: (backupName) -> ipcRenderer.invoke 'get-backup-data', backupName
   exportAllSettings: -> ipcRenderer.invoke 'export-all-settings'
   importAllSettings: (data, options) -> ipcRenderer.invoke 'import-all-settings', data, options
+  openExternal: (url) -> ipcRenderer.invoke 'open-external', url
