@@ -627,6 +627,7 @@
         <div class="step-dot" id="dot2"></div>
         <div class="step-dot" id="dot3"></div>
         <div class="step-dot" id="dot4"></div>
+        <div class="step-dot" id="dot5"></div>
       </div>
       
       <div id="step0">
@@ -648,7 +649,21 @@
       </div>
       
       <div id="step2" class="hidden">
-        <h2>🔑 API Configuration</h2>
+        <h2>� User Registration</h2>
+        <p style="font-size:13px;color:#888;margin-bottom:15px;">
+          Enter your email for updates and support.
+        </p>
+        
+        <label>Email (optional):</label>
+        <input type="email" id="setupEmailInput" placeholder="your@email.com">
+        
+        <div class="btn-group">
+          <button id="continueToApiBtn">Continue</button>
+        </div>
+      </div>
+      
+      <div id="step3" class="hidden">
+        <h2>� API Configuration</h2>
         <p style="font-size:13px;color:#888;margin-bottom:15px;">
           Choose your AI provider and enter API key. 
           <a href="https://github.com/emptist/openclaw" target="_blank" style="color:#e94560;">OpenClaw docs</a>
@@ -675,7 +690,7 @@
         </div>
       </div>
       
-      <div id="step3" class="hidden">
+      <div id="step4" class="hidden">
         <h2>⚙️ Setting Up</h2>
         <p>Configuring CoffeeClaw...</p>
         <div class="progress-bar">
@@ -684,7 +699,7 @@
         <p class="progress-text" id="progressText">Initializing...</p>
       </div>
       
-      <div id="step4" class="hidden">
+      <div id="step5" class="hidden">
         <h2>✅ Ready!</h2>
         <p>CoffeeClaw is now configured and ready to use. You can start chatting!</p>
         <div class="btn-group">
@@ -798,26 +813,33 @@
       
       <h3 style="font-size:16px;margin-bottom:15px;">Support CoffeeClaw</h3>
       
-      <label style="font-size:13px;margin-bottom:5px;display:block;">Your Email (optional):</label>
-      <input type="email" id="userEmailInput" placeholder="your@email.com" style="width:100%;padding:10px;background:#1a1a2e;color:#eee;border:1px solid #0f3460;border-radius:8px;margin-bottom:15px;">
-      
-      <label style="font-size:13px;margin-bottom:5px;display:block;">Currency:</label>
-      <div style="display:flex;gap:8px;margin-bottom:15px;">
-        <button class="currency-btn active" data-currency="usd">$ USD</button>
-        <button class="currency-btn" data-currency="cny">¥ CNY</button>
+      <label style="font-size:13px;margin-bottom:10px;display:block;">Select Amount:</label>
+      <div style="margin-bottom:15px;">
+        <label style="display:flex;align-items:center;padding:10px;background:#1a1a2e;border-radius:8px;margin-bottom:8px;cursor:pointer;">
+          <input type="radio" name="paymentAmount" value="12" checked style="margin-right:10px;">
+          <span>$12 / year</span>
+          <span style="margin-left:auto;color:#888;font-size:12px;">¥72/年</span>
+        </label>
+        <label style="display:flex;align-items:center;padding:10px;background:#1a1a2e;border-radius:8px;margin-bottom:8px;cursor:pointer;">
+          <input type="radio" name="paymentAmount" value="36" style="margin-right:10px;">
+          <span>$36 / lifetime</span>
+          <span style="margin-left:auto;color:#888;font-size:12px;">¥216/终身</span>
+        </label>
+        <label style="display:flex;align-items:center;padding:10px;background:#1a1a2e;border-radius:8px;cursor:pointer;">
+          <input type="radio" name="paymentAmount" value="custom" style="margin-right:10px;">
+          <span>Custom amount</span>
+        </label>
       </div>
       
-      <label style="font-size:13px;margin-bottom:5px;display:block;">Payment Amount:</label>
-      <input type="number" id="paymentAmountInput" placeholder="12" min="1" max="1000" step="1" style="width:100%;padding:10px;background:#1a1a2e;color:#eee;border:1px solid #0f3460;border-radius:8px;margin-bottom:15px;">
-      <p id="suggestedAmount" style="font-size:11px;color:#888;margin-top:-10px;margin-bottom:15px;">
-        Suggested: $12/year or $36 lifetime
-      </p>
+      <div id="customAmountSection" style="display:none;margin-bottom:15px;">
+        <input type="number" id="customAmountInput" placeholder="Enter amount" min="1" max="1000" style="width:100%;padding:10px;background:#0f3460;color:#eee;border:1px solid #0f3460;border-radius:8px;">
+      </div>
       
       <label style="font-size:13px;margin-bottom:5px;display:block;">Payment Method:</label>
       <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:15px;">
         <button class="payment-method-btn active" data-method="alipay">支付宝</button>
         <button class="payment-method-btn" data-method="btc">₿ Bitcoin</button>
-        <button class="payment-method-btn" data-method="paypal">� PayPal</button>
+        <button class="payment-method-btn" data-method="paypal">PayPal</button>
       </div>
       
       <div id="paymentQrSection" style="text-align:center;margin:10px 0;padding:10px;background:#1a1a2e;border-radius:8px;">
@@ -827,10 +849,6 @@
       
       <button id="paymentCompleteBtn" style="width:100%;padding:12px;background:#00bfa5;color:white;border:none;border-radius:8px;font-size:14px;cursor:pointer;margin-bottom:10px;">
         ✓ Payment Complete
-      </button>
-      
-      <button id="sendPaymentEmailBtn" style="width:100%;padding:10px;background:transparent;color:#e94560;border:1px solid #e94560;border-radius:8px;font-size:12px;cursor:pointer;">
-        📧 Send Payment Notification (optional)
       </button>
       
       <div class="btn-group">
@@ -1360,6 +1378,20 @@
       document.getElementById('step2').classList.remove('hidden');
       document.getElementById('dot2').classList.add('done');
       document.getElementById('dot3').classList.add('active');
+    });
+    
+    document.getElementById('continueToApiBtn').addEventListener('click', async () => {
+      const email = document.getElementById('setupEmailInput').value.trim();
+      if (email) {
+        const settings = await window.api.getSettings();
+        settings.userEmail = email;
+        await window.api.saveSettings(settings);
+      }
+      
+      document.getElementById('step2').classList.add('hidden');
+      document.getElementById('step3').classList.remove('hidden');
+      document.getElementById('dot3').classList.add('done');
+      document.getElementById('dot4').classList.add('active');
       await loadModels();
     });
     
@@ -1383,10 +1415,10 @@
     });
     
     async function startInstallation(apiKey) {
-      document.getElementById('step2').classList.add('hidden');
-      document.getElementById('step3').classList.remove('hidden');
-      document.getElementById('dot3').classList.add('done');
-      document.getElementById('dot4').classList.add('active');
+      document.getElementById('step3').classList.add('hidden');
+      document.getElementById('step4').classList.remove('hidden');
+      document.getElementById('dot4').classList.add('done');
+      document.getElementById('dot5').classList.add('active');
       
       const progressBar = document.getElementById('progressBar');
       const progressText = document.getElementById('progressText');
@@ -1415,8 +1447,8 @@
         
         await new Promise(r => setTimeout(r, 500));
         
-        document.getElementById('step3').classList.add('hidden');
-        document.getElementById('step4').classList.remove('hidden');
+        document.getElementById('step4').classList.add('hidden');
+        document.getElementById('step5').classList.remove('hidden');
         
       } catch (e) {
         progressText.textContent = 'Error: ' + e.message;
@@ -1693,6 +1725,17 @@
       });
     });
     
+    document.querySelectorAll('input[name="paymentAmount"]').forEach(radio => {
+      radio.addEventListener('change', () => {
+        const customSection = document.getElementById('customAmountSection');
+        if (radio.value === 'custom' && radio.checked) {
+          customSection.style.display = 'block';
+        } else {
+          customSection.style.display = 'none';
+        }
+      });
+    });
+    
     document.querySelectorAll('.payment-method-btn').forEach(btn => {
       btn.addEventListener('click', async () => {
         const method = btn.dataset.method;
@@ -1725,31 +1768,37 @@
     });
     
     document.getElementById('paymentCompleteBtn').addEventListener('click', async () => {
-      const amount = parseFloat(document.getElementById('paymentAmountInput').value) || 0;
-      const email = document.getElementById('userEmailInput').value.trim();
-      const symbol = currentCurrency === 'cny' ? '¥' : '$';
+      const selectedRadio = document.querySelector('input[name="paymentAmount"]:checked');
+      let amount;
+      
+      if (selectedRadio.value === 'custom') {
+        amount = parseFloat(document.getElementById('customAmountInput').value) || 0;
+      } else {
+        amount = parseFloat(selectedRadio.value);
+      }
       
       if (amount <= 0) {
         alert('Please enter a payment amount');
         return;
       }
       
-      const maxAmount = currentCurrency === 'cny' ? 600 : 100;
+      const maxAmount = 100;
       if (amount > maxAmount) {
-        const confirm = window.confirm(`You entered ${symbol}${amount}. This seems higher than our suggested amounts.\n\nDid you mean to donate this amount? Click OK to confirm.`);
+        const confirm = window.confirm(`You entered $${amount}. This seems higher than our suggested amounts.\n\nDid you mean to donate this amount? Click OK to confirm.`);
         if (!confirm) return;
       }
       
       try {
+        const settings = await window.api.getSettings();
         const result = await window.api.addPayment({
           amount: amount,
           method: currentPaymentMethod,
-          email: email,
-          currency: currentCurrency
+          email: settings.userEmail || '',
+          currency: 'usd'
         });
         
         if (result.success) {
-          alert(`Thank you! ${symbol}${amount} has been added to your balance.\n\nWe appreciate your support! ☕`);
+          alert(`Thank you! $${amount} has been added to your balance.\n\nWe appreciate your support! ☕`);
           await updateLicenseIndicator();
           licenseModal.style.display = 'none';
         } else {
@@ -1758,14 +1807,6 @@
       } catch (e) {
         alert('Error processing payment: ' + e.message);
       }
-    });
-    
-    document.getElementById('sendPaymentEmailBtn').addEventListener('click', () => {
-      const amount = document.getElementById('paymentAmountInput').value || '0';
-      const email = document.getElementById('userEmailInput').value.trim();
-      const subject = encodeURIComponent(`CoffeeClaw Payment Notification - $${amount}`);
-      const body = encodeURIComponent(`Hi,\n\nI have sent $${amount} via ${currentPaymentMethod}.\n\nMy email: ${email || 'Not provided'}\n\nThank you for CoffeeClaw!`);
-      window.location.href = `mailto:support@coffeeclaw.app?subject=${subject}&body=${body}`;
     });
     
     document.getElementById('exportBotsBtn').addEventListener('click', async () => {

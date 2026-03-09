@@ -32,3 +32,4 @@ contextBridge.exposeInMainWorld 'api',
   getLicensePrices: -> ipcRenderer.invoke 'get-license-prices'
   activateLicense: (plan, paymentInfo) -> ipcRenderer.invoke 'activate-license', plan, paymentInfo
   addPayment: (paymentData) -> ipcRenderer.invoke 'add-payment', paymentData
+  getGitEmail: -> ipcRenderer.invoke 'get-git-email'
