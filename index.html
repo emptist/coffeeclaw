@@ -576,7 +576,7 @@
   </style>
 </head>
 <body>
-  <div style="display:flex;height:100vh;">
+  <div id="mainApp" style="display:flex;height:100vh;">
     <div class="sidebar" id="sidebar">
       <div class="sidebar-header">
         <h3 data-i18n="conversations">Conversations</h3>
@@ -646,6 +646,20 @@
       </div>
       
       <div id="step1" class="hidden">
+        <h2>👤 User Registration</h2>
+        <p style="font-size:13px;color:#888;margin-bottom:15px;">
+          Enter your email for updates and support.
+        </p>
+        
+        <label>Email (optional):</label>
+        <input type="email" id="setupEmailInput" placeholder="your@email.com">
+        
+        <div class="btn-group">
+          <button id="continueToCheckBtn">Continue</button>
+        </div>
+      </div>
+      
+      <div id="step2" class="hidden">
         <h2>📋 System Check</h2>
         <div id="systemCheckList" style="margin:15px 0;"></div>
         <div id="manualSteps" class="hidden" style="background:#0f3460;padding:15px;border-radius:8px;margin:15px 0;font-size:13px;line-height:1.8;"></div>
@@ -655,22 +669,8 @@
         </div>
       </div>
       
-      <div id="step2" class="hidden">
-        <h2>� User Registration</h2>
-        <p style="font-size:13px;color:#888;margin-bottom:15px;">
-          Enter your email for updates and support.
-        </p>
-        
-        <label>Email (optional):</label>
-        <input type="email" id="setupEmailInput" placeholder="your@email.com">
-        
-        <div class="btn-group">
-          <button id="continueToApiBtn">Continue</button>
-        </div>
-      </div>
-      
       <div id="step3" class="hidden">
-        <h2>� API Configuration</h2>
+        <h2>🔑 API Configuration</h2>
         <p style="font-size:13px;color:#888;margin-bottom:15px;">
           Choose your AI provider and enter API key. 
           <a href="https://github.com/emptist/openclaw" target="_blank" style="color:#e94560;">OpenClaw docs</a>
@@ -1295,6 +1295,7 @@
       const status = await checkStatus();
       
       if (!status.hasApiKey) {
+        document.getElementById('mainApp').style.display = 'none';
         const hasBackup = await window.api.hasBackup();
         if (hasBackup) {
           document.getElementById('backupModal').style.display = 'flex';
@@ -1302,6 +1303,7 @@
           setupOverlay.classList.remove('hidden');
         }
       } else if (!status.running && !status.configured) {
+        document.getElementById('mainApp').style.display = 'none';
         setupOverlay.classList.remove('hidden');
       }
       
@@ -1321,6 +1323,20 @@
       document.getElementById('step1').classList.remove('hidden');
       document.getElementById('dot1').classList.add('done');
       document.getElementById('dot2').classList.add('active');
+    });
+    
+    document.getElementById('continueToCheckBtn').addEventListener('click', async () => {
+      const email = document.getElementById('setupEmailInput').value.trim();
+      if (email) {
+        const settings = await window.api.getSettings();
+        settings.userEmail = email;
+        await window.api.saveSettings(settings);
+      }
+      
+      document.getElementById('step1').classList.add('hidden');
+      document.getElementById('step2').classList.remove('hidden');
+      document.getElementById('dot2').classList.add('done');
+      document.getElementById('dot3').classList.add('active');
       await checkPrerequisites();
     });
     
@@ -1484,20 +1500,6 @@
     });
     
     document.getElementById('continueBtn').addEventListener('click', async () => {
-      document.getElementById('step1').classList.add('hidden');
-      document.getElementById('step2').classList.remove('hidden');
-      document.getElementById('dot2').classList.add('done');
-      document.getElementById('dot3').classList.add('active');
-    });
-    
-    document.getElementById('continueToApiBtn').addEventListener('click', async () => {
-      const email = document.getElementById('setupEmailInput').value.trim();
-      if (email) {
-        const settings = await window.api.getSettings();
-        settings.userEmail = email;
-        await window.api.saveSettings(settings);
-      }
-      
       document.getElementById('step2').classList.add('hidden');
       document.getElementById('step3').classList.remove('hidden');
       document.getElementById('dot3').classList.add('done');
@@ -1569,6 +1571,7 @@
     
     document.getElementById('finishBtn').addEventListener('click', () => {
       setupOverlay.classList.add('hidden');
+      document.getElementById('mainApp').style.display = 'flex';
       addMessage('Ready to chat! Ask me anything.', 'success');
     });
     
