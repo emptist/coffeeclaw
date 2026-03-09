@@ -84,6 +84,9 @@
     syncFeishuToOpenClaw: function() {
       return ipcRenderer.invoke('sync-feishu-to-openclaw');
     },
+    approveFeishuPairing: function(code) {
+      return ipcRenderer.invoke('approve-feishu-pairing', code);
+    },
     getLicense: function() {
       return ipcRenderer.invoke('get-license');
     },

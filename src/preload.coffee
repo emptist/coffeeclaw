@@ -28,6 +28,7 @@ contextBridge.exposeInMainWorld 'api',
   importBots: (data) -> ipcRenderer.invoke 'import-bots', data
   getFeishuStatus: -> ipcRenderer.invoke 'get-feishu-status'
   syncFeishuToOpenClaw: -> ipcRenderer.invoke 'sync-feishu-to-openclaw'
+  approveFeishuPairing: (code) -> ipcRenderer.invoke 'approve-feishu-pairing', code
   getLicense: -> ipcRenderer.invoke 'get-license'
   getLicensePrices: -> ipcRenderer.invoke 'get-license-prices'
   activateLicense: (plan, paymentInfo) -> ipcRenderer.invoke 'activate-license', plan, paymentInfo

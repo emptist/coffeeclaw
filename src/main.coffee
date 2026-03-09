@@ -1112,6 +1112,16 @@ ipcMain.handle 'get-feishu-status', ->
 
 ipcMain.handle 'sync-feishu-to-openclaw', -> syncFeishuConfigToOpenClaw()
 
+ipcMain.handle 'approve-feishu-pairing', (event, code) ->
+  new Promise (resolve) ->
+    exec "openclaw pairing approve feishu #{code}", (err, stdout, stderr) ->
+      if err
+        console.error 'Error approving pairing:', err
+        resolve { success: false, error: err.message }
+      else
+        console.log 'Pairing approved:', stdout
+        resolve { success: true, output: stdout }
+
 ipcMain.handle 'get-session', (event, sessionId) ->
   getSession sessionId
 

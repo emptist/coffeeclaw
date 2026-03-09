@@ -1661,6 +1661,26 @@ You are a helpful AI assistant running on the user's local machine. You are powe
     return syncFeishuConfigToOpenClaw();
   });
 
+  ipcMain.handle('approve-feishu-pairing', function(event, code) {
+    return new Promise(function(resolve) {
+      return exec(`openclaw pairing approve feishu ${code}`, function(err, stdout, stderr) {
+        if (err) {
+          console.error('Error approving pairing:', err);
+          return resolve({
+            success: false,
+            error: err.message
+          });
+        } else {
+          console.log('Pairing approved:', stdout);
+          return resolve({
+            success: true,
+            output: stdout
+          });
+        }
+      });
+    });
+  });
+
   ipcMain.handle('get-session', function(event, sessionId) {
     return getSession(sessionId);
   });
