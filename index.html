@@ -599,6 +599,9 @@
           <h4 style="margin:0 0 10px;color:#e94560;">OpenClaw Tools</h4>
           <div style="display:flex;flex-direction:column;gap:8px;">
             <button class="tool-btn" data-tool="github" style="padding:8px;background:#0f3460;color:#eee;border:none;border-radius:4px;cursor:pointer;text-align:left;">🐙 GitHub</button>
+            <button class="tool-btn" data-tool="gh-create-issue" style="padding:8px;background:#0f3460;color:#eee;border:none;border-radius:4px;cursor:pointer;text-align:left;">🐛 创建 Issue</button>
+            <button class="tool-btn" data-tool="gh-create-pr" style="padding:8px;background:#0f3460;color:#eee;border:none;border-radius:4px;cursor:pointer;text-align:left;">🔀 创建 PR</button>
+            <button class="tool-btn" data-tool="gh-view-issues" style="padding:8px;background:#0f3460;color:#eee;border:none;border-radius:4px;cursor:pointer;text-align:left;">📋 查看 Issues</button>
             <button class="tool-btn" data-tool="search" style="padding:8px;background:#0f3460;color:#eee;border:none;border-radius:4px;cursor:pointer;text-align:left;">🔍 Web Search</button>
             <button class="tool-btn" data-tool="weather" style="padding:8px;background:#0f3460;color:#eee;border:none;border-radius:4px;cursor:pointer;text-align:left;">🌤️ Weather</button>
             <button class="tool-btn" data-tool="exec" style="padding:8px;background:#0f3460;color:#eee;border:none;border-radius:4px;cursor:pointer;text-align:left;">💻 Run Command</button>
@@ -1278,6 +1281,27 @@
             const result = await window.api.runLocalCommand(`gh ${action} --repo emptist/coffeeclaw`);
             addMessage(result.success ? result.stdout : `Error: ${result.error}`, 'bot');
           }
+        } else if (tool === 'gh-create-issue') {
+          const title = prompt('Issue title:');
+          const body = prompt('Issue body (optional):') || '';
+          if (title) {
+            addMessage(`[Create Issue] ${title}`, 'user');
+            const result = await window.api.runLocalCommand(`gh issue create --title "${title}" --body "${body}" --repo emptist/coffeeclaw`);
+            addMessage(result.success ? `Issue created: ${result.stdout.trim()}` : `Error: ${result.error}`, 'bot');
+          }
+        } else if (tool === 'gh-create-pr') {
+          const title = prompt('PR title:');
+          const body = prompt('PR body (optional):') || '';
+          const base = prompt('Base branch (default: main):') || 'main';
+          if (title) {
+            addMessage(`[Create PR] ${title}`, 'user');
+            const result = await window.api.runLocalCommand(`gh pr create --title "${title}" --body "${body}" --base ${base} --repo emptist/coffeeclaw`);
+            addMessage(result.success ? `PR created: ${result.stdout.trim()}` : `Error: ${result.error}`, 'bot');
+          }
+        } else if (tool === 'gh-view-issues') {
+          addMessage('[View Issues]', 'user');
+          const result = await window.api.runLocalCommand('gh issue list --repo emptist/coffeeclaw --limit 10');
+          addMessage(result.success ? result.stdout || 'No issues found' : `Error: ${result.error}`, 'bot');
         } else if (tool === 'search') {
           const query = prompt('Search query:');
           if (query) {
