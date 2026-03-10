@@ -57,7 +57,14 @@ class Bot
         when 'description'
           Bot.validateDescription(value)
           @[key] = value
-        when 'model', 'systemPrompt', 'skills', 'enabled'
+        when 'model'
+          if typeof value == 'string'
+            @[key] = Model.create(value, @model?.provider ? 'zhipu')
+          else if value?.toJSON
+            @[key] = value
+          else if value?.id
+            @[key] = Model.fromJSON(value)
+        when 'systemPrompt', 'skills', 'enabled'
           @[key] = value
     
     @updatedAt = new Date().toISOString()
