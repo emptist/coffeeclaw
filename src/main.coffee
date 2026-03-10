@@ -9,6 +9,18 @@ https = require 'https'
 { exec, spawn } = require 'child_process'
 crypto = require 'crypto'
 
+# Import new class hierarchy
+{ Model, ZhipuModel, DeepSeekModel, OpenAIModel, OpenRouterModel } = require './model'
+{ Bot } = require './bot'
+{ Session, SessionManager } = require './session'
+{ Settings } = require './settings'
+{ FeishuConfig } = require './feishu-config'
+{ OpenClawConfig } = require './openclaw-config'
+{ License } = require './license'
+{ Identity } = require './identity'
+{ BackupManager } = require './backup-manager'
+{ AgentModel, AgentModelManager } = require './agent-model'
+
 openclawDir = path.join process.env.HOME, '.openclaw'
 configFile = path.join openclawDir, 'openclaw.json'
 workspaceDir = path.join openclawDir, 'workspace'
@@ -48,22 +60,41 @@ generateToken = ->
 generateId = ->
   Date.now().toString(36) + Math.random().toString(36).substr(2, 9)
 
+# Global settings instance
+settingsInstance = null
+
 loadSettings = ->
   try
     if fs.existsSync settingsFile
       data = fs.readFileSync settingsFile, 'utf8'
-      settings = JSON.parse data
-      # Always return the full settings object, even if empty or invalid
-      # Validation should be done separately by isConfigured()
-      return settings if typeof settings is 'object' and settings isnt null
+      parsed = JSON.parse data
+      # Check if already using new class format
+      if parsed?.__class == 'Settings'
+        settingsInstance = Settings.fromJSON(parsed)
+      else
+        # Migrate from legacy format
+        settingsInstance = Settings.fromLegacy(parsed)
+        saveSettings()  # Save in new format immediately
+      return settingsInstance
+    else
+      # Create default settings
+      settingsInstance = new Settings()
+      saveSettings()
+      return settingsInstance
   catch e
     console.error 'Error loading settings:', e
-  {}
+    settingsInstance = new Settings()
+    return settingsInstance
 
-saveSettings = (settings) ->
+saveSettings = (settings = null) ->
   try
     fs.mkdirSync secreteDir, { recursive: true }
-    fs.writeFileSync settingsFile, JSON.stringify(settings, null, 2)
+    # Use provided settings or global instance
+    settingsToSave = settings or settingsInstance
+    if settingsToSave?.toJSON
+      fs.writeFileSync settingsFile, JSON.stringify(settingsToSave.toJSON(), null, 2)
+    else
+      fs.writeFileSync settingsFile, JSON.stringify(settingsToSave, null, 2)
   catch e
     console.error 'Error saving settings:', e
 
