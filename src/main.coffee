@@ -1522,24 +1522,27 @@ getOpenClawProviderConfig = (providerId, apiKey) ->
 
 # Backup OpenClaw config before modifying
 # Creates a timestamped backup in the same directory
+# Global backup manager instance
+backupManagerInstance = null
+
+getBackupManager = ->
+  unless backupManagerInstance
+    backupManagerInstance = new BackupManager()
+  backupManagerInstance
+
 backupOpenClawConfig = ->
   return unless configExists()
   
   try
-    timestamp = new Date().toISOString().replace(/[:.]/g, '-')
-    backupPath = "#{configFile}.backup.#{timestamp}"
-    fs.copyFileSync configFile, backupPath
-    console.log "Backed up OpenClaw config to: #{backupPath}"
+    manager = getBackupManager()
+    # Read OpenClaw config and create backup
+    configData = JSON.parse(fs.readFileSync(configFile, 'utf8'))
+    result = manager.createBackup(configData)
     
-    # Keep only last 5 backups
-    backups = fs.readdirSync(path.dirname(configFile))
-      .filter (f) -> f.startsWith('openclaw.json.backup.')
-      .sort()
-      .reverse()
-    
-    for oldBackup in backups[5...]
-      fs.unlinkSync(path.join(path.dirname(configFile), oldBackup))
-      console.log "Cleaned up old backup: #{oldBackup}"
+    if result.success
+      console.log "Backed up OpenClaw config to: #{result.filepath}"
+    else
+      console.error 'Failed to create backup:', result.error
   catch e
     console.error 'Failed to backup OpenClaw config:', e
 
