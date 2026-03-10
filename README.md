@@ -98,10 +98,12 @@ CoffeeClaw supports multiple AI providers:
 - Get API key at [platform.openai.com](https://platform.openai.com/api-keys)
 
 ### Provider Strategy
-| Use Case | Recommended Provider |
-|----------|---------------------|
-| Normal bots + Execution tasks | Zhipu GLM-4-Flash (Free + Function Calling) |
-| Backup/Alternative models | OpenRouter (50 req/day free limit) |
+| Use Case | Recommended Provider | Model |
+|----------|---------------------|-------|
+| Normal bots (chat) | Zhipu GLM-4-Flash | Free + basic function calling |
+| OpenClaw agent (execution) | OpenRouter | Need stronger reasoning for tools/skills |
+
+**Important**: GLM-4-Flash supports function calling but is NOT suitable for OpenClaw agent execution tasks. OpenClaw requires models with strong multi-step reasoning and tool orchestration capabilities (Claude, GPT-4, etc.). Use OpenRouter's free tier (50 req/day) for agent execution.
 
 Select your preferred provider and model during setup.
 

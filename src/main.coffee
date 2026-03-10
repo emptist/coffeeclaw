@@ -671,27 +671,27 @@ MODELS =
   zhipu:
     name: 'Zhipu GLM'
     models: [
-      { id: 'glm-4-flash', name: 'GLM-4-Flash (Free + Function Calling)', free: true, functionCalling: true }
-      { id: 'glm-4-plus', name: 'GLM-4-Plus' }
-      { id: 'glm-4-air', name: 'GLM-4-Air' }
+      { id: 'glm-4-flash', name: 'GLM-4-Flash (Free)', free: true, functionCalling: true, agentCapable: false }
+      { id: 'glm-4-plus', name: 'GLM-4-Plus', agentCapable: false }
+      { id: 'glm-4-air', name: 'GLM-4-Air', agentCapable: false }
     ]
     baseUrl: 'open.bigmodel.cn'
     apiPath: '/api/paas/v4/chat/completions'
   openrouter:
     name: 'OpenRouter'
     models: [
-      { id: 'openrouter/auto', name: 'Auto (Free: 50 req/day)', free: true, freeLimit: '50/day' }
-      { id: 'google/gemini-2.0-flash-001', name: 'Gemini 2.0 Flash', free: true, freeLimit: '50/day' }
-      { id: 'meta-llama/llama-3.3-70b-instruct', name: 'Llama 3.3 70B', free: true, freeLimit: '50/day' }
+      { id: 'openrouter/auto', name: 'Auto (Free: 50 req/day)', free: true, freeLimit: '50/day', agentCapable: true }
+      { id: 'google/gemini-2.0-flash-001', name: 'Gemini 2.0 Flash', free: true, freeLimit: '50/day', agentCapable: true }
+      { id: 'meta-llama/llama-3.3-70b-instruct', name: 'Llama 3.3 70B', free: true, freeLimit: '50/day', agentCapable: true }
     ]
     baseUrl: 'openrouter.ai'
     apiPath: '/api/v1/chat/completions'
   openai:
     name: 'OpenAI'
     models: [
-      { id: 'gpt-4o-mini', name: 'GPT-4o Mini' }
-      { id: 'gpt-4o', name: 'GPT-4o' }
-      { id: 'gpt-4-turbo', name: 'GPT-4 Turbo' }
+      { id: 'gpt-4o-mini', name: 'GPT-4o Mini', agentCapable: true }
+      { id: 'gpt-4o', name: 'GPT-4o', agentCapable: true }
+      { id: 'gpt-4-turbo', name: 'GPT-4 Turbo', agentCapable: true }
     ]
     baseUrl: 'api.openai.com'
     apiPath: '/v1/chat/completions'
