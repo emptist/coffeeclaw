@@ -5,17 +5,19 @@
 { FeishuConfig } = require './feishu-config'
 
 class Settings
-  # Class properties
-  @DEFAULT_PROVIDER = 'zhipu'
-  @SUPPORTED_PROVIDERS = ['zhipu', 'openai', 'openrouter']
   @VERSION = 1
   
+  @getSupportedProviders: ->
+    Model.getSupportedProviders()
+  
+  @getDefaultProvider: ->
+    Model.getDefaultProvider()
+  
   constructor: ->
-    # Instance properties
     @version = Settings.VERSION
     @token = null
     @apiKey = null
-    @activeProvider = Settings.DEFAULT_PROVIDER
+    @activeProvider = Settings.getDefaultProvider()
     @providers = {}
     @feishu = new FeishuConfig()
     @_lastUpdated = new Date().toISOString()
@@ -24,7 +26,7 @@ class Settings
   getProvider: (id) -> @providers[id]
   
   setProvider: (id, apiKey, model) ->
-    unless id in Settings.SUPPORTED_PROVIDERS
+    unless id in Settings.getSupportedProviders()
       throw new Error("Unsupported provider: #{id}")
     
     @providers[id] =
@@ -35,7 +37,7 @@ class Settings
     this
   
   setActiveProvider: (id) ->
-    unless id in Settings.SUPPORTED_PROVIDERS
+    unless id in Settings.getSupportedProviders()
       throw new Error("Unsupported provider: #{id}")
     
     @activeProvider = id
@@ -75,12 +77,11 @@ class Settings
   validate: ->
     errors = []
     
-    unless @activeProvider in Settings.SUPPORTED_PROVIDERS
+    unless @activeProvider in Settings.getSupportedProviders()
       errors.push("Invalid active provider: #{@activeProvider}")
     
-    # Validate each provider config
     for id, config of @providers
-      unless id in Settings.SUPPORTED_PROVIDERS
+      unless id in Settings.getSupportedProviders()
         errors.push("Unknown provider in config: #{id}")
       
       if config.model
@@ -104,10 +105,9 @@ class Settings
   @fromLegacy: (data) ->
     settings = new Settings()
     
-    # Copy basic fields
     settings.token = data.token if data.token
     settings.apiKey = data.apiKey if data.apiKey
-    settings.activeProvider = data.activeProvider ? Settings.DEFAULT_PROVIDER
+    settings.activeProvider = data.activeProvider ? Settings.getDefaultProvider()
     
     # Migrate providers
     if data.providers
@@ -133,6 +133,13 @@ class Settings
   
   # Serialization
   toJSON: ->
+    feishuData = if @feishu?.toJSON
+      @feishu.toJSON()
+    else if @feishu
+      @feishu
+    else
+      new FeishuConfig().toJSON()
+    
     {
       __class: 'Settings'
       version: @version
@@ -140,8 +147,7 @@ class Settings
       apiKey: @apiKey
       activeProvider: @activeProvider
       providers: @providers
-      feishu: @feishu.toJSON()
-      # Note: _lastUpdated is not saved
+      feishu: feishuData
     }
   
   @fromJSON: (data) ->
@@ -149,7 +155,7 @@ class Settings
     settings.version = data.version ? Settings.VERSION
     settings.token = data.token
     settings.apiKey = data.apiKey
-    settings.activeProvider = data.activeProvider ? Settings.DEFAULT_PROVIDER
+    settings.activeProvider = data.activeProvider ? Settings.getDefaultProvider()
     settings.providers = data.providers ? {}
     
     if data.feishu

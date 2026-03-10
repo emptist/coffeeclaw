@@ -7,6 +7,21 @@ class Model
   @OPENCLAW_NAME: null
   @DEFAULT_API_PATH: null
   
+  # Registry of provider classes
+  @_providers: {}
+  
+  @registerProvider: (providerClass) ->
+    @_providers[providerClass.PROVIDER_NAME] = providerClass
+  
+  @getSupportedProviders: ->
+    Object.keys(@_providers)
+  
+  @getDefaultProvider: ->
+    'zhipu'
+  
+  @getProviderClass: (name) ->
+    @_providers[name]
+  
   constructor: (@id) ->
     @provider = @constructor.PROVIDER_NAME
   
@@ -140,6 +155,10 @@ class OpenRouterModel extends Model
     model
 
 # Export classes
+Model.registerProvider(ZhipuModel)
+Model.registerProvider(OpenAIModel)
+Model.registerProvider(OpenRouterModel)
+
 module.exports = {
   Model
   ZhipuModel

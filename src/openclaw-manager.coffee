@@ -187,7 +187,7 @@ class OpenClawManager
     unless apiKey
       throw new Error 'No API key configured'
     
-    isAgent = bot?.isAgent or bot?.model == 'openclaw-agent'
+    isAgent = bot?.isAgent?() or bot?.model?.rawId?() == 'openclaw-agent'
     
     if isAgent
       @storage.addAgentMessage(sessionId, 'user', message)
@@ -203,7 +203,7 @@ class OpenClawManager
   callAPI: (sessionId, message, settings, bot = null) ->
     rawModel = bot?.model or settings.model or 'glm-4-flash'
     
-    if rawModel == 'openclaw-agent' or bot?.isAgent
+    if (typeof rawModel == 'string' and rawModel == 'openclaw-agent') or bot?.isAgent?()
       return await @callAgent(sessionId, message)
     
     new Promise (resolve, reject) =>
