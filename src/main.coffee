@@ -21,6 +21,10 @@ crypto = require 'crypto'
 { BackupManager } = require './backup-manager'
 { AgentModel, AgentModelManager } = require './agent-model'
 
+# Import typed storage
+{ TypedStorage } = require './core/typed-storage'
+storage = TypedStorage.getInstance()
+
 openclawDir = path.join process.env.HOME, '.openclaw'
 configFile = path.join openclawDir, 'openclaw.json'
 workspaceDir = path.join openclawDir, 'workspace'
@@ -60,43 +64,9 @@ generateToken = ->
 generateId = ->
   Date.now().toString(36) + Math.random().toString(36).substr(2, 9)
 
-# Global settings instance
-settingsInstance = null
-
-loadSettings = ->
-  try
-    if fs.existsSync settingsFile
-      data = fs.readFileSync settingsFile, 'utf8'
-      parsed = JSON.parse data
-      # Check if already using new class format
-      if parsed?.__class == 'Settings'
-        settingsInstance = Settings.fromJSON(parsed)
-      else
-        # Migrate from legacy format
-        settingsInstance = Settings.fromLegacy(parsed)
-        saveSettings()  # Save in new format immediately
-      return settingsInstance
-    else
-      # Create default settings
-      settingsInstance = new Settings()
-      saveSettings()
-      return settingsInstance
-  catch e
-    console.error 'Error loading settings:', e
-    settingsInstance = new Settings()
-    return settingsInstance
-
-saveSettings = (settings = null) ->
-  try
-    fs.mkdirSync secreteDir, { recursive: true }
-    # Use provided settings or global instance
-    settingsToSave = settings or settingsInstance
-    if settingsToSave?.toJSON
-      fs.writeFileSync settingsFile, JSON.stringify(settingsToSave.toJSON(), null, 2)
-    else
-      fs.writeFileSync settingsFile, JSON.stringify(settingsToSave, null, 2)
-  catch e
-    console.error 'Error saving settings:', e
+# Settings - using TypedStorage
+loadSettings = -> storage.getSettings()
+saveSettings = (settings = null) -> storage.saveSettings(settings)
 
 backupSettings = ->
   try

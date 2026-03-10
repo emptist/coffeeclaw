@@ -2,7 +2,7 @@
 (function() {
   // CoffeeClaw - Main Process
   // Auto-configures OpenClaw on first run
-  var BOT_TEMPLATES, BrowserWindow, INITIAL_BALANCE_CNY, INITIAL_BALANCE_USD, LICENSE_PRICES, MAX_HISTORY, MAX_SESSIONS, MODELS, PROVIDER_NAME_MAP, SKILLS, USD_TO_CNY, addToAgentSession, addToSession, agentDir, agentMdFile, agentModelsFile, agentSessionsFile, app, backupOpenClawConfig, backupSettings, botsFile, callAPI, callAPIWithMessages, callOpenClawAgent, checkNodeInstalled, checkNpmInstalled, checkOpenClaw, checkOpenClawInstalled, checkOpenClawPromise, checkWSLInstalled, configExists, configFile, configureFeishu, createAgentConfig, createBot, createDefaultConfig, createIdentity, createSession, createWindow, crypto, deleteBot, deleteSession, detectExistingFeishuConfig, ensureOpenClawConfig, exec, executeSkillFunction, exportAllSettings, fs, generateId, generateToken, getActiveBot, getAgentSession, getBackupData, getBot, getBotTemplates, getLicenseStatus, getOpenClawProviderConfig, getPlatform, getSession, getSkillFunctions, http, https, identityFile, importAllSettings, initLicense, installOpenClaw, ipcMain, isConfigured, isMac, isWindows, licenseFile, listSessions, listSettingsBackups, loadAgentSessions, loadBots, loadLicense, loadSessions, loadSettings, mainWindow, openclawDir, path, restoreSettings, saveAgentSessions, saveBots, saveLicense, saveSession, saveSessions, saveSettings, secreteDir, sendToOpenClaw, sessionsFile, setActiveBot, settingsFile, shell, spawn, startOpenClaw, syncFeishuConfigToOpenClaw, syncFeishuConfigToSettings, syncProvidersToOpenClaw, updateBot, workspaceDir,
+  var AgentModel, AgentModelManager, BOT_TEMPLATES, BackupManager, Bot, BrowserWindow, DeepSeekModel, FeishuConfig, INITIAL_BALANCE_CNY, INITIAL_BALANCE_USD, Identity, LICENSE_PRICES, License, MAX_HISTORY, MAX_SESSIONS, MODELS, Model, OpenAIModel, OpenClawConfig, OpenRouterModel, PROVIDER_NAME_MAP, SKILLS, Session, SessionManager, Settings, TypedStorage, USD_TO_CNY, ZhipuModel, addToAgentSession, addToSession, agentDir, agentMdFile, agentModelsFile, agentSessionsFile, app, backupManagerInstance, backupOpenClawConfig, backupSettings, botsDataInstance, botsFile, callAPI, callAPIWithMessages, callOpenClawAgent, checkNodeInstalled, checkNpmInstalled, checkOpenClaw, checkOpenClawInstalled, checkOpenClawPromise, checkWSLInstalled, configExists, configFile, configureFeishu, createAgentConfig, createBot, createDefaultConfig, createIdentity, createSession, createWindow, crypto, deleteBot, deleteSession, detectExistingFeishuConfig, ensureOpenClawConfig, exec, executeSkillFunction, exportAllSettings, fs, generateId, generateToken, getActiveBot, getAgentSession, getBackupData, getBackupManager, getBot, getBotTemplates, getLicenseStatus, getOpenClawConfig, getOpenClawProviderConfig, getPlatform, getSession, getSkillFunctions, http, https, identityFile, identityInstance, importAllSettings, initLicense, installOpenClaw, ipcMain, isConfigured, isMac, isWindows, licenseFile, licenseInstance, listSessions, listSettingsBackups, loadAgentSessions, loadBots, loadIdentity, loadLicense, loadSessions, loadSettings, mainWindow, migrateLegacyBots, migrateLegacySessions, openClawConfigInstance, openclawDir, path, restoreSettings, saveAgentSessions, saveBots, saveIdentity, saveLicense, saveSession, saveSessions, saveSettings, secreteDir, sendToOpenClaw, sessionManagerInstance, sessionsFile, setActiveBot, settingsFile, shell, spawn, startOpenClaw, storage, syncFeishuConfigToOpenClaw, syncFeishuConfigToSettings, syncProvidersToOpenClaw, updateBot, workspaceDir,
     indexOf = [].indexOf;
 
   ({app, BrowserWindow, ipcMain, shell} = require('electron'));
@@ -18,6 +18,32 @@
   ({exec, spawn} = require('child_process'));
 
   crypto = require('crypto');
+
+  // Import new class hierarchy
+  ({Model, ZhipuModel, DeepSeekModel, OpenAIModel, OpenRouterModel} = require('./model'));
+
+  ({Bot} = require('./bot'));
+
+  ({Session, SessionManager} = require('./session'));
+
+  ({Settings} = require('./settings'));
+
+  ({FeishuConfig} = require('./feishu-config'));
+
+  ({OpenClawConfig} = require('./openclaw-config'));
+
+  ({License} = require('./license'));
+
+  ({Identity} = require('./identity'));
+
+  ({BackupManager} = require('./backup-manager'));
+
+  ({AgentModel, AgentModelManager} = require('./agent-model'));
+
+  // Import typed storage
+  ({TypedStorage} = require('./core/typed-storage'));
+
+  storage = TypedStorage.getInstance();
 
   openclawDir = path.join(process.env.HOME, '.openclaw');
 
@@ -77,36 +103,13 @@
     return Date.now().toString(36) + Math.random().toString(36).substr(2, 9);
   };
 
+  // Settings - using TypedStorage
   loadSettings = function() {
-    var data, e, settings;
-    try {
-      if (fs.existsSync(settingsFile)) {
-        data = fs.readFileSync(settingsFile, 'utf8');
-        settings = JSON.parse(data);
-        if (typeof settings === 'object' && settings !== null) {
-          // Always return the full settings object, even if empty or invalid
-          // Validation should be done separately by isConfigured()
-          return settings;
-        }
-      }
-    } catch (error) {
-      e = error;
-      console.error('Error loading settings:', e);
-    }
-    return {};
+    return storage.getSettings();
   };
 
-  saveSettings = function(settings) {
-    var e;
-    try {
-      fs.mkdirSync(secreteDir, {
-        recursive: true
-      });
-      return fs.writeFileSync(settingsFile, JSON.stringify(settings, null, 2));
-    } catch (error) {
-      e = error;
-      return console.error('Error saving settings:', e);
-    }
+  saveSettings = function(settings = null) {
+    return storage.saveSettings(settings);
   };
 
   backupSettings = function() {
@@ -254,27 +257,49 @@
     }
   };
 
+  // Global license instance
+  licenseInstance = null;
+
   loadLicense = function() {
-    var data, e;
+    var data, e, parsed;
     try {
       if (fs.existsSync(licenseFile)) {
         data = fs.readFileSync(licenseFile, 'utf8');
-        return JSON.parse(data);
+        parsed = JSON.parse(data);
+        // Check if already using new class format
+        if ((parsed != null ? parsed.__class : void 0) === 'License') {
+          licenseInstance = License.fromJSON(parsed);
+        } else {
+          // Migrate from legacy format
+          licenseInstance = License.fromLegacy(parsed);
+          saveLicense(); // Save in new format immediately
+        }
+        return licenseInstance;
       }
     } catch (error) {
       e = error;
       console.error('Error loading license:', e);
+      
+      // Create new license
+      licenseInstance = new License();
+      saveLicense();
+      return licenseInstance;
     }
-    return null;
   };
 
-  saveLicense = function(license) {
-    var e;
+  saveLicense = function(license = null) {
+    var e, licenseToSave;
     try {
       fs.mkdirSync(secreteDir, {
         recursive: true
       });
-      return fs.writeFileSync(licenseFile, JSON.stringify(license, null, 2));
+      // Use provided license or global instance
+      licenseToSave = license || licenseInstance;
+      if (licenseToSave != null ? licenseToSave.toJSON : void 0) {
+        return fs.writeFileSync(licenseFile, JSON.stringify(licenseToSave.toJSON(), null, 2));
+      } else {
+        return fs.writeFileSync(licenseFile, JSON.stringify(licenseToSave, null, 2));
+      }
     } catch (error) {
       e = error;
       return console.error('Error saving license:', e);
@@ -282,31 +307,25 @@
   };
 
   initLicense = function() {
-    var license, newLicense;
+    var license;
     license = loadLicense();
     if (license) {
       return license;
     }
-    newLicense = {
-      deviceId: generateId(),
-      createdAt: new Date().toISOString(),
-      balance: INITIAL_BALANCE_USD,
-      currency: 'usd',
-      paid: false,
-      plan: null,
-      lastDeduction: null
-    };
-    saveLicense(newLicense);
-    return newLicense;
+    licenseInstance = new License();
+    saveLicense();
+    return licenseInstance;
   };
 
   getLicenseStatus = function() {
-    var createdAt, currentBalance, deduction, lastDeduction, license, monthsSinceCreation, monthsSinceLastDeduction, now;
+    var license;
     license = loadLicense();
     if (!license) {
       license = initLicense();
     }
-    if (license.paid && license.plan === 'lifetime') {
+    
+    // Use License class methods
+    if (license.isLifetime()) {
       return {
         status: 'lifetime',
         balance: 0,
@@ -315,60 +334,88 @@
         showIndicator: false
       };
     }
-    if (license.balance == null) {
-      license.balance = INITIAL_BALANCE_USD;
-      saveLicense(license);
-    }
-    currentBalance = license.balance;
-    now = new Date();
-    createdAt = new Date(license.createdAt);
-    monthsSinceCreation = (now.getFullYear() - createdAt.getFullYear()) * 12 + (now.getMonth() - createdAt.getMonth());
-    if (license.lastDeduction) {
-      lastDeduction = new Date(license.lastDeduction);
-      monthsSinceLastDeduction = (now.getFullYear() - lastDeduction.getFullYear()) * 12 + (now.getMonth() - lastDeduction.getMonth());
-    } else {
-      monthsSinceLastDeduction = monthsSinceCreation;
-    }
-    if (monthsSinceLastDeduction >= 1) {
-      deduction = Math.floor(monthsSinceLastDeduction);
-      currentBalance = license.balance - deduction;
-      if (currentBalance !== license.balance) {
-        license.balance = currentBalance;
-        license.lastDeduction = now.toISOString();
-        saveLicense(license);
-      }
-    }
+    
+    // Process monthly deductions
+    license.processMonthlyDeduction();
+    saveLicense();
     return {
-      status: currentBalance > 0 ? 'active' : 'overdue',
-      balance: currentBalance,
+      status: license.getBalance() > 0 ? 'active' : 'overdue',
+      balance: license.getBalance(),
       paid: license.paid,
       plan: license.plan,
       showIndicator: true,
-      currency: license.currency || 'usd'
+      currency: license.currency
     };
   };
 
+  // Global session manager instance
+  sessionManagerInstance = null;
+
   loadSessions = function() {
-    var data, e;
+    var data, e, parsed;
     try {
       if (fs.existsSync(sessionsFile)) {
         data = fs.readFileSync(sessionsFile, 'utf8');
-        return JSON.parse(data);
+        parsed = JSON.parse(data);
+        // Check if already using new class format
+        if ((parsed != null ? parsed.__class : void 0) === 'SessionManager') {
+          sessionManagerInstance = SessionManager.fromJSON(parsed);
+        } else {
+          // Migrate from legacy format (object with sessionId keys)
+          sessionManagerInstance = migrateLegacySessions(parsed);
+          saveSessions(); // Save in new format immediately
+        }
+        return sessionManagerInstance;
       }
     } catch (error) {
       e = error;
       console.error('Error loading sessions:', e);
     }
-    return {};
+    
+    // Create new session manager
+    sessionManagerInstance = new SessionManager();
+    return sessionManagerInstance;
   };
 
-  saveSessions = function(sessions) {
-    var e;
+  migrateLegacySessions = function(legacyData) {
+    var e, legacySession, manager, session, sessionId;
+    manager = new SessionManager();
+    if (legacyData && typeof legacyData === 'object') {
+      for (sessionId in legacyData) {
+        legacySession = legacyData[sessionId];
+        try {
+          // Convert legacy session to Session instance
+          session = new Session(sessionId);
+          session.title = legacySession.title || '';
+          session.messages = legacySession.messages || [];
+          session.createdAt = legacySession.createdAt || Date.now();
+          session.updatedAt = legacySession.updatedAt || Date.now();
+          if (legacySession.botId) {
+            session.botId = legacySession.botId;
+          }
+          manager.addSession(session);
+        } catch (error) {
+          e = error;
+          console.error('Error migrating session:', e);
+        }
+      }
+    }
+    return manager;
+  };
+
+  saveSessions = function(manager = null) {
+    var e, managerToSave;
     try {
       fs.mkdirSync(secreteDir, {
         recursive: true
       });
-      return fs.writeFileSync(sessionsFile, JSON.stringify(sessions, null, 2));
+      // Use provided manager or global instance
+      managerToSave = manager || sessionManagerInstance;
+      if (managerToSave != null ? managerToSave.toJSON : void 0) {
+        return fs.writeFileSync(sessionsFile, JSON.stringify(managerToSave.toJSON(), null, 2));
+      } else {
+        return fs.writeFileSync(sessionsFile, JSON.stringify(managerToSave, null, 2));
+      }
     } catch (error) {
       e = error;
       return console.error('Error saving sessions:', e);
@@ -376,63 +423,49 @@
   };
 
   getSession = function(sessionId) {
-    var sessions;
-    sessions = loadSessions();
-    return sessions[sessionId] || {
-      id: sessionId,
-      messages: [],
-      createdAt: Date.now()
-    };
+    var manager, session;
+    manager = loadSessions();
+    session = manager.getSession(sessionId);
+    if (!session) {
+      // Create new session if not exists
+      session = new Session(sessionId);
+      manager.addSession(session);
+      saveSessions();
+    }
+    return session;
   };
 
   saveSession = function(sessionId, session) {
-    var oldest, sessionIds, sessions;
-    sessions = loadSessions();
-    session.messages = session.messages.slice(-MAX_HISTORY);
-    sessions[sessionId] = session;
-    sessionIds = Object.keys(sessions);
-    if (sessionIds.length > MAX_SESSIONS) {
-      oldest = sessionIds.sort(function(a, b) {
-        return sessions[a].createdAt - sessions[b].createdAt;
-      })[0];
-      delete sessions[oldest];
+    var manager, ref;
+    manager = loadSessions();
+    // Ensure messages don't exceed MAX_HISTORY
+    if (((ref = session.messages) != null ? ref.length : void 0) > MAX_HISTORY) {
+      session.messages = session.messages.slice(-MAX_HISTORY);
     }
-    return saveSessions(sessions);
+    manager.addSession(session);
+    // Enforce MAX_SESSIONS limit
+    manager.enforceMaxSessions(MAX_SESSIONS);
+    return saveSessions();
   };
 
   addToSession = function(sessionId, role, content) {
     var session;
     session = getSession(sessionId);
-    if (!session.messages) {
-      session.messages = [];
-    }
-    session.messages.push({
-      role: role,
-      content: content,
-      timestamp: Date.now()
-    });
+    session.addMessage(role, content);
     if (!session.title && role === 'user') {
       session.title = content.substring(0, 50);
     }
-    if (!session.createdAt) {
-      session.createdAt = Date.now();
-    }
-    session.updatedAt = Date.now();
     saveSession(sessionId, session);
     return session;
   };
 
   createSession = function() {
-    var session, sessionId;
+    var manager, session, sessionId;
     sessionId = generateId();
-    session = {
-      id: sessionId,
-      title: '',
-      messages: [],
-      createdAt: Date.now(),
-      updatedAt: Date.now()
-    };
-    saveSession(sessionId, session);
+    session = new Session(sessionId);
+    manager = loadSessions();
+    manager.addSession(session);
+    saveSessions();
     return session;
   };
 
@@ -542,41 +575,107 @@
     return BOT_TEMPLATES;
   };
 
+  // Global bots data instance
+  botsDataInstance = null;
+
   loadBots = function() {
-    var data, e;
+    var data, defaultBot, e, parsed, ref, ref1;
     try {
       if (fs.existsSync(botsFile)) {
         data = fs.readFileSync(botsFile, 'utf8');
-        return JSON.parse(data);
+        parsed = JSON.parse(data);
+        // Check if already using new class format
+        if ((parsed != null ? (ref = parsed.bots) != null ? (ref1 = ref[0]) != null ? ref1.__class : void 0 : void 0 : void 0) === 'Bot') {
+          botsDataInstance = {
+            bots: parsed.bots.map(function(b) {
+              return Bot.fromJSON(b);
+            }),
+            activeBotId: parsed.activeBotId
+          };
+        } else {
+          // Migrate from legacy format
+          botsDataInstance = migrateLegacyBots(parsed);
+          saveBots(); // Save in new format immediately
+        }
+        return botsDataInstance;
       }
     } catch (error) {
       e = error;
       console.error('Error loading bots:', e);
     }
-    return {
-      bots: [
-        {
-          id: 'default',
-          name: 'General Assistant',
-          description: 'A helpful general-purpose assistant',
-          model: 'glm-4-flash',
-          systemPrompt: 'You are a helpful assistant. Be concise and helpful.',
-          skills: ['*'],
-          enabled: true,
-          createdAt: new Date().toISOString()
-        }
-      ],
-      activeBotId: 'default'
+    
+    // Create default bot
+    defaultBot = Bot.createDefaultBot();
+    botsDataInstance = {
+      bots: [defaultBot],
+      activeBotId: defaultBot.id
     };
+    saveBots();
+    return botsDataInstance;
   };
 
-  saveBots = function(botsData) {
-    var e;
+  migrateLegacyBots = function(legacyData) {
+    var activeBotId, bot, bots, defaultBot, e, j, legacyBot, len, model, modelId, ref, ref1;
+    bots = [];
+    activeBotId = legacyData != null ? legacyData.activeBotId : void 0;
+    if ((legacyData != null ? legacyData.bots : void 0) && Array.isArray(legacyData.bots)) {
+      ref = legacyData.bots;
+      for (j = 0, len = ref.length; j < len; j++) {
+        legacyBot = ref[j];
+        try {
+          // Create model from legacy model string
+          modelId = legacyBot.model || 'glm-4-flash';
+          model = Model.create(modelId, 'zhipu');
+          bot = new Bot(legacyBot.id || generateId(), legacyBot.name, legacyBot.description, model, legacyBot.systemPrompt, legacyBot.skills || ['*']);
+          bot.enabled = (ref1 = legacyBot.enabled) != null ? ref1 : true;
+          bot.createdAt = legacyBot.createdAt || new Date().toISOString();
+          if (legacyBot.isAgent) {
+            bot.isAgent = legacyBot.isAgent;
+          }
+          bots.push(bot);
+          
+          // Set active bot ID if not set
+          if (activeBotId == null) {
+            activeBotId = bot.id;
+          }
+        } catch (error) {
+          e = error;
+          console.error('Error migrating bot:', e);
+        }
+      }
+    }
+    
+    // If no bots migrated, create default
+    if (bots.length === 0) {
+      defaultBot = Bot.createDefaultBot();
+      bots.push(defaultBot);
+      activeBotId = defaultBot.id;
+    }
+    return {bots, activeBotId};
+  };
+
+  saveBots = function(botsData = null) {
+    var dataToSave, e, serialized;
     try {
       fs.mkdirSync(secreteDir, {
         recursive: true
       });
-      return fs.writeFileSync(botsFile, JSON.stringify(botsData, null, 2));
+      // Use provided data or global instance
+      dataToSave = botsData || botsDataInstance;
+      if (dataToSave) {
+        // Serialize bots if they have toJSON method
+        serialized = {
+          bots: dataToSave.bots.map(function(b) {
+            if (b.toJSON) {
+              return b.toJSON();
+            } else {
+              return b;
+            }
+          }),
+          activeBotId: dataToSave.activeBotId
+        };
+        return fs.writeFileSync(botsFile, JSON.stringify(serialized, null, 2));
+      }
     } catch (error) {
       e = error;
       return console.error('Error saving bots:', e);
@@ -952,17 +1051,30 @@
   };
 
   listSessions = function() {
-    var key, result, session, sessions;
-    sessions = loadSessions();
-    result = [];
-    for (key in sessions) {
-      session = sessions[key];
-      result.push(session);
+    var key, manager, session, sessions;
+    manager = loadSessions();
+    // SessionManager returns array of Session instances
+    if (manager != null ? manager.getAllSessions : void 0) {
+      sessions = manager.getAllSessions();
+    } else if (typeof manager === 'object') {
+      // Legacy format: object with sessionId keys
+      sessions = [];
+      for (key in manager) {
+        session = manager[key];
+        sessions.push(session);
+      }
+    } else {
+      sessions = [];
     }
-    result.sort(function(a, b) {
-      return (b.updatedAt || 0) - (a.updatedAt || 0);
+    
+    // Sort by updatedAt, handling both Session instances and plain objects
+    sessions.sort(function(a, b) {
+      var aTime, bTime;
+      aTime = a.updatedAt || (typeof a.getLastUpdated === "function" ? a.getLastUpdated() : void 0) || 0;
+      bTime = b.updatedAt || (typeof b.getLastUpdated === "function" ? b.getLastUpdated() : void 0) || 0;
+      return bTime - aTime;
     });
-    return result;
+    return sessions;
   };
 
   checkOpenClaw = function(callback) {
@@ -1129,23 +1241,59 @@
     return token;
   };
 
+  // Global identity instance
+  identityInstance = null;
+
   createIdentity = function() {
-    var identity;
     if (fs.existsSync(identityFile)) {
       return;
     }
     console.log('Creating identity...');
-    identity = `# IDENTITY.md - Who Am I?
-
-- **Name:** CoffeeClaw
-- **Creature:** AI Assistant
-- **Vibe:** helpful and friendly
-- **Emoji:** ☕
-
-I am a desktop AI assistant powered by OpenClaw and Zhipu GLM models.
-I can help you with various tasks and answer your questions.`;
-    fs.writeFileSync(identityFile, identity);
+    identityInstance = new Identity();
+    fs.writeFileSync(identityFile, identityInstance.getContent());
     return console.log('Identity created at:', identityFile);
+  };
+
+  loadIdentity = function() {
+    var content, data, e;
+    try {
+      if (fs.existsSync(identityFile)) {
+        content = fs.readFileSync(identityFile, 'utf8');
+        try {
+          // Try to parse as JSON (new format)
+          data = JSON.parse(content);
+          if ((data != null ? data.__class : void 0) === 'Identity') {
+            identityInstance = Identity.fromJSON(data);
+          } else {
+            // Legacy: plain markdown text
+            identityInstance = Identity.fromString(content);
+          }
+        } catch (error) {
+          // Legacy: plain markdown text
+          identityInstance = Identity.fromString(content);
+        }
+        return identityInstance;
+      }
+    } catch (error) {
+      e = error;
+      console.error('Error loading identity:', e);
+    }
+    
+    // Create default identity
+    identityInstance = new Identity();
+    return identityInstance;
+  };
+
+  saveIdentity = function() {
+    var e;
+    try {
+      if (identityInstance) {
+        return fs.writeFileSync(identityFile, identityInstance.getContent());
+      }
+    } catch (error) {
+      e = error;
+      return console.error('Error saving identity:', e);
+    }
   };
 
   createAgentConfig = function(apiKey) {
@@ -1401,15 +1549,19 @@ You are a helpful AI assistant running on the user's local machine. You are powe
       return (await callOpenClawAgent(sessionId, message));
     }
     return new Promise(function(resolve, reject) {
-      var apiKey, config, functions, j, len, messages, msg, options, postData, provider, providerConfig, ref, req, session, systemPrompt;
+      var apiKey, config, functions, j, len, messages, msg, options, postData, provider, providerConfig, rawModel, ref, req, session, systemPrompt;
       provider = settings.activeProvider || settings.provider || 'zhipu';
       if (settings.providers && settings.providers[provider]) {
         providerConfig = settings.providers[provider];
         apiKey = providerConfig.apiKey;
-        model = (bot != null ? bot.model : void 0) || providerConfig.model || 'glm-4-flash';
+        // Handle both Model instances and strings
+        rawModel = (bot != null ? bot.model : void 0) || providerConfig.model || 'glm-4-flash';
+        model = typeof rawModel === 'string' ? rawModel : (rawModel != null ? rawModel.id : void 0) || 'glm-4-flash';
       } else {
         apiKey = settings.apiKey;
-        model = (bot != null ? bot.model : void 0) || settings.model || 'glm-4-flash';
+        // Handle both Model instances and strings
+        rawModel = (bot != null ? bot.model : void 0) || settings.model || 'glm-4-flash';
+        model = typeof rawModel === 'string' ? rawModel : (rawModel != null ? rawModel.id : void 0) || 'glm-4-flash';
       }
       config = MODELS[provider];
       if (!config) {
@@ -1521,13 +1673,15 @@ You are a helpful AI assistant running on the user's local machine. You are powe
 
   callAPIWithMessages = function(sessionId, messages, settings, bot, apiKey) {
     return new Promise(function(resolve, reject) {
-      var config, model, options, postData, provider, providerConfig, req;
+      var config, model, options, postData, provider, providerConfig, rawModel, req;
       provider = settings.activeProvider || settings.provider || 'zhipu';
       if (settings.providers && settings.providers[provider]) {
         providerConfig = settings.providers[provider];
-        model = (bot != null ? bot.model : void 0) || providerConfig.model || 'glm-4-flash';
+        rawModel = (bot != null ? bot.model : void 0) || providerConfig.model || 'glm-4-flash';
+        model = typeof rawModel === 'string' ? rawModel : (rawModel != null ? rawModel.id : void 0) || 'glm-4-flash';
       } else {
-        model = (bot != null ? bot.model : void 0) || settings.model || 'glm-4-flash';
+        rawModel = (bot != null ? bot.model : void 0) || settings.model || 'glm-4-flash';
+        model = typeof rawModel === 'string' ? rawModel : (rawModel != null ? rawModel.id : void 0) || 'glm-4-flash';
       }
       config = MODELS[provider];
       postData = {
@@ -1644,7 +1798,22 @@ You are a helpful AI assistant running on the user's local machine. You are powe
   };
 
   app.whenReady().then(function() {
+    var e, fixed, openClawConfig;
     backupSettings();
+    try {
+      
+      // Fix OpenClaw config if needed
+      openClawConfig = getOpenClawConfig();
+      if (openClawConfig.exists()) {
+        fixed = openClawConfig.fixModelFormat();
+        if (fixed) {
+          console.log('OpenClaw config model format fixed');
+        }
+      }
+    } catch (error) {
+      e = error;
+      console.error('Failed to fix OpenClaw config:', e);
+    }
     createWindow();
     return app.on('activate', function() {
       if (BrowserWindow.getAllWindows().length === 0) {
@@ -1968,12 +2137,19 @@ You are a helpful AI assistant running on the user's local machine. You are powe
   });
 
   ipcMain.handle('clear-history', function() {
-    var key, sessions;
-    sessions = loadSessions();
-    for (key in sessions) {
-      delete sessions[key];
+    var key, manager;
+    manager = loadSessions();
+    // Clear all sessions using SessionManager
+    if (manager != null ? manager.clearAllSessions : void 0) {
+      manager.clearAllSessions();
+      saveSessions(manager);
+    } else {
+// Legacy fallback
+      for (key in manager) {
+        delete manager[key];
+      }
+      saveSessions(manager);
     }
-    saveSessions(sessions);
     return true;
   });
 
@@ -2048,29 +2224,31 @@ You are a helpful AI assistant running on the user's local machine. You are powe
 
   // Backup OpenClaw config before modifying
   // Creates a timestamped backup in the same directory
+  // Global backup manager instance
+  backupManagerInstance = null;
+
+  getBackupManager = function() {
+    if (!backupManagerInstance) {
+      backupManagerInstance = new BackupManager();
+    }
+    return backupManagerInstance;
+  };
+
   backupOpenClawConfig = function() {
-    var backupPath, backups, e, j, len, oldBackup, ref, results1, timestamp;
+    var configData, e, manager, result;
     if (!configExists()) {
       return;
     }
     try {
-      timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-      backupPath = `${configFile}.backup.${timestamp}`;
-      fs.copyFileSync(configFile, backupPath);
-      console.log(`Backed up OpenClaw config to: ${backupPath}`);
-      
-      // Keep only last 5 backups
-      backups = fs.readdirSync(path.dirname(configFile)).filter(function(f) {
-        return f.startsWith('openclaw.json.backup.');
-      }).sort().reverse();
-      ref = backups.slice(5);
-      results1 = [];
-      for (j = 0, len = ref.length; j < len; j++) {
-        oldBackup = ref[j];
-        fs.unlinkSync(path.join(path.dirname(configFile), oldBackup));
-        results1.push(console.log(`Cleaned up old backup: ${oldBackup}`));
+      manager = getBackupManager();
+      // Read OpenClaw config and create backup
+      configData = JSON.parse(fs.readFileSync(configFile, 'utf8'));
+      result = manager.createBackup(configData);
+      if (result.success) {
+        return console.log(`Backed up OpenClaw config to: ${result.filepath}`);
+      } else {
+        return console.error('Failed to create backup:', result.error);
       }
-      return results1;
     } catch (error) {
       e = error;
       return console.error('Failed to backup OpenClaw config:', e);
@@ -2080,8 +2258,18 @@ You are a helpful AI assistant running on the user's local machine. You are powe
   // Sync providers from CoffeeClaw settings to OpenClaw's config file
   // This ensures the OpenClaw agent uses the same API keys as the CoffeeClaw UI
   // Returns true if sync was performed, false otherwise
+  // Global OpenClaw config instance
+  openClawConfigInstance = null;
+
+  getOpenClawConfig = function() {
+    if (!openClawConfigInstance) {
+      openClawConfigInstance = new OpenClawConfig();
+    }
+    return openClawConfigInstance;
+  };
+
   syncProvidersToOpenClaw = function(providers, activeProvider, token) {
-    var base, base1, base2, base3, base4, base5, config, currentPrimary, e, existing, existingConfig, modelId, needsSync, newPrimary, openClawConfig, openClawProvider, openClawProviderName, providerData, providerId, ref, ref1, ref2, ref3, ref4, ref5;
+    var config, e, settings;
     if (!configExists()) {
       return false;
     }
@@ -2089,121 +2277,25 @@ You are a helpful AI assistant running on the user's local machine. You are powe
       return false;
     }
     try {
+      config = getOpenClawConfig();
       
-      // Check if there's actually something to sync
-      existingConfig = JSON.parse(fs.readFileSync(configFile, 'utf8'));
-      if (existingConfig.models == null) {
-        existingConfig.models = {};
-      }
-      if ((base = existingConfig.models).providers == null) {
-        base.providers = {};
-      }
-      
-      // Check if any provider actually changed OR if active provider changed
-      needsSync = false;
-      for (providerId in providers) {
-        providerData = providers[providerId];
-        openClawProviderName = PROVIDER_NAME_MAP[providerId];
-        if (!openClawProviderName) {
-          continue;
-        }
-        existing = existingConfig.models.providers[openClawProviderName];
-        if (!existing || existing.apiKey !== providerData.apiKey) {
-          needsSync = true;
-          break;
-        }
-      }
-      
-      // Also check if active provider changed
-      if (activeProvider) {
-        openClawProviderName = PROVIDER_NAME_MAP[activeProvider];
-        if (openClawProviderName) {
-          currentPrimary = (ref = existingConfig.agents) != null ? (ref1 = ref.defaults) != null ? (ref2 = ref1.model) != null ? ref2.primary : void 0 : void 0 : void 0;
-          newPrimary = `${openClawProviderName}/${(ref3 = providers[activeProvider]) != null ? ref3.model : void 0}`;
-          if (currentPrimary !== newPrimary) {
-            needsSync = true;
-          }
-        }
-      }
-      
-      // Check if token needs to be synced
-      if (token && ((ref4 = existingConfig.gateway) != null ? (ref5 = ref4.auth) != null ? ref5.token : void 0 : void 0) !== token) {
-        needsSync = true;
-      }
-      if (!needsSync) {
+      // Check if sync is needed
+      if (!config.needsSync(providers, activeProvider, token)) {
         return false;
       }
       
       // Backup before writing
       backupOpenClawConfig();
       
-      // Perform the sync
-      config = existingConfig;
-      if (config.models == null) {
-        config.models = {};
-      }
-      if ((base1 = config.models).providers == null) {
-        base1.providers = {};
-      }
-      for (providerId in providers) {
-        providerData = providers[providerId];
-        openClawProviderName = PROVIDER_NAME_MAP[providerId];
-        if (!openClawProviderName) {
-          continue;
-        }
-        openClawConfig = getOpenClawProviderConfig(providerId, providerData.apiKey);
-        if (!openClawConfig) {
-          continue;
-        }
-        config.models.providers[openClawProviderName] = openClawConfig;
-        console.log(`Synced provider ${providerId} → ${openClawProviderName} to openclaw.json`);
-      }
-      
-      // Update primary model to match active provider
-      // Note: OpenClaw uses agents.defaults.model.primary, format: "provider/modelId"
-      // e.g., "glm/GLM-4-Flash" or "openrouter/auto"
-      if (providers && activeProvider && PROVIDER_NAME_MAP[activeProvider]) {
-        openClawProvider = PROVIDER_NAME_MAP[activeProvider];
-        providerData = providers[activeProvider];
-        if (providerData && providerData.model) {
-          // For openrouter models, the id might be "openrouter/auto" so we use it directly
-          // For others like glm, it's "glm-4-flash" so we format as "provider/model"
-          modelId = providerData.model;
-          if (!modelId.startsWith(openClawProvider)) {
-            modelId = `${openClawProvider}/${modelId}`;
-          }
-          if (config.agents == null) {
-            config.agents = {};
-          }
-          if ((base2 = config.agents).defaults == null) {
-            base2.defaults = {};
-          }
-          if ((base3 = config.agents.defaults).model == null) {
-            base3.model = {};
-          }
-          config.agents.defaults.model.primary = modelId;
-          console.log(`Set primary model to: ${modelId}`);
-        }
-      }
-      
-      // Sync token if provided
-      if (token) {
-        if (config.gateway == null) {
-          config.gateway = {};
-        }
-        if ((base4 = config.gateway).auth == null) {
-          base4.auth = {};
-        }
-        config.gateway.auth.mode = 'token';
-        config.gateway.auth.token = token;
-        if ((base5 = config.gateway).remote == null) {
-          base5.remote = {};
-        }
-        config.gateway.remote.token = token;
-        console.log('Synced token to OpenClaw config');
-      }
-      fs.writeFileSync(configFile, JSON.stringify(config, null, 2));
-      console.log('Providers synced to OpenClaw config');
+      // Use OpenClawConfig class to sync
+      // Create settings-like object for syncFromSettings
+      settings = {
+        providers: providers,
+        activeProvider: activeProvider,
+        token: token
+      };
+      config.syncFromSettings(settings);
+      console.log('Providers synced to OpenClaw config via OpenClawConfig class');
       return true;
     } catch (error) {
       e = error;
