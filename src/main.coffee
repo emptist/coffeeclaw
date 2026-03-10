@@ -599,7 +599,7 @@ openClawManager = OpenClawManager.getInstance
 apiClient = APIClient.getInstance
   models: MODELS
   storage: storage
-  skills: {}
+  skills: SKILLS
 
 callOpenClawAgent = (sessionId, message) ->
   new Promise (resolve, reject) ->
