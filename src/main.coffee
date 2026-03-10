@@ -214,19 +214,39 @@ importAllSettings = (data, options = {}) ->
     console.error 'Error importing settings:', e
     false
 
+# Global license instance
+licenseInstance = null
+
 loadLicense = ->
   try
     if fs.existsSync licenseFile
       data = fs.readFileSync licenseFile, 'utf8'
-      return JSON.parse data
+      parsed = JSON.parse data
+      # Check if already using new class format
+      if parsed?.__class == 'License'
+        licenseInstance = License.fromJSON(parsed)
+      else
+        # Migrate from legacy format
+        licenseInstance = License.fromLegacy(parsed)
+        saveLicense()  # Save in new format immediately
+      return licenseInstance
   catch e
     console.error 'Error loading license:', e
-  null
+  
+  # Create new license
+  licenseInstance = new License(generateId())
+  saveLicense()
+  return licenseInstance
 
-saveLicense = (license) ->
+saveLicense = (license = null) ->
   try
     fs.mkdirSync secreteDir, { recursive: true }
-    fs.writeFileSync licenseFile, JSON.stringify(license, null, 2)
+    # Use provided license or global instance
+    licenseToSave = license or licenseInstance
+    if licenseToSave?.toJSON
+      fs.writeFileSync licenseFile, JSON.stringify(licenseToSave.toJSON(), null, 2)
+    else
+      fs.writeFileSync licenseFile, JSON.stringify(licenseToSave, null, 2)
   catch e
     console.error 'Error saving license:', e
 
@@ -235,24 +255,17 @@ initLicense = ->
   if license
     return license
   
-  newLicense =
-    deviceId: generateId()
-    createdAt: new Date().toISOString()
-    balance: INITIAL_BALANCE_USD
-    currency: 'usd'
-    paid: false
-    plan: null
-    lastDeduction: null
-  
-  saveLicense newLicense
-  newLicense
+  licenseInstance = new License(generateId())
+  saveLicense()
+  licenseInstance
 
 getLicenseStatus = ->
   license = loadLicense()
   unless license
     license = initLicense()
   
-  if license.paid and license.plan == 'lifetime'
+  # Use License class methods
+  if license.isLifetime()
     return
       status: 'lifetime'
       balance: 0
@@ -260,39 +273,17 @@ getLicenseStatus = ->
       plan: 'lifetime'
       showIndicator: false
   
-  unless license.balance?
-    license.balance = INITIAL_BALANCE_USD
-    saveLicense(license)
-  
-  currentBalance = license.balance
-  
-  now = new Date()
-  createdAt = new Date(license.createdAt)
-  
-  monthsSinceCreation = (now.getFullYear() - createdAt.getFullYear()) * 12 + (now.getMonth() - createdAt.getMonth())
-  
-  if license.lastDeduction
-    lastDeduction = new Date(license.lastDeduction)
-    monthsSinceLastDeduction = (now.getFullYear() - lastDeduction.getFullYear()) * 12 + (now.getMonth() - lastDeduction.getMonth())
-  else
-    monthsSinceLastDeduction = monthsSinceCreation
-  
-  if monthsSinceLastDeduction >= 1
-    deduction = Math.floor(monthsSinceLastDeduction)
-    currentBalance = license.balance - deduction
-    
-    if currentBalance != license.balance
-      license.balance = currentBalance
-      license.lastDeduction = now.toISOString()
-      saveLicense(license)
+  # Process monthly deductions
+  license.processMonthlyDeduction()
+  saveLicense()
   
   return
-    status: if currentBalance > 0 then 'active' else 'overdue'
-    balance: currentBalance
+    status: if license.getBalance() > 0 then 'active' else 'overdue'
+    balance: license.getBalance()
     paid: license.paid
     plan: license.plan
     showIndicator: true
-    currency: license.currency or 'usd'
+    currency: license.currency
 
 # Global session manager instance
 sessionManagerInstance = null
