@@ -169,21 +169,18 @@ class OpenClawConfig
   syncFromSettings: (settings) ->
     return false unless settings?.providers
     
-    # Check if sync is needed
-    return false unless @needsSync(
+    unless @needsSync(
       settings.providers
       settings.activeProvider
       settings.token
     )
+      return false
     
-    # Backup existing config
     @backup()
     
-    # Sync providers
     for providerId, providerData of settings.providers
       continue unless providerData.apiKey
       
-      # Determine base URL based on provider
       baseUrl = switch providerId
         when 'zhipu' then 'https://open.bigmodel.cn/api/paas/v4'
         when 'openai' then 'https://api.openai.com/v1'
@@ -194,18 +191,49 @@ class OpenClawConfig
       
       @setProvider(providerId, providerData.apiKey, baseUrl)
     
-    # Sync active provider / primary model
     if settings.activeProvider and settings.providers[settings.activeProvider]
       providerData = settings.providers[settings.activeProvider]
       if providerData.model
         @setPrimaryModel(settings.activeProvider, providerData.model)
     
-    # Sync token
     if settings.token
       @setToken(settings.token)
     
-    # Save
     @save()
+  
+  syncToSettings: (settings) ->
+    return null unless @exists()
+    
+    providers = {}
+    activeProvider = null
+    
+    providerNameMap =
+      glm: 'zhipu'
+      openrouter: 'openrouter'
+      openai: 'openai'
+    
+    for openClawName, providerData of @data.models?.providers or {}
+      providerId = providerNameMap[openClawName]
+      continue unless providerId
+      
+      providers[providerId] =
+        apiKey: providerData.apiKey
+        model: providerData.models?[0]?.id or 'glm-4-flash'
+    
+    primaryModel = @getPrimaryModel()
+    if primaryModel
+      parts = primaryModel.split('/')
+      if parts.length == 2
+        openClawName = parts[0]
+        activeProvider = providerNameMap[openClawName]
+    
+    token = @getToken()
+    
+    {
+      providers: providers
+      activeProvider: activeProvider or settings?.activeProvider
+      token: token or settings?.token
+    }
   
   # Backup current config
   backup: ->

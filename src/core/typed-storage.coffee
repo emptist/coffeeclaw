@@ -10,6 +10,7 @@ path = require 'path'
 { License } = require '../license'
 { Identity } = require '../identity'
 { Model } = require '../model'
+{ OpenClawConfig } = require '../openclaw-config'
 
 class TypedStorage
   @instance = null
@@ -96,10 +97,35 @@ class TypedStorage
     else
       @_cache.settings = new Settings()
     
+    @_syncFromOpenClawConfig()
+    
     @_cache.settings
   
+  _syncFromOpenClawConfig: ->
+    try
+      openClawConfig = new OpenClawConfig()
+      return unless openClawConfig.exists()
+      
+      syncedData = openClawConfig.syncToSettings(@_cache.settings)
+      return unless syncedData
+      
+      settings = @_cache.settings
+      
+      for providerId, providerData of syncedData.providers
+        unless settings.providers[providerId]
+          model = Model.create(providerData.model, providerId)
+          settings.setProvider(providerId, providerData.apiKey, model)
+      
+      if syncedData.token and not settings.token
+        settings.setToken(syncedData.token)
+      
+      console.log 'Synced providers from OpenClaw config'
+    catch e
+      console.error 'Failed to sync from OpenClaw config:', e
+  
   saveSettings: (settings = null) ->
-    @_cache.settings = settings ? @_cache.settings
+    if settings
+      @_cache.settings = settings
     @storage.set('settings', @_cache.settings)
     @storage.save('settings')
     @
@@ -153,8 +179,14 @@ class TypedStorage
     { bots, activeBotId }
   
   saveBots: (bots = null) ->
-    @_cache.bots = bots ? @_cache.bots
-    @storage.set('bots', @_cache.bots)
+    if bots
+      @_cache.bots = bots
+    
+    data =
+      bots: @_cache.bots.bots.map (b) -> b.toJSON()
+      activeBotId: @_cache.bots.activeBotId
+    
+    @storage.set('bots', data)
     @storage.save('bots')
     @
   
@@ -247,7 +279,8 @@ class TypedStorage
     manager
   
   saveSessions: (sessions = null) ->
-    @_cache.sessions = sessions ? @_cache.sessions
+    if sessions
+      @_cache.sessions = sessions
     @storage.set('sessions', @_cache.sessions)
     @storage.save('sessions')
     @
