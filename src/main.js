@@ -2,7 +2,7 @@
 (function() {
   // CoffeeClaw - Main Process
   // Auto-configures OpenClaw on first run
-  var AgentModel, AgentModelManager, BOT_TEMPLATES, BackupManager, Bot, BrowserWindow, DeepSeekModel, FeishuConfig, INITIAL_BALANCE_CNY, INITIAL_BALANCE_USD, Identity, LICENSE_PRICES, License, MAX_HISTORY, MAX_SESSIONS, MODELS, Model, OpenAIModel, OpenClawConfig, OpenRouterModel, PROVIDER_NAME_MAP, SKILLS, Session, SessionManager, Settings, TypedStorage, USD_TO_CNY, ZhipuModel, addToAgentSession, addToSession, agentDir, agentMdFile, agentModelsFile, agentSessionsFile, app, backupManagerInstance, backupOpenClawConfig, backupSettings, botsDataInstance, botsFile, callAPI, callAPIWithMessages, callOpenClawAgent, checkNodeInstalled, checkNpmInstalled, checkOpenClaw, checkOpenClawInstalled, checkOpenClawPromise, checkWSLInstalled, configExists, configFile, configureFeishu, createAgentConfig, createBot, createDefaultConfig, createIdentity, createSession, createWindow, crypto, deleteBot, deleteSession, detectExistingFeishuConfig, ensureOpenClawConfig, exec, executeSkillFunction, exportAllSettings, fs, generateId, generateToken, getActiveBot, getAgentSession, getBackupData, getBackupManager, getBot, getBotTemplates, getLicenseStatus, getOpenClawConfig, getOpenClawProviderConfig, getPlatform, getSession, getSkillFunctions, http, https, identityFile, identityInstance, importAllSettings, initLicense, installOpenClaw, ipcMain, isConfigured, isMac, isWindows, licenseFile, licenseInstance, listSessions, listSettingsBackups, loadAgentSessions, loadBots, loadIdentity, loadLicense, loadSessions, loadSettings, mainWindow, migrateLegacyBots, migrateLegacySessions, openClawConfigInstance, openclawDir, path, restoreSettings, saveAgentSessions, saveBots, saveIdentity, saveLicense, saveSession, saveSessions, saveSettings, secreteDir, sendToOpenClaw, sessionManagerInstance, sessionsFile, setActiveBot, settingsFile, shell, spawn, startOpenClaw, storage, syncFeishuConfigToOpenClaw, syncFeishuConfigToSettings, syncProvidersToOpenClaw, updateBot, workspaceDir,
+  var AgentModel, AgentModelManager, BOT_TEMPLATES, BackupManager, Bot, BrowserWindow, DeepSeekModel, FeishuConfig, INITIAL_BALANCE_CNY, INITIAL_BALANCE_USD, Identity, LICENSE_PRICES, License, MAX_HISTORY, MAX_SESSIONS, MODELS, Model, OpenAIModel, OpenClawConfig, OpenRouterModel, PROVIDER_NAME_MAP, SKILLS, Session, SessionManager, Settings, TypedStorage, USD_TO_CNY, ZhipuModel, addToAgentSession, addToSession, agentDir, agentMdFile, agentModelsFile, agentSessionsFile, app, backupManagerInstance, backupOpenClawConfig, backupSettings, botsFile, callAPI, callAPIWithMessages, callOpenClawAgent, checkNodeInstalled, checkNpmInstalled, checkOpenClaw, checkOpenClawInstalled, checkOpenClawPromise, checkWSLInstalled, configExists, configFile, configureFeishu, createAgentConfig, createBot, createDefaultConfig, createIdentity, createSession, createWindow, crypto, deleteBot, deleteSession, detectExistingFeishuConfig, ensureOpenClawConfig, exec, executeSkillFunction, exportAllSettings, fs, generateId, generateToken, getActiveBot, getAgentSession, getBackupData, getBackupManager, getBot, getBotTemplates, getLicenseStatus, getOpenClawConfig, getOpenClawProviderConfig, getPlatform, getSession, getSkillFunctions, http, https, identityFile, identityInstance, importAllSettings, installOpenClaw, ipcMain, isConfigured, isMac, isWindows, licenseFile, listSessions, listSettingsBackups, loadAgentSessions, loadBots, loadIdentity, loadLicense, loadSessions, loadSettings, mainWindow, openClawConfigInstance, openclawDir, path, restoreSettings, saveAgentSessions, saveBots, saveIdentity, saveLicense, saveSession, saveSessions, saveSettings, secreteDir, sendToOpenClaw, sessionsFile, setActiveBot, settingsFile, shell, spawn, startOpenClaw, storage, syncFeishuConfigToOpenClaw, syncFeishuConfigToSettings, syncProvidersToOpenClaw, updateBot, workspaceDir,
     indexOf = [].indexOf;
 
   ({app, BrowserWindow, ipcMain, shell} = require('electron'));
@@ -257,216 +257,54 @@
     }
   };
 
-  // Global license instance
-  licenseInstance = null;
-
+  // License - using TypedStorage
   loadLicense = function() {
-    var data, e, parsed;
-    try {
-      if (fs.existsSync(licenseFile)) {
-        data = fs.readFileSync(licenseFile, 'utf8');
-        parsed = JSON.parse(data);
-        // Check if already using new class format
-        if ((parsed != null ? parsed.__class : void 0) === 'License') {
-          licenseInstance = License.fromJSON(parsed);
-        } else {
-          // Migrate from legacy format
-          licenseInstance = License.fromLegacy(parsed);
-          saveLicense(); // Save in new format immediately
-        }
-        return licenseInstance;
-      }
-    } catch (error) {
-      e = error;
-      console.error('Error loading license:', e);
-      
-      // Create new license
-      licenseInstance = new License();
-      saveLicense();
-      return licenseInstance;
-    }
+    return storage.getLicense();
   };
 
   saveLicense = function(license = null) {
-    var e, licenseToSave;
-    try {
-      fs.mkdirSync(secreteDir, {
-        recursive: true
-      });
-      // Use provided license or global instance
-      licenseToSave = license || licenseInstance;
-      if (licenseToSave != null ? licenseToSave.toJSON : void 0) {
-        return fs.writeFileSync(licenseFile, JSON.stringify(licenseToSave.toJSON(), null, 2));
-      } else {
-        return fs.writeFileSync(licenseFile, JSON.stringify(licenseToSave, null, 2));
-      }
-    } catch (error) {
-      e = error;
-      return console.error('Error saving license:', e);
-    }
-  };
-
-  initLicense = function() {
-    var license;
-    license = loadLicense();
-    if (license) {
-      return license;
-    }
-    licenseInstance = new License();
-    saveLicense();
-    return licenseInstance;
+    return storage.saveLicense(license);
   };
 
   getLicenseStatus = function() {
-    var license;
-    license = loadLicense();
-    if (!license) {
-      license = initLicense();
-    }
-    
-    // Use License class methods
-    if (license.isLifetime()) {
-      return {
-        status: 'lifetime',
-        balance: 0,
-        paid: true,
-        plan: 'lifetime',
-        showIndicator: false
-      };
-    }
-    
-    // Process monthly deductions
-    license.processMonthlyDeduction();
-    saveLicense();
-    return {
-      status: license.getBalance() > 0 ? 'active' : 'overdue',
-      balance: license.getBalance(),
-      paid: license.paid,
-      plan: license.plan,
-      showIndicator: true,
-      currency: license.currency
-    };
+    return storage.getLicenseStatus();
   };
 
-  // Global session manager instance
-  sessionManagerInstance = null;
-
+  // Sessions - using TypedStorage
   loadSessions = function() {
-    var data, e, parsed;
-    try {
-      if (fs.existsSync(sessionsFile)) {
-        data = fs.readFileSync(sessionsFile, 'utf8');
-        parsed = JSON.parse(data);
-        // Check if already using new class format
-        if ((parsed != null ? parsed.__class : void 0) === 'SessionManager') {
-          sessionManagerInstance = SessionManager.fromJSON(parsed);
-        } else {
-          // Migrate from legacy format (object with sessionId keys)
-          sessionManagerInstance = migrateLegacySessions(parsed);
-          saveSessions(); // Save in new format immediately
-        }
-        return sessionManagerInstance;
-      }
-    } catch (error) {
-      e = error;
-      console.error('Error loading sessions:', e);
-    }
-    
-    // Create new session manager
-    sessionManagerInstance = new SessionManager();
-    return sessionManagerInstance;
+    return storage.getSessions();
   };
 
-  migrateLegacySessions = function(legacyData) {
-    var e, legacySession, manager, session, sessionId;
-    manager = new SessionManager();
-    if (legacyData && typeof legacyData === 'object') {
-      for (sessionId in legacyData) {
-        legacySession = legacyData[sessionId];
-        try {
-          // Convert legacy session to Session instance
-          session = new Session(sessionId);
-          session.title = legacySession.title || '';
-          session.messages = legacySession.messages || [];
-          session.createdAt = legacySession.createdAt || Date.now();
-          session.updatedAt = legacySession.updatedAt || Date.now();
-          if (legacySession.botId) {
-            session.botId = legacySession.botId;
-          }
-          manager.addSession(session);
-        } catch (error) {
-          e = error;
-          console.error('Error migrating session:', e);
-        }
-      }
-    }
-    return manager;
-  };
-
-  saveSessions = function(manager = null) {
-    var e, managerToSave;
-    try {
-      fs.mkdirSync(secreteDir, {
-        recursive: true
-      });
-      // Use provided manager or global instance
-      managerToSave = manager || sessionManagerInstance;
-      if (managerToSave != null ? managerToSave.toJSON : void 0) {
-        return fs.writeFileSync(sessionsFile, JSON.stringify(managerToSave.toJSON(), null, 2));
-      } else {
-        return fs.writeFileSync(sessionsFile, JSON.stringify(managerToSave, null, 2));
-      }
-    } catch (error) {
-      e = error;
-      return console.error('Error saving sessions:', e);
-    }
+  saveSessions = function(sessions = null) {
+    return storage.saveSessions(sessions);
   };
 
   getSession = function(sessionId) {
-    var manager, session;
-    manager = loadSessions();
-    session = manager.getSession(sessionId);
-    if (!session) {
-      // Create new session if not exists
-      session = new Session(sessionId);
-      manager.addSession(session);
-      saveSessions();
-    }
-    return session;
+    return storage.getSession(sessionId);
   };
 
   saveSession = function(sessionId, session) {
-    var manager, ref;
-    manager = loadSessions();
-    // Ensure messages don't exceed MAX_HISTORY
+    var ref;
     if (((ref = session.messages) != null ? ref.length : void 0) > MAX_HISTORY) {
       session.messages = session.messages.slice(-MAX_HISTORY);
     }
-    manager.addSession(session);
-    // Enforce MAX_SESSIONS limit
-    manager.enforceMaxSessions(MAX_SESSIONS);
-    return saveSessions();
+    return storage.saveSessions();
   };
 
   addToSession = function(sessionId, role, content) {
-    var session;
-    session = getSession(sessionId);
-    session.addMessage(role, content);
-    if (!session.title && role === 'user') {
-      session.title = content.substring(0, 50);
-    }
-    saveSession(sessionId, session);
-    return session;
+    return storage.addMessage(sessionId, role, content);
   };
 
   createSession = function() {
-    var manager, session, sessionId;
-    sessionId = generateId();
-    session = new Session(sessionId);
-    manager = loadSessions();
-    manager.addSession(session);
-    saveSessions();
-    return session;
+    return storage.createSession();
+  };
+
+  deleteSession = function(sessionId) {
+    return storage.deleteSession(sessionId);
+  };
+
+  listSessions = function() {
+    return storage.listSessions();
   };
 
   loadAgentSessions = function() {
@@ -575,207 +413,37 @@
     return BOT_TEMPLATES;
   };
 
-  // Global bots data instance
-  botsDataInstance = null;
-
+  // Bots - using TypedStorage
   loadBots = function() {
-    var data, defaultBot, e, parsed, ref, ref1;
-    try {
-      if (fs.existsSync(botsFile)) {
-        data = fs.readFileSync(botsFile, 'utf8');
-        parsed = JSON.parse(data);
-        // Check if already using new class format
-        if ((parsed != null ? (ref = parsed.bots) != null ? (ref1 = ref[0]) != null ? ref1.__class : void 0 : void 0 : void 0) === 'Bot') {
-          botsDataInstance = {
-            bots: parsed.bots.map(function(b) {
-              return Bot.fromJSON(b);
-            }),
-            activeBotId: parsed.activeBotId
-          };
-        } else {
-          // Migrate from legacy format
-          botsDataInstance = migrateLegacyBots(parsed);
-          saveBots(); // Save in new format immediately
-        }
-        return botsDataInstance;
-      }
-    } catch (error) {
-      e = error;
-      console.error('Error loading bots:', e);
-    }
-    
-    // Create default bot
-    defaultBot = Bot.createDefaultBot();
-    botsDataInstance = {
-      bots: [defaultBot],
-      activeBotId: defaultBot.id
-    };
-    saveBots();
-    return botsDataInstance;
+    return storage.getBots();
   };
 
-  migrateLegacyBots = function(legacyData) {
-    var activeBotId, bot, bots, defaultBot, e, j, legacyBot, len, model, modelId, ref, ref1;
-    bots = [];
-    activeBotId = legacyData != null ? legacyData.activeBotId : void 0;
-    if ((legacyData != null ? legacyData.bots : void 0) && Array.isArray(legacyData.bots)) {
-      ref = legacyData.bots;
-      for (j = 0, len = ref.length; j < len; j++) {
-        legacyBot = ref[j];
-        try {
-          // Create model from legacy model string
-          modelId = legacyBot.model || 'glm-4-flash';
-          model = Model.create(modelId, 'zhipu');
-          bot = new Bot(legacyBot.id || generateId(), legacyBot.name, legacyBot.description, model, legacyBot.systemPrompt, legacyBot.skills || ['*']);
-          bot.enabled = (ref1 = legacyBot.enabled) != null ? ref1 : true;
-          bot.createdAt = legacyBot.createdAt || new Date().toISOString();
-          if (legacyBot.isAgent) {
-            bot.isAgent = legacyBot.isAgent;
-          }
-          bots.push(bot);
-          
-          // Set active bot ID if not set
-          if (activeBotId == null) {
-            activeBotId = bot.id;
-          }
-        } catch (error) {
-          e = error;
-          console.error('Error migrating bot:', e);
-        }
-      }
-    }
-    
-    // If no bots migrated, create default
-    if (bots.length === 0) {
-      defaultBot = Bot.createDefaultBot();
-      bots.push(defaultBot);
-      activeBotId = defaultBot.id;
-    }
-    return {bots, activeBotId};
-  };
-
-  saveBots = function(botsData = null) {
-    var dataToSave, e, serialized;
-    try {
-      fs.mkdirSync(secreteDir, {
-        recursive: true
-      });
-      // Use provided data or global instance
-      dataToSave = botsData || botsDataInstance;
-      if (dataToSave) {
-        // Serialize bots if they have toJSON method
-        serialized = {
-          bots: dataToSave.bots.map(function(b) {
-            if (b.toJSON) {
-              return b.toJSON();
-            } else {
-              return b;
-            }
-          }),
-          activeBotId: dataToSave.activeBotId
-        };
-        return fs.writeFileSync(botsFile, JSON.stringify(serialized, null, 2));
-      }
-    } catch (error) {
-      e = error;
-      return console.error('Error saving bots:', e);
-    }
+  saveBots = function(bots = null) {
+    return storage.saveBots(bots);
   };
 
   getBot = function(botId) {
-    var botsData;
-    botsData = loadBots();
-    return botsData.bots.find(function(b) {
-      return b.id === botId;
-    });
+    return storage.getBot(botId);
   };
 
   getActiveBot = function() {
-    var activeBot, botsData;
-    botsData = loadBots();
-    activeBot = botsData.bots.find(function(b) {
-      return b.id === botsData.activeBotId;
-    });
-    return activeBot || botsData.bots[0];
+    return storage.getActiveBot();
   };
 
-  createBot = function(botConfig) {
-    var botsData, newBot, ref, ref1;
-    if (!((ref = botConfig.name) != null ? ref.trim() : void 0)) {
-      return {
-        error: 'Bot name is required'
-      };
-    }
-    botsData = loadBots();
-    newBot = {
-      id: generateId(),
-      name: botConfig.name.trim(),
-      description: ((ref1 = botConfig.description) != null ? ref1.trim() : void 0) || '',
-      model: botConfig.model || 'glm-4-flash',
-      systemPrompt: botConfig.systemPrompt || 'You are a helpful assistant.',
-      skills: botConfig.skills || ['*'],
-      enabled: true,
-      createdAt: new Date().toISOString()
-    };
-    if (botConfig.isAgent) {
-      newBot.isAgent = true;
-    }
-    botsData.bots.push(newBot);
-    saveBots(botsData);
-    return newBot;
+  createBot = function(config) {
+    return storage.createBot(config);
   };
 
   updateBot = function(botId, updates) {
-    var botIndex, botsData;
-    botsData = loadBots();
-    botIndex = botsData.bots.findIndex(function(b) {
-      return b.id === botId;
-    });
-    if (botIndex >= 0) {
-      botsData.bots[botIndex] = {
-        ...botsData.bots[botIndex],
-        ...updates,
-        updatedAt: new Date().toISOString()
-      };
-      saveBots(botsData);
-      return botsData.bots[botIndex];
-    }
-    return null;
+    return storage.updateBot(botId, updates);
   };
 
   deleteBot = function(botId) {
-    var botsData, ref;
-    botsData = loadBots();
-    if (botsData.bots.length <= 1) {
-      return {
-        success: false,
-        error: 'Cannot delete the last bot'
-      };
-    }
-    botsData.bots = botsData.bots.filter(function(b) {
-      return b.id !== botId;
-    });
-    if (botsData.activeBotId === botId) {
-      botsData.activeBotId = (ref = botsData.bots[0]) != null ? ref.id : void 0;
-    }
-    saveBots(botsData);
-    return {
-      success: true
-    };
+    return storage.deleteBot(botId);
   };
 
   setActiveBot = function(botId) {
-    var bot, botsData;
-    botsData = loadBots();
-    bot = botsData.bots.find(function(b) {
-      return b.id === botId;
-    });
-    if (bot) {
-      botsData.activeBotId = botId;
-      saveBots(botsData);
-      return bot;
-    }
-    return null;
+    return storage.setActiveBot(botId);
   };
 
   SKILLS = {

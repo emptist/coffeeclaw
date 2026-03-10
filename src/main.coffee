@@ -184,76 +184,10 @@ importAllSettings = (data, options = {}) ->
     console.error 'Error importing settings:', e
     false
 
-# Global license instance
-licenseInstance = null
-
-loadLicense = ->
-  try
-    if fs.existsSync licenseFile
-      data = fs.readFileSync licenseFile, 'utf8'
-      parsed = JSON.parse data
-      # Check if already using new class format
-      if parsed?.__class == 'License'
-        licenseInstance = License.fromJSON(parsed)
-      else
-        # Migrate from legacy format
-        licenseInstance = License.fromLegacy(parsed)
-        saveLicense()  # Save in new format immediately
-      return licenseInstance
-  catch e
-    console.error 'Error loading license:', e
-  
-  # Create new license
-    licenseInstance = new License()
-    saveLicense()
-    return licenseInstance
-
-saveLicense = (license = null) ->
-  try
-    fs.mkdirSync secreteDir, { recursive: true }
-    # Use provided license or global instance
-    licenseToSave = license or licenseInstance
-    if licenseToSave?.toJSON
-      fs.writeFileSync licenseFile, JSON.stringify(licenseToSave.toJSON(), null, 2)
-    else
-      fs.writeFileSync licenseFile, JSON.stringify(licenseToSave, null, 2)
-  catch e
-    console.error 'Error saving license:', e
-
-initLicense = ->
-  license = loadLicense()
-  if license
-    return license
-  
-  licenseInstance = new License()
-  saveLicense()
-  licenseInstance
-
-getLicenseStatus = ->
-  license = loadLicense()
-  unless license
-    license = initLicense()
-  
-  # Use License class methods
-  if license.isLifetime()
-    return
-      status: 'lifetime'
-      balance: 0
-      paid: true
-      plan: 'lifetime'
-      showIndicator: false
-  
-  # Process monthly deductions
-  license.processMonthlyDeduction()
-  saveLicense()
-  
-  return
-    status: if license.getBalance() > 0 then 'active' else 'overdue'
-    balance: license.getBalance()
-    paid: license.paid
-    plan: license.plan
-    showIndicator: true
-    currency: license.currency
+# License - using TypedStorage
+loadLicense = -> storage.getLicense()
+saveLicense = (license = null) -> storage.saveLicense(license)
+getLicenseStatus = -> storage.getLicenseStatus()
 
 # Sessions - using TypedStorage
 loadSessions = -> storage.getSessions()
@@ -343,141 +277,15 @@ BOT_TEMPLATES = [
 
 getBotTemplates = -> BOT_TEMPLATES
 
-# Global bots data instance
-botsDataInstance = null
-
-loadBots = ->
-  try
-    if fs.existsSync botsFile
-      data = fs.readFileSync botsFile, 'utf8'
-      parsed = JSON.parse data
-      # Check if already using new class format
-      if parsed?.bots?[0]?.__class == 'Bot'
-        botsDataInstance = 
-          bots: parsed.bots.map (b) -> Bot.fromJSON(b)
-          activeBotId: parsed.activeBotId
-      else
-        # Migrate from legacy format
-        botsDataInstance = migrateLegacyBots(parsed)
-        saveBots()  # Save in new format immediately
-      return botsDataInstance
-  catch e
-    console.error 'Error loading bots:', e
-  
-  # Create default bot
-  defaultBot = Bot.createDefaultBot()
-  botsDataInstance = 
-    bots: [defaultBot]
-    activeBotId: defaultBot.id
-  saveBots()
-  return botsDataInstance
-
-migrateLegacyBots = (legacyData) ->
-  bots = []
-  activeBotId = legacyData?.activeBotId
-  
-  if legacyData?.bots and Array.isArray(legacyData.bots)
-    for legacyBot in legacyData.bots
-      try
-        # Create model from legacy model string
-        modelId = legacyBot.model or 'glm-4-flash'
-        model = Model.create(modelId, 'zhipu')
-        
-        bot = new Bot(
-          legacyBot.id or generateId()
-          legacyBot.name
-          legacyBot.description
-          model
-          legacyBot.systemPrompt
-          legacyBot.skills or ['*']
-        )
-        bot.enabled = legacyBot.enabled ? true
-        bot.createdAt = legacyBot.createdAt or new Date().toISOString()
-        bot.isAgent = legacyBot.isAgent if legacyBot.isAgent
-        bots.push bot
-        
-        # Set active bot ID if not set
-        activeBotId ?= bot.id
-      catch e
-        console.error 'Error migrating bot:', e
-  
-  # If no bots migrated, create default
-  if bots.length == 0
-    defaultBot = Bot.createDefaultBot()
-    bots.push defaultBot
-    activeBotId = defaultBot.id
-  
-  { bots, activeBotId }
-
-saveBots = (botsData = null) ->
-  try
-    fs.mkdirSync secreteDir, { recursive: true }
-    # Use provided data or global instance
-    dataToSave = botsData or botsDataInstance
-    if dataToSave
-      # Serialize bots if they have toJSON method
-      serialized = 
-        bots: dataToSave.bots.map (b) -> if b.toJSON then b.toJSON() else b
-        activeBotId: dataToSave.activeBotId
-      fs.writeFileSync botsFile, JSON.stringify(serialized, null, 2)
-  catch e
-    console.error 'Error saving bots:', e
-
-getBot = (botId) ->
-  botsData = loadBots()
-  botsData.bots.find (b) -> b.id == botId
-
-getActiveBot = ->
-  botsData = loadBots()
-  activeBot = botsData.bots.find (b) -> b.id == botsData.activeBotId
-  activeBot or botsData.bots[0]
-
-createBot = (botConfig) ->
-  unless botConfig.name?.trim()
-    return error: 'Bot name is required'
-  botsData = loadBots()
-  newBot =
-    id: generateId()
-    name: botConfig.name.trim()
-    description: botConfig.description?.trim() or ''
-    model: botConfig.model or 'glm-4-flash'
-    systemPrompt: botConfig.systemPrompt or 'You are a helpful assistant.'
-    skills: botConfig.skills or ['*']
-    enabled: true
-    createdAt: new Date().toISOString()
-  if botConfig.isAgent
-    newBot.isAgent = true
-  botsData.bots.push newBot
-  saveBots botsData
-  newBot
-
-updateBot = (botId, updates) ->
-  botsData = loadBots()
-  botIndex = botsData.bots.findIndex (b) -> b.id == botId
-  if botIndex >= 0
-    botsData.bots[botIndex] = { ...botsData.bots[botIndex], ...updates, updatedAt: new Date().toISOString() }
-    saveBots botsData
-    return botsData.bots[botIndex]
-  null
-
-deleteBot = (botId) ->
-  botsData = loadBots()
-  if botsData.bots.length <= 1
-    return { success: false, error: 'Cannot delete the last bot' }
-  botsData.bots = botsData.bots.filter (b) -> b.id != botId
-  if botsData.activeBotId == botId
-    botsData.activeBotId = botsData.bots[0]?.id
-  saveBots botsData
-  { success: true }
-
-setActiveBot = (botId) ->
-  botsData = loadBots()
-  bot = botsData.bots.find (b) -> b.id == botId
-  if bot
-    botsData.activeBotId = botId
-    saveBots botsData
-    return bot
-  null
+# Bots - using TypedStorage
+loadBots = -> storage.getBots()
+saveBots = (bots = null) -> storage.saveBots(bots)
+getBot = (botId) -> storage.getBot(botId)
+getActiveBot = -> storage.getActiveBot()
+createBot = (config) -> storage.createBot(config)
+updateBot = (botId, updates) -> storage.updateBot(botId, updates)
+deleteBot = (botId) -> storage.deleteBot(botId)
+setActiveBot = (botId) -> storage.setActiveBot(botId)
 
 SKILLS =
   fs:
