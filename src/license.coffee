@@ -1,12 +1,12 @@
 # License class for managing user license and billing information
-# Matches the legacy license structure used in main.coffee
+# Note: deviceId was removed as it's not used - billing is not device-restricted
 
 class License
   # Class properties
   @INITIAL_BALANCE = 1  # USD
   @MONTHLY_FEE = 1      # USD per month
   
-  constructor: (@deviceId) ->
+  constructor: ->
     @createdAt = new Date().toISOString()
     @balance = License.INITIAL_BALANCE
     @currency = 'usd'
@@ -91,7 +91,6 @@ class License
   toJSON: ->
     {
       __class: 'License'
-      deviceId: @deviceId
       createdAt: @createdAt
       balance: @balance
       currency: @currency
@@ -102,7 +101,7 @@ class License
   
   # Deserialize from JSON
   @fromJSON: (data) ->
-    license = new License(data.deviceId)
+    license = new License()
     license.createdAt = data.createdAt
     license.balance = data.balance ? License.INITIAL_BALANCE
     license.currency = data.currency ? 'usd'
@@ -113,17 +112,14 @@ class License
   
   # Migrate from legacy format
   @fromLegacy: (data) ->
-    unless data?.deviceId
-      # Create new license if no valid legacy data
-      return new License(generateId())
-    
-    license = new License(data.deviceId)
-    license.createdAt = data.createdAt ? new Date().toISOString()
-    license.balance = data.balance ? License.INITIAL_BALANCE
-    license.currency = data.currency ? 'usd'
-    license.paid = data.paid ? false
-    license.plan = data.plan ? null
-    license.lastDeduction = data.lastDeduction ? null
+    license = new License()
+    if data
+      license.createdAt = data.createdAt ? new Date().toISOString()
+      license.balance = data.balance ? License.INITIAL_BALANCE
+      license.currency = data.currency ? 'usd'
+      license.paid = data.paid ? false
+      license.plan = data.plan ? null
+      license.lastDeduction = data.lastDeduction ? null
     license
 
 module.exports = { License }

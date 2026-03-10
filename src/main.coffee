@@ -234,9 +234,9 @@ loadLicense = ->
     console.error 'Error loading license:', e
   
   # Create new license
-  licenseInstance = new License(generateId())
-  saveLicense()
-  return licenseInstance
+    licenseInstance = new License()
+    saveLicense()
+    return licenseInstance
 
 saveLicense = (license = null) ->
   try
@@ -255,9 +255,9 @@ initLicense = ->
   if license
     return license
   
-  licenseInstance = new License(generateId())
-  saveLicense()
-  licenseInstance
+  licenseInstance = new License()
+    saveLicense()
+    licenseInstance
 
 getLicenseStatus = ->
   license = loadLicense()
