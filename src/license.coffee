@@ -1,134 +1,129 @@
-# License class for managing user license information
+# License class for managing user license and billing information
+# Matches the legacy license structure used in main.coffee
 
 class License
   # Class properties
-  @STATUS_ACTIVE: 'active'
-  @STATUS_EXPIRED: 'expired'
-  @STATUS_PENDING: 'pending'
-  @GRACE_PERIOD_DAYS: 7
+  @INITIAL_BALANCE = 1  # USD
+  @MONTHLY_FEE = 1      # USD per month
   
-  constructor: (@key = null, @userId = null) ->
-    @status = License.STATUS_PENDING
+  constructor: (@deviceId) ->
     @createdAt = new Date().toISOString()
-    @expiresAt = null
-    @lastVerifiedAt = null
-    @features = []
-    @quota =
-      total: 0
-      used: 0
-      remaining: 0
+    @balance = License.INITIAL_BALANCE
+    @currency = 'usd'
+    @paid = false
+    @plan = null
+    @lastDeduction = null
   
-  # Check if license is valid
-  isValid: ->
-    return false unless @key and @status == License.STATUS_ACTIVE
-    return true unless @expiresAt
-    new Date() < new Date(@expiresAt)
+  # Get current balance
+  getBalance: -> @balance
   
-  # Check if license is expired
-  isExpired: ->
-    return false unless @expiresAt
-    new Date() >= new Date(@expiresAt)
+  # Check if lifetime license
+  isLifetime: -> @paid and @plan == 'lifetime'
   
-  # Check if in grace period
-  isInGracePeriod: ->
-    return false unless @isExpired()
-    return false unless @expiresAt
-    expiredDate = new Date(@expiresAt)
+  # Check if active (has balance or lifetime)
+  isActive: -> @isLifetime() or @balance > 0
+  
+  # Set plan and mark as paid
+  setPlan: (plan, amount) ->
+    @plan = plan
+    @paid = true
+    if plan == 'lifetime'
+      @balance = 0
+    else if amount
+      @balance = (@balance or 0) + amount
+    this
+  
+  # Add balance
+  addBalance: (amount) ->
+    @balance = (@balance or 0) + amount
+    @paid = true
+    this
+  
+  # Process monthly deduction
+  # Returns true if deduction was made
+  processMonthlyDeduction: ->
+    return false if @isLifetime()
+    return false unless @balance?
+    
     now = new Date()
-    graceEnd = new Date(expiredDate.getTime() + License.GRACE_PERIOD_DAYS * 24 * 60 * 60 * 1000)
-    now < graceEnd
+    createdAt = new Date(@createdAt)
+    
+    monthsSinceCreation = (now.getFullYear() - createdAt.getFullYear()) * 12 + (now.getMonth() - createdAt.getMonth())
+    
+    if @lastDeduction
+      lastDeduction = new Date(@lastDeduction)
+      monthsSinceLastDeduction = (now.getFullYear() - lastDeduction.getFullYear()) * 12 + (now.getMonth() - lastDeduction.getMonth())
+    else
+      monthsSinceLastDeduction = monthsSinceCreation
+    
+    if monthsSinceLastDeduction >= 1
+      deduction = Math.floor(monthsSinceLastDeduction)
+      newBalance = @balance - deduction
+      
+      if newBalance != @balance
+        @balance = newBalance
+        @lastDeduction = now.toISOString()
+        return true
+    
+    false
   
-  # Activate license
-  activate: (features = [], quota = null) ->
-    @status = License.STATUS_ACTIVE
-    @lastVerifiedAt = new Date().toISOString()
-    @features = features
-    if quota
-      @quota.total = quota
-      @quota.remaining = quota
-    this
-  
-  # Deactivate license
-  deactivate: (reason = null) ->
-    @status = if reason == 'expired' then License.STATUS_EXPIRED else License.STATUS_PENDING
-    this
-  
-  # Update quota
-  useQuota: (amount = 1) ->
-    @quota.used += amount
-    @quota.remaining = Math.max(0, @quota.total - @quota.used)
-    this
-  
-  # Check if has quota remaining
-  hasQuota: ->
-    return true if @quota.total == 0  # Unlimited
-    @quota.remaining > 0
-  
-  # Check if has feature
-  hasFeature: (feature) ->
-    @features.includes(feature) or @features.includes('*')
-  
-  # Set expiration date
-  setExpiration: (daysFromNow) ->
-    date = new Date()
-    date.setDate(date.getDate() + daysFromNow)
-    @expiresAt = date.toISOString()
-    this
-  
-  # Get days until expiration
-  getDaysUntilExpiration: ->
-    return null unless @expiresAt
-    now = new Date()
-    expires = new Date(@expiresAt)
-    diffTime = expires - now
-    Math.ceil(diffTime / (1000 * 60 * 60 * 24))
-  
-  # Get license summary
-  getSummary: ->
-    {
-      status: @status
-      isValid: @isValid()
-      isExpired: @isExpired()
-      isInGracePeriod: @isInGracePeriod()
-      daysUntilExpiration: @getDaysUntilExpiration()
-      hasQuota: @hasQuota()
-      quotaRemaining: @quota.remaining
-      features: @features
-    }
+  # Get status for UI
+  getStatus: ->
+    if @isLifetime()
+      {
+        status: 'lifetime'
+        balance: 0
+        paid: true
+        plan: 'lifetime'
+        showIndicator: false
+      }
+    else
+      {
+        status: if @balance > 0 then 'active' else 'overdue'
+        balance: @balance
+        paid: @paid
+        plan: @plan
+        showIndicator: true
+        currency: @currency
+      }
   
   # Serialization
   toJSON: ->
     {
       __class: 'License'
-      key: @key
-      userId: @userId
-      status: @status
+      deviceId: @deviceId
       createdAt: @createdAt
-      expiresAt: @expiresAt
-      lastVerifiedAt: @lastVerifiedAt
-      features: @features
-      quota: @quota
+      balance: @balance
+      currency: @currency
+      paid: @paid
+      plan: @plan
+      lastDeduction: @lastDeduction
     }
   
+  # Deserialize from JSON
   @fromJSON: (data) ->
-    license = new License(data.key, data.userId)
-    license.status = data.status ? License.STATUS_PENDING
+    license = new License(data.deviceId)
     license.createdAt = data.createdAt
-    license.expiresAt = data.expiresAt
-    license.lastVerifiedAt = data.lastVerifiedAt
-    license.features = data.features ? []
-    license.quota = data.quota ? { total: 0, used: 0, remaining: 0 }
+    license.balance = data.balance ? License.INITIAL_BALANCE
+    license.currency = data.currency ? 'usd'
+    license.paid = data.paid ? false
+    license.plan = data.plan ? null
+    license.lastDeduction = data.lastDeduction ? null
     license
   
-  # Create from legacy format
+  # Migrate from legacy format
   @fromLegacy: (data) ->
-    license = new License(data.key, data.userId)
-    license.status = data.status ? License.STATUS_PENDING
+    unless data?.deviceId
+      # Create new license if no valid legacy data
+      return new License(generateId())
+    
+    license = new License(data.deviceId)
     license.createdAt = data.createdAt ? new Date().toISOString()
-    license.expiresAt = data.expiresAt
-    license.features = data.features ? []
-    if data.quota
-      license.quota = data.quota
+    license.balance = data.balance ? License.INITIAL_BALANCE
+    license.currency = data.currency ? 'usd'
+    license.paid = data.paid ? false
+    license.plan = data.plan ? null
+    license.lastDeduction = data.lastDeduction ? null
     license
 
 module.exports = { License }
