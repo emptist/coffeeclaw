@@ -1567,6 +1567,19 @@
       btn.addEventListener('click', () => setLang(btn.dataset.lang));
     });
     
+    function sanitizeForCommand(input) {
+      if (typeof input !== 'string') return '';
+      let escaped = input
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+      const dangerous = /[;|`$><*?()[\]{}\\]/g;
+      escaped = escaped.replace(dangerous, '');
+      return escaped.trim();
+    }
+    
     async function updateLicenseIndicator() {
       try {
         licenseData = await window.api.getLicense();

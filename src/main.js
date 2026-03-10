@@ -2,7 +2,8 @@
 (function() {
   // CoffeeClaw - Main Process
   // Auto-configures OpenClaw on first run
-  var BOT_TEMPLATES, BrowserWindow, INITIAL_BALANCE_CNY, INITIAL_BALANCE_USD, LICENSE_PRICES, MAX_HISTORY, MAX_SESSIONS, MODELS, PROVIDER_NAME_MAP, SKILLS, USD_TO_CNY, addToAgentSession, addToSession, agentDir, agentMdFile, agentModelsFile, agentSessionsFile, app, backupOpenClawConfig, backupSettings, botsFile, callAPI, callAPIWithMessages, callOpenClawAgent, checkNodeInstalled, checkNpmInstalled, checkOpenClaw, checkOpenClawInstalled, checkOpenClawPromise, checkWSLInstalled, configExists, configFile, configureFeishu, createAgentConfig, createBot, createDefaultConfig, createIdentity, createSession, createWindow, crypto, deleteBot, deleteSession, detectExistingFeishuConfig, ensureOpenClawConfig, exec, executeSkillFunction, exportAllSettings, fs, generateId, generateToken, getActiveBot, getAgentSession, getBackupData, getBot, getBotTemplates, getLicenseStatus, getOpenClawProviderConfig, getPlatform, getSession, getSkillFunctions, http, https, identityFile, importAllSettings, initLicense, installOpenClaw, ipcMain, isConfigured, isMac, isWindows, licenseFile, listSessions, listSettingsBackups, loadAgentSessions, loadBots, loadLicense, loadSessions, loadSettings, mainWindow, openclawDir, path, restoreSettings, saveAgentSessions, saveBots, saveLicense, saveSession, saveSessions, saveSettings, secreteDir, sendToOpenClaw, sessionsFile, setActiveBot, settingsFile, shell, spawn, startOpenClaw, syncFeishuConfigToOpenClaw, syncFeishuConfigToSettings, syncProvidersToOpenClaw, updateBot, workspaceDir;
+  var BOT_TEMPLATES, BrowserWindow, INITIAL_BALANCE_CNY, INITIAL_BALANCE_USD, LICENSE_PRICES, MAX_HISTORY, MAX_SESSIONS, MODELS, PROVIDER_NAME_MAP, SKILLS, USD_TO_CNY, addToAgentSession, addToSession, agentDir, agentMdFile, agentModelsFile, agentSessionsFile, app, backupOpenClawConfig, backupSettings, botsFile, callAPI, callAPIWithMessages, callOpenClawAgent, checkNodeInstalled, checkNpmInstalled, checkOpenClaw, checkOpenClawInstalled, checkOpenClawPromise, checkWSLInstalled, configExists, configFile, configureFeishu, createAgentConfig, createBot, createDefaultConfig, createIdentity, createSession, createWindow, crypto, deleteBot, deleteSession, detectExistingFeishuConfig, ensureOpenClawConfig, exec, executeSkillFunction, exportAllSettings, fs, generateId, generateToken, getActiveBot, getAgentSession, getBackupData, getBot, getBotTemplates, getLicenseStatus, getOpenClawProviderConfig, getPlatform, getSession, getSkillFunctions, http, https, identityFile, importAllSettings, initLicense, installOpenClaw, ipcMain, isConfigured, isMac, isWindows, licenseFile, listSessions, listSettingsBackups, loadAgentSessions, loadBots, loadLicense, loadSessions, loadSettings, mainWindow, openclawDir, path, restoreSettings, saveAgentSessions, saveBots, saveLicense, saveSession, saveSessions, saveSettings, secreteDir, sendToOpenClaw, sessionsFile, setActiveBot, settingsFile, shell, spawn, startOpenClaw, syncFeishuConfigToOpenClaw, syncFeishuConfigToSettings, syncProvidersToOpenClaw, updateBot, workspaceDir,
+    indexOf = [].indexOf;
 
   ({app, BrowserWindow, ipcMain, shell} = require('electron'));
 
@@ -730,9 +731,24 @@
           required: ['path']
         },
         handler: function(args) {
-          var content, e;
+          var ALLOWED_BASE, content, e, realPath, resolvedPath;
           try {
-            content = fs.readFileSync(args.path, 'utf8');
+            ALLOWED_BASE = process.env.HOME;
+            resolvedPath = path.resolve(args.path);
+            if (!resolvedPath.startsWith(path.resolve(ALLOWED_BASE))) {
+              return {
+                success: false,
+                error: 'Path not allowed: must be within home directory'
+              };
+            }
+            realPath = fs.realpathSync(args.path);
+            if (!realPath.startsWith(path.resolve(ALLOWED_BASE))) {
+              return {
+                success: false,
+                error: 'Symlink points outside allowed directory'
+              };
+            }
+            content = fs.readFileSync(realPath, 'utf8');
             return {
               success: true,
               content: content.substring(0, 10000)
@@ -765,8 +781,27 @@
           required: ['command']
         },
         handler: function(args) {
-          var e, result;
+          var ALLOWED_COMMANDS, PROHIBITED_REGEX, arg, cmd, cmdArgs, e, idx, j, len, result;
           try {
+            ALLOWED_COMMANDS = ['ls', 'git', 'npm', 'node', 'cat', 'pwd', 'echo', 'mkdir', 'touch', 'rm', 'cp', 'mv', 'find', 'grep', 'curl', 'wget'];
+            cmd = args.command.trim().split(/\s+/)[0];
+            if (indexOf.call(ALLOWED_COMMANDS, cmd) < 0) {
+              return {
+                success: false,
+                error: `Command '${cmd}' not allowed. Allowed: ${ALLOWED_COMMANDS.join(', ')}`
+              };
+            }
+            PROHIBITED_REGEX = /[;&|`$()\[\]{}]/;
+            cmdArgs = args.command.trim().split(/\s+/);
+            for (idx = j = 0, len = cmdArgs.length; j < len; idx = ++j) {
+              arg = cmdArgs[idx];
+              if (PROHIBITED_REGEX.test(arg)) {
+                return {
+                  success: false,
+                  error: `Argument ${idx + 1} contains forbidden shell metacharacter: ${arg}`
+                };
+              }
+            }
             result = require('child_process').execSync(args.command, {
               cwd: args.cwd || process.cwd(),
               encoding: 'utf8',
@@ -1304,39 +1339,54 @@ You are a helpful AI assistant running on the user's local machine. You are powe
 
   callOpenClawAgent = function(sessionId, message) {
     return new Promise(function(resolve, reject) {
-      var cmd;
-      cmd = `openclaw agent --local --session-id \"${sessionId}\" --message ${JSON.stringify(message)} --json 2>/dev/null`;
-      return exec(cmd, {
-        maxBuffer: 1024 * 1024 * 10
-      }, function(err, stdout, stderr) {
+      var args, child, stderr, stdout;
+      if (!/^[a-zA-Z0-9_-]+$/.test(sessionId)) {
+        return reject(new Error("Invalid sessionId - must match ^[a-zA-Z0-9_-]+$"));
+      }
+      ({spawn} = require('child_process'));
+      args = ['agent', '--local', '--session-id', sessionId, '--message', message, '--json'];
+      child = spawn('openclaw', args, {
+        stdio: ['ignore', 'pipe', 'pipe']
+      });
+      stdout = '';
+      stderr = '';
+      child.stdout.on('data', function(chunk) {
+        return stdout += chunk.toString();
+      });
+      child.stderr.on('data', function(chunk) {
+        return stderr += chunk.toString();
+      });
+      child.on('error', function(err) {
+        return reject(err);
+      });
+      return child.on('close', function(code) {
         var e, j, jsonMatch, len, p, payloads, ref, result, text;
-        if (err) {
-          console.error('OpenClaw Agent error:', err);
-          reject(new Error(err.message));
-          return;
-        }
-        try {
-          jsonMatch = stdout.match(/\{[\s\S]*"payloads"[\s\S]*\}/);
-          if (jsonMatch) {
-            result = JSON.parse(jsonMatch[0]);
-            payloads = (result != null ? result.payloads : void 0) || [];
-            text = '';
-            for (j = 0, len = payloads.length; j < len; j++) {
-              p = payloads[j];
-              if (p.type === 'text' || p.text) {
-                text += p.text || p.content || '';
+        if (code === 0) {
+          try {
+            jsonMatch = stdout.match(/\{[\s\S]*"payloads"[\s\S]*\}/);
+            if (jsonMatch) {
+              result = JSON.parse(jsonMatch[0]);
+              payloads = (result != null ? result.payloads : void 0) || [];
+              text = '';
+              for (j = 0, len = payloads.length; j < len; j++) {
+                p = payloads[j];
+                if (p.type === 'text' || p.text) {
+                  text += p.text || p.content || '';
+                }
               }
+              if (!text && (result != null ? (ref = result.meta) != null ? ref.agentMeta : void 0 : void 0)) {
+                text = 'Response received (check session for details)';
+              }
+              return resolve(text || 'No response');
+            } else {
+              return resolve(stdout.trim() || 'Response received');
             }
-            if (!text && (result != null ? (ref = result.meta) != null ? ref.agentMeta : void 0 : void 0)) {
-              text = 'Response received (check session for details)';
-            }
-            return resolve(text || 'No response');
-          } else {
+          } catch (error) {
+            e = error;
             return resolve(stdout.trim() || 'Response received');
           }
-        } catch (error) {
-          e = error;
-          return resolve(stdout.trim() || 'Response received');
+        } else {
+          return reject(new Error(`Command exited with code ${code}: ${stderr}`));
         }
       });
     });
@@ -1664,7 +1714,7 @@ You are a helpful AI assistant running on the user's local machine. You are powe
     var files;
     try {
       if (fs.existsSync(settingsFile)) {
-        return false;
+        return true;
       }
       files = fs.readdirSync(secreteDir).filter(function(f) {
         return f.startsWith('backup.') && f.endsWith('.json');
@@ -1846,19 +1896,44 @@ You are a helpful AI assistant running on the user's local machine. You are powe
   });
 
   ipcMain.handle('approve-feishu-pairing', function(event, code) {
-    return new Promise(function(resolve) {
-      return exec(`openclaw pairing approve feishu ${code}`, function(err, stdout, stderr) {
-        if (err) {
-          console.error('Error approving pairing:', err);
-          return resolve({
-            success: false,
-            error: err.message
-          });
-        } else {
+    return new Promise(function(resolve, reject) {
+      var CODE_REGEX, child, stderr, stdout;
+      CODE_REGEX = /^[a-zA-Z0-9_-]{10,64}$/;
+      if (!CODE_REGEX.test(code)) {
+        return resolve({
+          success: false,
+          error: 'Invalid pairing code format'
+        });
+      }
+      ({spawn} = require('child_process'));
+      child = spawn('openclaw', ['pairing', 'approve', 'feishu', code]);
+      stdout = '';
+      stderr = '';
+      child.stdout.on('data', function(chunk) {
+        return stdout += chunk.toString();
+      });
+      child.stderr.on('data', function(chunk) {
+        return stderr += chunk.toString();
+      });
+      child.on('error', function(err) {
+        console.error('Error approving pairing:', err);
+        return resolve({
+          success: false,
+          error: err.message
+        });
+      });
+      return child.on('close', function(code) {
+        if (code === 0) {
           console.log('Pairing approved:', stdout);
           return resolve({
             success: true,
             output: stdout
+          });
+        } else {
+          console.error('Pairing failed:', stderr);
+          return resolve({
+            success: false,
+            error: `Exit code: ${code}`
           });
         }
       });

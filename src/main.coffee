@@ -506,7 +506,14 @@ SKILLS =
         required: ['path']
       handler: (args) ->
         try
-          content = fs.readFileSync args.path, 'utf8'
+          ALLOWED_BASE = process.env.HOME
+          resolvedPath = path.resolve(args.path)
+          unless resolvedPath.startsWith(path.resolve(ALLOWED_BASE))
+            return { success: false, error: 'Path not allowed: must be within home directory' }
+          realPath = fs.realpathSync args.path
+          unless realPath.startsWith(path.resolve(ALLOWED_BASE))
+            return { success: false, error: 'Symlink points outside allowed directory' }
+          content = fs.readFileSync realPath, 'utf8'
           { success: true, content: content.substring(0, 10000) }
         catch e
           { success: false, error: e.message }
@@ -521,6 +528,15 @@ SKILLS =
         required: ['command']
       handler: (args) ->
         try
+          ALLOWED_COMMANDS = ['ls', 'git', 'npm', 'node', 'cat', 'pwd', 'echo', 'mkdir', 'touch', 'rm', 'cp', 'mv', 'find', 'grep', 'curl', 'wget']
+          cmd = args.command.trim().split(/\s+/)[0]
+          unless cmd in ALLOWED_COMMANDS
+            return { success: false, error: "Command '#{cmd}' not allowed. Allowed: #{ALLOWED_COMMANDS.join(', ')}" }
+          PROHIBITED_REGEX = /[;&|`$()\[\]{}]/
+          cmdArgs = args.command.trim().split(/\s+/)
+          for arg, idx in cmdArgs
+            if PROHIBITED_REGEX.test arg
+              return { success: false, error: "Argument #{idx + 1} contains forbidden shell metacharacter: #{arg}" }
           result = require('child_process').execSync args.command,
             cwd: args.cwd or process.cwd()
             encoding: 'utf8'
@@ -847,28 +863,49 @@ MODELS =
 
 callOpenClawAgent = (sessionId, message) ->
   new Promise (resolve, reject) ->
-    cmd = "openclaw agent --local --session-id \"#{sessionId}\" --message #{JSON.stringify(message)} --json 2>/dev/null"
-    exec cmd, { maxBuffer: 1024 * 1024 * 10 }, (err, stdout, stderr) ->
-      if err
-        console.error 'OpenClaw Agent error:', err
-        reject new Error(err.message)
-        return
-      try
-        jsonMatch = stdout.match /\{[\s\S]*"payloads"[\s\S]*\}/
-        if jsonMatch
-          result = JSON.parse jsonMatch[0]
-          payloads = result?.payloads or []
-          text = ''
-          for p in payloads
-            if p.type == 'text' or p.text
-              text += p.text or p.content or ''
-          if not text and result?.meta?.agentMeta
-            text = 'Response received (check session for details)'
-          resolve text or 'No response'
-        else
+    unless /^[a-zA-Z0-9_-]+$/.test sessionId
+      return reject new Error "Invalid sessionId - must match ^[a-zA-Z0-9_-]+$"
+
+    { spawn } = require 'child_process'
+
+    args = [
+      'agent'
+      '--local'
+      '--session-id', sessionId
+      '--message', message
+      '--json'
+    ]
+
+    child = spawn 'openclaw', args, stdio: ['ignore', 'pipe', 'pipe']
+
+    stdout = ''
+    stderr = ''
+
+    child.stdout.on 'data', (chunk) -> stdout += chunk.toString()
+    child.stderr.on 'data', (chunk) -> stderr += chunk.toString()
+
+    child.on 'error', (err) -> reject err
+
+    child.on 'close', (code) ->
+      if code is 0
+        try
+          jsonMatch = stdout.match /\{[\s\S]*"payloads"[\s\S]*\}/
+          if jsonMatch
+            result = JSON.parse jsonMatch[0]
+            payloads = result?.payloads or []
+            text = ''
+            for p in payloads
+              if p.type == 'text' or p.text
+                text += p.text or p.content or ''
+            if not text and result?.meta?.agentMeta
+              text = 'Response received (check session for details)'
+            resolve text or 'No response'
+          else
+            resolve stdout.trim() or 'Response received'
+        catch e
           resolve stdout.trim() or 'Response received'
-      catch e
-        resolve stdout.trim() or 'Response received'
+      else
+        reject new Error "Command exited with code #{code}: #{stderr}"
 
 callAPI = (sessionId, message, settings, bot = null) ->
   model = bot?.model or settings.model or 'glm-4-flash'
@@ -1131,7 +1168,7 @@ ipcMain.handle 'check-prerequisites', ->
 ipcMain.handle 'has-backup', ->
   try
     if fs.existsSync settingsFile
-      return false
+      return true
     files = fs.readdirSync(secreteDir).filter (f) -> f.startsWith('backup.') and f.endsWith('.json')
     return files.length > 0
   catch
@@ -1230,14 +1267,33 @@ ipcMain.handle 'get-feishu-status', ->
 ipcMain.handle 'sync-feishu-to-openclaw', -> syncFeishuConfigToOpenClaw()
 
 ipcMain.handle 'approve-feishu-pairing', (event, code) ->
-  new Promise (resolve) ->
-    exec "openclaw pairing approve feishu #{code}", (err, stdout, stderr) ->
-      if err
-        console.error 'Error approving pairing:', err
-        resolve { success: false, error: err.message }
-      else
+  new Promise (resolve, reject) ->
+    CODE_REGEX = /^[a-zA-Z0-9_-]{10,64}$/
+    
+    unless CODE_REGEX.test(code)
+      return resolve { success: false, error: 'Invalid pairing code format' }
+    
+    { spawn } = require 'child_process'
+    
+    child = spawn 'openclaw', ['pairing', 'approve', 'feishu', code]
+    
+    stdout = ''
+    stderr = ''
+    
+    child.stdout.on 'data', (chunk) -> stdout += chunk.toString()
+    child.stderr.on 'data', (chunk) -> stderr += chunk.toString()
+    
+    child.on 'error', (err) ->
+      console.error 'Error approving pairing:', err
+      resolve { success: false, error: err.message }
+    
+    child.on 'close', (code) ->
+      if code is 0
         console.log 'Pairing approved:', stdout
         resolve { success: true, output: stdout }
+      else
+        console.error 'Pairing failed:', stderr
+        resolve { success: false, error: "Exit code: #{code}" }
 
 ipcMain.handle 'get-session', (event, sessionId) ->
   getSession sessionId
