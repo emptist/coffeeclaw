@@ -1,5 +1,8 @@
 # Typed Storage - integrates electron-store with existing classes
 
+fs = require 'fs'
+path = require 'path'
+
 { StorageManager } = require './storage'
 { Settings } = require '../settings'
 { Bot } = require '../bot'
@@ -17,10 +20,73 @@ class TypedStorage
   constructor: ->
     @storage = StorageManager.getInstance()
     @_cache = {}
+    @_migrated = false
+  
+  _getOldFilePath: (name) ->
+    dir = path.join(path.dirname(__dirname), '..', '.secrete')
+    path.join(dir, "#{name}.json")
+  
+  _readOldFile: (name) ->
+    filePath = @_getOldFilePath(name)
+    try
+      if fs.existsSync(filePath)
+        content = fs.readFileSync(filePath, 'utf8')
+        JSON.parse(content)
+    catch e
+      console.error "Error reading old #{name} file:", e
+      null
+  
+  _migrateFromOldFiles: ->
+    return if @_migrated
+    @_migrated = true
+    
+    hasNewData = @storage.get('settings') or 
+                 @storage.get('bots') or 
+                 @storage.get('sessions')
+    
+    if hasNewData
+      console.log 'New storage has data, skipping migration'
+      return
+    
+    console.log 'Checking for old storage files to migrate...'
+    
+    oldSettings = @_readOldFile('settings')
+    if oldSettings
+      console.log 'Migrating old settings...'
+      @storage.set('settings', oldSettings)
+      @storage.save('settings')
+    
+    oldBots = @_readOldFile('bots')
+    if oldBots
+      console.log 'Migrating old bots...'
+      @storage.set('bots', oldBots)
+      @storage.save('bots')
+    
+    oldSessions = @_readOldFile('sessions')
+    if oldSessions
+      console.log 'Migrating old sessions...'
+      @storage.set('sessions', oldSessions)
+      @storage.save('sessions')
+    
+    oldLicense = @_readOldFile('license')
+    if oldLicense
+      console.log 'Migrating old license...'
+      @storage.set('license', oldLicense)
+      @storage.save('license')
+    
+    oldAgentSessions = @_readOldFile('agent-sessions')
+    if oldAgentSessions
+      console.log 'Migrating old agent sessions...'
+      @storage.set('agentSessions', oldAgentSessions)
+      @storage.save('agentSessions')
+    
+    console.log 'Migration from old files completed'
   
   # Settings
   getSettings: ->
     return @_cache.settings if @_cache.settings
+    
+    @_migrateFromOldFiles()
     
     data = @storage.get('settings')
     if data?.__class == 'Settings'
