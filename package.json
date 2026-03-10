@@ -5,7 +5,7 @@
   "main": "src/main.js",
   "scripts": {
     "start": "electron .",
-    "compile": "coffee -c src/",
+    "compile": "coffee -c -b --transpile src/",
     "payment-server": "coffee -c src/payment-server.coffee && node src/payment-server.js",
     "build": "npm run compile && electron-builder",
     "build:mac": "npm run compile && electron-builder --mac",
@@ -17,6 +17,8 @@
   "homepage": "https://github.com/yourusername/coffeeclaw",
   "license": "MIT",
   "devDependencies": {
+    "@babel/core": "^7.29.0",
+    "@babel/preset-env": "^7.29.0",
     "coffeescript": "^2.7.0",
     "electron": "^40.8.0",
     "electron-builder": "^26.8.1"
