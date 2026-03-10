@@ -1,121 +1,169 @@
-# CoffeeClaw 开发总结 (2026-03-09)
+# CoffeeClaw 开发总结 (2026-03-10)
 
 ## 项目概述
-CoffeeClaw 是一个基于 Electron 的桌面应用，集成了 OpenClaw Agent 作为 AI 助手。
+
+CoffeeClaw 是一个基于 Electron 的桌面 AI 助手应用，集成了 OpenClaw Agent 框架，支持多种 AI 提供商（Zhipu GLM、OpenRouter、OpenAI、DeepSeek），并提供丰富的工具面板功能。
 
 ## 已完成功能
 
-### 1. OpenClaw Agent 集成
-- 作为 Bot 模板集成到 CoffeeClaw
-- 模型选择下拉框中添加了 "OpenClaw Agent (Direct)" 选项
-- 使用 `openclaw agent --local --session-id` 命令调用
+### 核心功能
+- ✅ 多会话聊天管理
+- ✅ 多 AI 提供商支持（Zhipu、OpenRouter、OpenAI、DeepSeek）
+- ✅ 多语言界面（English、中文、Esperanto）
+- ✅ 配置自动同步（CoffeeClaw ↔ OpenClaw）
 
-### 2. 会话管理
-- 普通会话存储在 `.secrete/sessions.json`
-- OpenClaw Agent 会话单独存储在 `.secrete/agent-sessions.json`
-- 会话文件位于 `~/.openclaw/agents/main/sessions/`
+### 工具面板（2026-03-10 新增）
+- ✅ **Web 搜索**：Google 风格搜索界面，支持"手气不错"
+- ✅ **GitHub**：Dashboard 卡片布局，支持 Issues/PR 查看、创建
+- ✅ **飞书工作台**：消息发送、文档创建、云盘上传、知识库
+- ✅ **文件管理**：读取、写入、编辑、创建文件
+- ✅ **系统工具**：命令执行、定时任务、天气查询、网页抓取、截图、短链接
 
-### 3. 多 Provider 支持
-- Zhipu GLM (glm-4-flash, glm-4-plus, glm-4-air)
-- OpenRouter (openrouter/auto, gemini-2.0-flash, llama-3.3-70b, deepseek-chat) **[新增]**
-- OpenAI (gpt-4o-mini, gpt-4o, gpt-4-turbo)
-- DeepSeek (deepseek-chat, deepseek-coder)
-
-### 4. API Key 管理
-- 通过 UI 界面管理各 Provider 的 API Key
-- 设置存储在 `.secrete/settings.json`
-- OpenRouter API Key 已有: `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`
+### UI 设计
+- ✅ 侧边栏标签切换（会话/工具）
+- ✅ 工具面板视图切换
+- ✅ 自定义模态对话框（替代 Electron prompt）
+- ✅ 熟悉的用户界面风格
 
 ## 当前问题
 
-### 工具调用限制
-| 模型 | 工具调用支持 | 状态 |
-|------|-------------|------|
-| GLM-4-Flash | ❌ 不支持 | 可用但无法调用工具 |
-| GLM-4-Plus | ✅ 支持 | 余额不足 |
-| GLM-4-Air | ✅ 支持 | 余额不足 |
-| OpenRouter 免费模型 | ✅ 支持 | 需配置 API Key |
+### 已知问题
+1. **短链接服务**：tinyurl.com API 偶尔无响应，需要备用方案
+2. **飞书配对**：需要用户在飞书中完成配对流程
+3. **文件路径限制**：OpenClaw 文件操作仅限 `~/.openclaw/workspace/` 目录
 
-### OpenClaw Agent 行为
-- GLM-4-Flash 返回 `NO_REPLY` 或普通文本，不调用工具
-- 需要支持工具调用的模型才能让 OpenClaw Agent 执行文件操作
+### 待优化
+- [ ] 流式输出支持
+- [ ] 更多 AI 模型选择
+- [ ] 插件系统
+- [ ] 语音交互
 
 ## 下一步任务
 
-1. **配置 OpenRouter API Key**
-   - 在 CoffeeClaw 设置界面添加 OpenRouter 的 API Key
-   - Key 已存储在 `.secrete/AI.md`
-   - 测试工具调用功能
-
-2. **测试 OpenClaw Agent 文件写入**
-   ```bash
-   openclaw agent --local --session-id "test" --message "Use the write tool to create a file..."
-   ```
-
-3. **验证 OpenRouter 模型工具调用**
-   - 使用 `openrouter/auto` 或 `google/gemini-2.0-flash-001`
-   - 这些免费模型支持 Function Calling
+1. **测试验证**：重启应用，验证所有工具面板功能正常
+2. **用户反馈**：收集用户对新 UI 的反馈
+3. **功能完善**：
+   - 添加短链接备用服务
+   - 优化飞书配对流程
+   - 扩展文件操作路径
 
 ## 关键文件
 
-| 文件 | 用途 |
+### 源代码
+| 文件 | 说明 |
 |------|------|
-| `src/main.coffee` | 主进程，包含 MODELS 配置和 API 调用逻辑 |
-| `index.html` | 渲染进程，UI 界面 |
-| `src/preload.coffee` | 预加载脚本，暴露 API |
-| `.secrete/settings.json` | 用户设置和 API Keys |
-| `.secrete/agent-sessions.json` | OpenClaw Agent 会话 |
-| `.secrete/bots.json` | Bot 配置 |
-| `~/.openclaw/openclaw.json` | OpenClaw 配置 |
+| `src/main.coffee` | Electron 主进程，IPC 处理，OpenClaw 调用 |
+| `src/preload.coffee` | 预加载脚本，IPC 桥接 |
+| `index.html` | 主界面，包含所有工具面板 |
+
+### 配置文件
+| 文件 | 说明 |
+|------|------|
+| `.secrete/settings.json` | CoffeeClaw 配置（API keys、providers） |
+| `~/.openclaw/openclaw.json` | OpenClaw Agent 配置 |
+
+### 文档
+| 文件 | 说明 |
+|------|------|
+| `README.md` | 项目说明，功能介绍 |
+| `documents/DEVELOPER_GUIDE.md` | 开发者指南 |
+| `documents/COLLABORATION_EXPERIENCE.md` | 协作开发心得 |
 
 ## OpenClaw 配置要点
 
+### 配置路径
 ```json
-// ~/.openclaw/openclaw.json
 {
-  "models": {
-    "providers": {
-      "glm": {
-        "baseUrl": "https://open.bigmodel.cn/api/paas/v4",
-        "apiKey": "...",
-        "models": [
-          { "id": "GLM-4-Flash" },
-          { "id": "GLM-4-Plus" },
-          { "id": "GLM-4-Air" }
-        ]
-      }
-    }
-  },
   "agents": {
     "defaults": {
       "model": {
-        "primary": "glm/GLM-4-Flash"
+        "primary": "openrouter/auto"  // 正确路径
       }
     }
   }
 }
 ```
 
+### JSON 输出解析
+OpenClaw `--json` 输出包含插件日志，需要正则提取：
+```javascript
+const jsonMatch = stdout.match(/\{[\s\S]*"payloads"[\s\S]*\}/);
+if (jsonMatch) {
+  return JSON.parse(jsonMatch[0]);
+}
+```
+
+### 调用示例
+```bash
+openclaw agent --local \
+  --session-id "chat-001" \
+  --message "Search the web for: 伊朗战争" \
+  --json
+```
+
 ## Git 提交历史
-- `2cb67cb` - Add OpenRouter provider support for tool calling models
-- 之前的提交包含 OpenClaw Agent 集成、Bot 模板系统、会话管理等
+
+```
+c156f6b docs: add collaboration experience article
+a69c322 docs: update README and DEVELOPER_GUIDE
+b0982f8 fix: extract JSON from OpenClaw output in main process
+e29f068 fix: extract JSON from OpenClaw output with logs
+dc48300 feat: redesign tool panels with familiar UI styles
+```
 
 ## 注意事项
-- GLM-4-Flash 不支持工具调用，需要使用 GLM-4-Plus/Air 或 OpenRouter 模型
-- OpenRouter 免费额度：每天 50 次调用
-- 工具调用需要模型支持 Function Calling
 
-## 已解决问题 (2026-03-09 更新)
+### 模型选择
+- GLM-4-Flash：免费，但不支持工具调用
+- OpenRouter (openrouter/auto)：免费额度，支持工具调用
+- 推荐：OpenRouter 作为主要提供商
 
-### OpenRouter 配置
-- ✅ OpenRouter API Key 已更新并验证可用
-- ✅ 免费模型 (openrouter/auto) 支持工具调用
-- ✅ OpenClaw Agent 可以读写 coffeeclaw 项目文件
+### 配置同步
+- CoffeeClaw 保存配置时自动同步到 OpenClaw
+- 启动时比较时间戳，自动同步更新的配置
+- 修改配置后无需手动同步
 
-### 响应解析修复
-- ✅ 修复了响应解析问题（payloads 在根级别而非嵌套在 result 中）
-- ✅ 移除了无用的 save-api-key 死代码
+### 工具调用
+- 需要 AI 模型支持 Function Calling
+- OpenRouter 免费模型支持
+- Zhipu GLM-4-Plus/Air 支持
 
-### Provider 同步
-- ✅ 实现了 CoffeeClaw 与 OpenClaw 配置的自动同步
-- ✅ 修复了配置路径：使用 agents.defaults.model.primary
+## 已解决问题 (2026-03-10 更新)
+
+### JSON 解析问题
+- ✅ 修复 OpenClaw 输出包含日志导致 JSON.parse 失败
+- ✅ 前端和后端都添加了 JSON 提取逻辑
+
+### 配置同步问题
+- ✅ 实现 CoffeeClaw ↔ OpenClaw 双向同步
+- ✅ 修复配置路径：`agents.defaults.model.primary`
+
+### UI 设计问题
+- ✅ 采用用户熟悉的界面风格（Google、GitHub、飞书）
+- ✅ 实现视图切换机制
+- ✅ 自定义模态对话框替代 Electron prompt
+
+### Electron prompt 问题
+- ✅ 实现 `showCustomDialog()` 替代 `prompt()`
+- ✅ 支持单行和多行输入
+- ✅ 支持键盘快捷键（Enter 确认、Esc 取消）
+
+## 交班说明
+
+### 当前状态
+- 所有代码已编译并提交
+- 文档已更新
+- 功能已测试（搜索功能验证通过）
+
+### 待验证
+- 重启应用后，所有工具面板是否正常工作
+- 主聊天窗口的响应是否正确显示
+
+### 联系方式
+如有问题，请参考：
+- `documents/DEVELOPER_GUIDE.md` - 技术细节
+- `documents/COLLABORATION_EXPERIENCE.md` - 协作经验
+
+---
+
+*最后更新: 2026-03-10*
