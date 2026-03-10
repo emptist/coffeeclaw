@@ -1546,98 +1546,37 @@ backupOpenClawConfig = ->
 # Sync providers from CoffeeClaw settings to OpenClaw's config file
 # This ensures the OpenClaw agent uses the same API keys as the CoffeeClaw UI
 # Returns true if sync was performed, false otherwise
+# Global OpenClaw config instance
+openClawConfigInstance = null
+
+getOpenClawConfig = ->
+  unless openClawConfigInstance
+    openClawConfigInstance = new OpenClawConfig()
+  openClawConfigInstance
+
 syncProvidersToOpenClaw = (providers, activeProvider, token) ->
   return false unless configExists()
   return false unless providers
   
-  # Check if there's actually something to sync
   try
-    existingConfig = JSON.parse fs.readFileSync configFile, 'utf8'
-    existingConfig.models ?= {}
-    existingConfig.models.providers ?= {}
+    config = getOpenClawConfig()
     
-    # Check if any provider actually changed OR if active provider changed
-    needsSync = false
-    for providerId, providerData of providers
-      openClawProviderName = PROVIDER_NAME_MAP[providerId]
-      continue unless openClawProviderName
-      
-      existing = existingConfig.models.providers[openClawProviderName]
-      if not existing or existing.apiKey isnt providerData.apiKey
-        needsSync = true
-        break
-    
-    # Also check if active provider changed
-    if activeProvider
-      openClawProviderName = PROVIDER_NAME_MAP[activeProvider]
-      if openClawProviderName
-        currentPrimary = existingConfig.agents?.defaults?.model?.primary
-        newPrimary = "#{openClawProviderName}/#{providers[activeProvider]?.model}"
-        if currentPrimary isnt newPrimary
-          needsSync = true
-    
-    # Check if token needs to be synced
-    if token and existingConfig.gateway?.auth?.token isnt token
-      needsSync = true
-    
-    return false unless needsSync
+    # Check if sync is needed
+    unless config.needsSync(providers, activeProvider, token)
+      return false
     
     # Backup before writing
     backupOpenClawConfig()
     
-    # Perform the sync
-    config = existingConfig
-    config.models ?= {}
-    config.models.providers ?= {}
+    # Use OpenClawConfig class to sync
+    # Create settings-like object for syncFromSettings
+    settings =
+      providers: providers
+      activeProvider: activeProvider
+      token: token
     
-    for providerId, providerData of providers
-      openClawProviderName = PROVIDER_NAME_MAP[providerId]
-      continue unless openClawProviderName
-      
-      openClawConfig = getOpenClawProviderConfig(providerId, providerData.apiKey)
-      continue unless openClawConfig
-      
-      config.models.providers[openClawProviderName] = openClawConfig
-      console.log "Synced provider #{providerId} → #{openClawProviderName} to openclaw.json"
-    
-    # Update primary model to match active provider
-    # Note: OpenClaw uses agents.defaults.model.primary, format: "provider/modelId"
-    # e.g., "glm/GLM-4-Flash" or "openrouter/auto"
-    if providers and activeProvider and PROVIDER_NAME_MAP[activeProvider]
-      openClawProvider = PROVIDER_NAME_MAP[activeProvider]
-      providerData = providers[activeProvider]
-      if providerData and providerData.model
-        # For openrouter models, the id might be "openrouter/auto" so we use it directly
-        # For others like glm, it's "glm-4-flash" so we format as "provider/model"
-        # Model can be a string (legacy) or a Model instance (new format)
-        if typeof providerData.model == 'string'
-          modelId = providerData.model
-        else if providerData.model?.openClawId
-          # Model is a Model instance, use openClawId() for OpenClaw format
-          modelId = providerData.model.openClawId()
-        else
-          modelId = providerData.model.id or 'glm-4-flash'
-        
-        unless modelId.startsWith(openClawProvider)
-          modelId = "#{openClawProvider}/#{modelId}"
-        config.agents ?= {}
-        config.agents.defaults ?= {}
-        config.agents.defaults.model ?= {}
-        config.agents.defaults.model.primary = modelId
-        console.log "Set primary model to: #{modelId}"
-    
-    # Sync token if provided
-    if token
-      config.gateway ?= {}
-      config.gateway.auth ?= {}
-      config.gateway.auth.mode = 'token'
-      config.gateway.auth.token = token
-      config.gateway.remote ?= {}
-      config.gateway.remote.token = token
-      console.log 'Synced token to OpenClaw config'
-    
-    fs.writeFileSync configFile, JSON.stringify(config, null, 2)
-    console.log 'Providers synced to OpenClaw config'
+    config.syncFromSettings(settings)
+    console.log 'Providers synced to OpenClaw config via OpenClawConfig class'
     return true
   catch e
     console.error 'Failed to sync providers to OpenClaw:', e
