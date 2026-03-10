@@ -30,7 +30,6 @@ class Model
   @fromJSON: (data) ->
     switch data.provider
       when 'zhipu' then ZhipuModel.fromJSON(data)
-      when 'deepseek' then DeepSeekModel.fromJSON(data)
       when 'openai' then OpenAIModel.fromJSON(data)
       when 'openrouter' then OpenRouterModel.fromJSON(data)
       else throw new Error("Unknown provider: #{data.provider}")
@@ -45,7 +44,6 @@ class Model
     
     switch provider
       when 'zhipu' then new ZhipuModel(cleanId)
-      when 'deepseek' then new DeepSeekModel(cleanId)
       when 'openai' then new OpenAIModel(cleanId)
       when 'openrouter' then new OpenRouterModel(cleanId)
       else throw new Error("Unknown provider: #{provider}")
@@ -76,32 +74,6 @@ class ZhipuModel extends Model
   
   @fromJSON: (data) ->
     model = new ZhipuModel(data.id)
-    model.apiPath = data.apiPath if data.apiPath
-    model
-
-# DeepSeek
-class DeepSeekModel extends Model
-  @PROVIDER_NAME: 'deepseek'
-  @OPENCLAW_NAME: 'deepseek'
-  @DEFAULT_API_PATH: '/v1/chat/completions'
-  
-  constructor: (id) ->
-    super(id)
-    @apiPath = @constructor.DEFAULT_API_PATH
-  
-  apiId: -> @id
-  openClawId: -> "#{@constructor.OPENCLAW_NAME}/#{@id}"
-  
-  toJSON: ->
-    {
-      __class: 'DeepSeekModel'
-      id: @id
-      provider: @provider
-      apiPath: @apiPath
-    }
-  
-  @fromJSON: (data) ->
-    model = new DeepSeekModel(data.id)
     model.apiPath = data.apiPath if data.apiPath
     model
 
@@ -171,7 +143,6 @@ class OpenRouterModel extends Model
 module.exports = {
   Model
   ZhipuModel
-  DeepSeekModel
   OpenAIModel
   OpenRouterModel
 }

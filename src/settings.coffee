@@ -1,13 +1,13 @@
 # Settings class for application configuration
 # Manages all user settings including providers, tokens, and integrations
 
-{ Model, ZhipuModel, DeepSeekModel, OpenAIModel, OpenRouterModel } = require './model'
+{ Model, ZhipuModel, OpenAIModel, OpenRouterModel } = require './model'
 { FeishuConfig } = require './feishu-config'
 
 class Settings
   # Class properties
   @DEFAULT_PROVIDER = 'zhipu'
-  @SUPPORTED_PROVIDERS = ['zhipu', 'deepseek', 'openai', 'openrouter']
+  @SUPPORTED_PROVIDERS = ['zhipu', 'openai', 'openrouter']
   @VERSION = 1
   
   constructor: ->
@@ -117,7 +117,6 @@ class Settings
           modelId = providerData.model ? 'glm-4-flash'
           model = switch id
             when 'zhipu' then new ZhipuModel(modelId)
-            when 'deepseek' then new DeepSeekModel(modelId)
             when 'openai' then new OpenAIModel(modelId)
             when 'openrouter' then new OpenRouterModel(modelId)
             else new ZhipuModel(modelId)

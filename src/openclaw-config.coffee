@@ -11,7 +11,6 @@ class OpenClawConfig
   @PROVIDER_NAME_MAP:
     zhipu: 'glm'
     openrouter: 'openrouter'
-    deepseek: 'deepseek'
     openai: 'openai'
   
   constructor: ->
@@ -187,7 +186,6 @@ class OpenClawConfig
       # Determine base URL based on provider
       baseUrl = switch providerId
         when 'zhipu' then 'https://open.bigmodel.cn/api/paas/v4'
-        when 'deepseek' then 'https://api.deepseek.com/v1'
         when 'openai' then 'https://api.openai.com/v1'
         when 'openrouter' then 'https://openrouter.ai/api/v1'
         else null

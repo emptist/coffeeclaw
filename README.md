@@ -96,10 +96,6 @@ CoffeeClaw supports multiple AI providers:
 - GPT-4o Mini, GPT-4o, GPT-4 Turbo
 - Get API key at [platform.openai.com](https://platform.openai.com/api-keys)
 
-### DeepSeek
-- DeepSeek Chat, DeepSeek Coder
-- Get API key at [platform.deepseek.com](https://platform.deepseek.com)
-
 Select your preferred provider and model during setup.
 
 ## Local Gateway
@@ -148,7 +144,7 @@ npm run build:all
 - Electron
 - CoffeeScript
 - OpenClaw Agent Framework
-- Multiple AI Providers (Zhipu, OpenRouter, OpenAI, DeepSeek)
+- Multiple AI Providers (Zhipu, OpenRouter, OpenAI)
 
 ## License
 

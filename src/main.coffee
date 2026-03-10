@@ -10,7 +10,7 @@ https = require 'https'
 crypto = require 'crypto'
 
 # Import new class hierarchy
-{ Model, ZhipuModel, DeepSeekModel, OpenAIModel, OpenRouterModel } = require './model'
+{ Model, ZhipuModel, OpenAIModel, OpenRouterModel } = require './model'
 { Bot } = require './bot'
 { Session, SessionManager } = require './session'
 { Settings } = require './settings'
@@ -695,14 +695,6 @@ MODELS =
       { id: 'gpt-4-turbo', name: 'GPT-4 Turbo' }
     ]
     baseUrl: 'api.openai.com'
-    apiPath: '/v1/chat/completions'
-  deepseek:
-    name: 'DeepSeek'
-    models: [
-      { id: 'deepseek/deepseek-chat', name: 'DeepSeek Chat' }
-      { id: 'deepseek/deepseek-coder', name: 'DeepSeek Coder' }
-    ]
-    baseUrl: 'api.deepseek.com'
     apiPath: '/v1/chat/completions'
 
 callOpenClawAgent = (sessionId, message) ->
