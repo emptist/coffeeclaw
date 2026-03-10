@@ -38,6 +38,7 @@ npm-debug.log*
 
 # Compiled JS from CoffeeScript
 src/*.js
+src/**/*.js
 
 # Temp
 tmp/
