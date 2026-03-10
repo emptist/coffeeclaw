@@ -1,19 +1,53 @@
 # OOP Integration Plan for main.coffee
 
-## Current State
+## Current State (Updated)
 
-**main.coffee**: ~1400 lines with mixed concerns:
-- App lifecycle (lines 854-878)
-- IPC handlers (lines 879-1394) - 42 handlers
-- OpenClaw functions (lines 356-580)
-- API functions (lines 582-840)
-- Utility functions (lines 61-210)
-- Constants and imports (lines 1-60)
+**main.coffee**: ~1371 lines (reduced from ~1400)
 
-**New Classes Created:**
-- `IPCHandlers` - All IPC handler registration
-- `OpenClawManager` - Gateway, agent calls, config
-- `APIClient` - HTTP requests, model formatting
+**Completed:**
+- ✅ Phase 1: Import OOP classes
+- ✅ Phase 2: Initialize managers
+- ✅ Phase 3: Pass SKILLS to APIClient
+- ✅ Phase 4: IPC handlers use openClawManager
+- ✅ Phase 5: Removed ensureOpenClawConfig, sendToOpenClaw
+
+**Remaining:**
+- Remove unused functions (checkOpenClaw, checkOpenClawPromise, startOpenClaw, etc.)
+- Update configExists calls
+- Remove callAPI, callAPIWithMessages, callOpenClawAgent
+
+## Functions Still in main.coffee (to remove)
+
+| Function | Status | Notes |
+|----------|--------|-------|
+| `checkOpenClaw` | Used internally by startOpenClaw | Remove both together |
+| `checkOpenClawPromise` | Not used externally | Remove |
+| `startOpenClaw` | Not used externally | Remove |
+| `configExists` | Used in 3 places | Replace with openClawManager.configExists() |
+| `isConfigured` | Not used externally | Remove |
+| `createDefaultConfig` | Not used externally | Remove |
+| `callOpenClawAgent` | Used by callAPI | Remove with callAPI |
+| `callAPI` | Not used externally | Remove |
+| `callAPIWithMessages` | Used by callAPI | Remove with callAPI |
+
+## Functions to Keep
+
+| Function | Reason |
+|----------|--------|
+| `checkOpenClawInstalled` | Utility, used in IPC handlers |
+| `checkNodeInstalled` | Utility, used in IPC handlers |
+| `checkNpmInstalled` | Utility, used in IPC handlers |
+| `checkWSLInstalled` | Utility, used in IPC handlers |
+| `getPlatform` | Utility, used in IPC handlers |
+| `installOpenClaw` | Utility, used in run-setup |
+| `createIdentity` | Uses storage, keep in main |
+| `loadIdentity` | Uses storage, keep in main |
+| `saveIdentity` | Uses storage, keep in main |
+| `createAgentConfig` | Uses storage, keep in main |
+| `configureFeishu` | Complex, keep in main |
+| `backupOpenClawConfig` | Used by syncProvidersToOpenClaw |
+| `getOpenClawConfig` | Used by app.whenReady and syncProvidersToOpenClaw |
+| `syncProvidersToOpenClaw` | Used by ensureOpenClawConfig (removed) but still defined |
 
 ## Integration Strategy
 
