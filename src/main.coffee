@@ -842,23 +842,46 @@ createDefaultConfig = (apiKey) ->
   
   token
 
+# Global identity instance
+identityInstance = null
+
 createIdentity = ->
   return if fs.existsSync identityFile
   
   console.log 'Creating identity...'
-  identity = """# IDENTITY.md - Who Am I?
-
-- **Name:** CoffeeClaw
-- **Creature:** AI Assistant
-- **Vibe:** helpful and friendly
-- **Emoji:** ☕
-
-I am a desktop AI assistant powered by OpenClaw and Zhipu GLM models.
-I can help you with various tasks and answer your questions.
-"""
-  
-  fs.writeFileSync identityFile, identity
+  identityInstance = new Identity()
+  fs.writeFileSync identityFile, identityInstance.getContent()
   console.log 'Identity created at:', identityFile
+
+loadIdentity = ->
+  try
+    if fs.existsSync identityFile
+      content = fs.readFileSync identityFile, 'utf8'
+      # Try to parse as JSON (new format)
+      try
+        data = JSON.parse(content)
+        if data?.__class == 'Identity'
+          identityInstance = Identity.fromJSON(data)
+        else
+          # Legacy: plain markdown text
+          identityInstance = Identity.fromString(content)
+      catch
+        # Legacy: plain markdown text
+        identityInstance = Identity.fromString(content)
+      return identityInstance
+  catch e
+    console.error 'Error loading identity:', e
+  
+  # Create default identity
+  identityInstance = new Identity()
+  return identityInstance
+
+saveIdentity = ->
+  try
+    if identityInstance
+      fs.writeFileSync identityFile, identityInstance.getContent()
+  catch e
+    console.error 'Error saving identity:', e
 
 createAgentConfig = (apiKey) ->
   key = apiKey or ''
