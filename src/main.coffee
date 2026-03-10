@@ -752,9 +752,9 @@ callOpenClawAgent = (sessionId, message) ->
         reject new Error "Command exited with code #{code}: #{stderr}"
 
 callAPI = (sessionId, message, settings, bot = null) ->
-  model = bot?.model or settings.model or 'glm-4-flash'
+  rawModel = bot?.model or settings.model or 'glm-4-flash'
   
-  if model == 'openclaw-agent' or bot?.isAgent
+  if rawModel == 'openclaw-agent' or bot?.isAgent
     return await callOpenClawAgent(sessionId, message)
   
   new Promise (resolve, reject) ->
@@ -763,14 +763,17 @@ callAPI = (sessionId, message, settings, bot = null) ->
     if settings.providers and settings.providers[provider]
       providerConfig = settings.providers[provider]
       apiKey = providerConfig.apiKey
-      # Handle both Model instances and strings
       rawModel = bot?.model or providerConfig.model or 'glm-4-flash'
-      model = if typeof rawModel == 'string' then rawModel else (rawModel?.id or 'glm-4-flash')
     else
       apiKey = settings.apiKey
-      # Handle both Model instances and strings
       rawModel = bot?.model or settings.model or 'glm-4-flash'
-      model = if typeof rawModel == 'string' then rawModel else (rawModel?.id or 'glm-4-flash')
+    
+    # Convert to Model instance and use apiId() for correct format
+    modelInstance = if typeof rawModel == 'object' and rawModel?.apiId
+      rawModel
+    else
+      Model.create(String(rawModel), provider)
+    model = modelInstance.apiId()
     
     config = MODELS[provider]
     unless config
@@ -864,10 +867,15 @@ callAPIWithMessages = (sessionId, messages, settings, bot, apiKey) ->
     if settings.providers and settings.providers[provider]
       providerConfig = settings.providers[provider]
       rawModel = bot?.model or providerConfig.model or 'glm-4-flash'
-      model = if typeof rawModel == 'string' then rawModel else (rawModel?.id or 'glm-4-flash')
     else
       rawModel = bot?.model or settings.model or 'glm-4-flash'
-      model = if typeof rawModel == 'string' then rawModel else (rawModel?.id or 'glm-4-flash')
+    
+    # Convert to Model instance and use apiId() for correct format
+    modelInstance = if typeof rawModel == 'object' and rawModel?.apiId
+      rawModel
+    else
+      Model.create(String(rawModel), provider)
+    model = modelInstance.apiId()
     
     config = MODELS[provider]
     
