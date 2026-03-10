@@ -90,11 +90,18 @@ class OpenClawConfig
     openClawName = OpenClawConfig.PROVIDER_NAME_MAP[providerId]
     return false unless openClawName
     
-    # Format model ID for OpenClaw
-    fullModelId = if modelId.startsWith(openClawName)
-      modelId
+    # Handle both string and Model instance
+    if typeof modelId == 'object' and modelId?.id
+      # It's a Model instance, use openClawId() if available
+      modelIdStr = modelId.openClawId?() or modelId.id
     else
-      "#{openClawName}/#{modelId}"
+      modelIdStr = modelId
+    
+    # Format model ID for OpenClaw
+    fullModelId = if modelIdStr.startsWith(openClawName)
+      modelIdStr
+    else
+      "#{openClawName}/#{modelIdStr}"
     
     @data.agents ?= {}
     @data.agents.defaults ?= {}
@@ -141,7 +148,12 @@ class OpenClawConfig
       currentPrimary = @getPrimaryModel()
       openClawName = OpenClawConfig.PROVIDER_NAME_MAP[activeProvider]
       if openClawName
-        modelId = providers[activeProvider].model
+        rawModelId = providers[activeProvider].model
+        # Handle both string and Model instance
+        if typeof rawModelId == 'object' and rawModelId?.id
+          modelId = rawModelId.openClawId?() or rawModelId.id
+        else
+          modelId = rawModelId
         expectedPrimary = if modelId.startsWith(openClawName)
           modelId
         else
@@ -232,6 +244,29 @@ class OpenClawConfig
           console.log "Cleaned up old backup: #{file}"
     catch e
       console.error 'Failed to cleanup old backups:', e
+  
+  # Fix model ID format in config
+  # Converts "glm-4-flash" to "glm/glm-4-flash" format
+  fixModelFormat: ->
+    try
+      primary = @getPrimaryModel()
+      if primary and not primary.includes('/')
+        # Model ID is missing provider prefix
+        # Try to infer provider from available providers
+        for providerName of @data.models?.providers
+          # Check if this provider has a model matching primary
+          provider = @data.models.providers[providerName]
+          hasModel = provider.models?.some (m) -> m.id == primary
+          if hasModel
+            fixedId = "#{providerName}/#{primary}"
+            @data.agents.defaults.model.primary = fixedId
+            console.log "Fixed model format: #{primary} -> #{fixedId}"
+            @save()
+            return true
+      false
+    catch e
+      console.error 'Failed to fix model format:', e
+      false
   
   # Get file modification time
   getMtime: ->

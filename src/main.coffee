@@ -1270,6 +1270,16 @@ createWindow = ->
 
 app.whenReady().then ->
   backupSettings()
+  
+  # Fix OpenClaw config if needed
+  try
+    openClawConfig = getOpenClawConfig()
+    if openClawConfig.exists()
+      fixed = openClawConfig.fixModelFormat()
+      console.log 'OpenClaw config model format fixed' if fixed
+  catch e
+    console.error 'Failed to fix OpenClaw config:', e
+  
   createWindow()
 
   app.on 'activate', ->
