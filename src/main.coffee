@@ -671,7 +671,7 @@ MODELS =
   zhipu:
     name: 'Zhipu GLM'
     models: [
-      { id: 'glm-4-flash', name: 'GLM-4-Flash (Free)', free: true }
+      { id: 'glm-4-flash', name: 'GLM-4-Flash (Free + Function Calling)', free: true, functionCalling: true }
       { id: 'glm-4-plus', name: 'GLM-4-Plus' }
       { id: 'glm-4-air', name: 'GLM-4-Air' }
     ]
@@ -680,10 +680,9 @@ MODELS =
   openrouter:
     name: 'OpenRouter'
     models: [
-      { id: 'openrouter/auto', name: 'Auto (Best Free)', free: true }
-      { id: 'google/gemini-2.0-flash-001', name: 'Gemini 2.0 Flash', free: true }
-      { id: 'meta-llama/llama-3.3-70b-instruct', name: 'Llama 3.3 70B', free: true }
-      { id: 'deepseek/deepseek-chat', name: 'DeepSeek Chat', free: true }
+      { id: 'openrouter/auto', name: 'Auto (Free: 50 req/day)', free: true, freeLimit: '50/day' }
+      { id: 'google/gemini-2.0-flash-001', name: 'Gemini 2.0 Flash', free: true, freeLimit: '50/day' }
+      { id: 'meta-llama/llama-3.3-70b-instruct', name: 'Llama 3.3 70B', free: true, freeLimit: '50/day' }
     ]
     baseUrl: 'openrouter.ai'
     apiPath: '/api/v1/chat/completions'

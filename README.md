@@ -81,20 +81,27 @@ Click the tool buttons in the sidebar to access specialized panels:
 
 CoffeeClaw supports multiple AI providers:
 
-### Zhipu GLM (Default - Free tier available)
-- GLM-4-Flash (Free) ⭐
-- GLM-4-Plus
-- GLM-4-Air
+### Zhipu GLM (Recommended - Free + Function Calling)
+- **GLM-4-Flash** - Completely FREE with Function Calling support ⭐
+- GLM-4-Plus, GLM-4-Air
+- 128K context, 72 tokens/s generation speed
 - Get API key at [open.bigmodel.cn](https://open.bigmodel.cn)
 
-### OpenRouter (Recommended for variety)
-- Access to 100+ models including Claude, GPT-4, Gemini
-- Free tier available
+### OpenRouter (Backup - Limited Free Tier)
+- Access to 100+ models including Gemini, Llama
+- **Free tier: 50 requests/day** (resets daily)
+- Rate limit: 20 requests/minute
 - Get API key at [openrouter.ai](https://openrouter.ai)
 
-### OpenAI
+### OpenAI (Paid Only)
 - GPT-4o Mini, GPT-4o, GPT-4 Turbo
 - Get API key at [platform.openai.com](https://platform.openai.com/api-keys)
+
+### Provider Strategy
+| Use Case | Recommended Provider |
+|----------|---------------------|
+| Normal bots + Execution tasks | Zhipu GLM-4-Flash (Free + Function Calling) |
+| Backup/Alternative models | OpenRouter (50 req/day free limit) |
 
 Select your preferred provider and model during setup.
 
