@@ -1143,7 +1143,7 @@
         <select id="providerSelect" style="width:100%;padding:10px;background:#1a1a2e;color:#eee;border:1px solid #0f3460;border-radius:8px;margin-bottom:15px;">
           <option value="zhipu">Zhipu GLM (Free tier available)</option>
           <option value="openai">OpenAI</option>
-          <option value="deepseek">DeepSeek</option>
+          <option value="deepseek">DeepSeek (Free)</option>
         </select>
         
         <label>Model:</label>
@@ -1202,6 +1202,8 @@
         <option value="glm-4-flash">GLM-4-Flash (Fast)</option>
         <option value="glm-4-plus">GLM-4-Plus</option>
         <option value="glm-4-air">GLM-4-Air</option>
+        <option value="deepseek/deepseek-chat">DeepSeek Chat</option>
+        <option value="deepseek/deepseek-coder">DeepSeek Coder</option>
       </select>
       
       <label>System Prompt:</label>
@@ -2263,6 +2265,9 @@
       } else {
         document.getElementById('apiKeyInput').value = '';
       }
+      
+      settings.activeProvider = provider;
+      await window.api.saveSettings(settings);
     });
     
     document.getElementById('continueBtn').addEventListener('click', async () => {

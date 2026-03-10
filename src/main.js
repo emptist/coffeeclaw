@@ -83,7 +83,9 @@
       if (fs.existsSync(settingsFile)) {
         data = fs.readFileSync(settingsFile, 'utf8');
         settings = JSON.parse(data);
-        if (settings.token && settings.apiKey) {
+        if (typeof settings === 'object' && settings !== null) {
+          // Always return the full settings object, even if empty or invalid
+          // Validation should be done separately by isConfigured()
           return settings;
         }
       }
@@ -1324,11 +1326,11 @@ You are a helpful AI assistant running on the user's local machine. You are powe
       name: 'DeepSeek',
       models: [
         {
-          id: 'deepseek-chat',
+          id: 'deepseek/deepseek-chat',
           name: 'DeepSeek Chat'
         },
         {
-          id: 'deepseek-coder',
+          id: 'deepseek/deepseek-coder',
           name: 'DeepSeek Coder'
         }
       ],
@@ -2078,8 +2080,8 @@ You are a helpful AI assistant running on the user's local machine. You are powe
   // Sync providers from CoffeeClaw settings to OpenClaw's config file
   // This ensures the OpenClaw agent uses the same API keys as the CoffeeClaw UI
   // Returns true if sync was performed, false otherwise
-  syncProvidersToOpenClaw = function(providers, activeProvider) {
-    var base, base1, base2, base3, config, currentPrimary, e, existing, existingConfig, modelId, needsSync, newPrimary, openClawConfig, openClawProvider, openClawProviderName, providerData, providerId, ref, ref1, ref2, ref3;
+  syncProvidersToOpenClaw = function(providers, activeProvider, token) {
+    var base, base1, base2, base3, base4, base5, config, currentPrimary, e, existing, existingConfig, modelId, needsSync, newPrimary, openClawConfig, openClawProvider, openClawProviderName, providerData, providerId, ref, ref1, ref2, ref3, ref4, ref5;
     if (!configExists()) {
       return false;
     }
@@ -2122,6 +2124,11 @@ You are a helpful AI assistant running on the user's local machine. You are powe
             needsSync = true;
           }
         }
+      }
+      
+      // Check if token needs to be synced
+      if (token && ((ref4 = existingConfig.gateway) != null ? (ref5 = ref4.auth) != null ? ref5.token : void 0 : void 0) !== token) {
+        needsSync = true;
       }
       if (!needsSync) {
         return false;
@@ -2178,6 +2185,23 @@ You are a helpful AI assistant running on the user's local machine. You are powe
           console.log(`Set primary model to: ${modelId}`);
         }
       }
+      
+      // Sync token if provided
+      if (token) {
+        if (config.gateway == null) {
+          config.gateway = {};
+        }
+        if ((base4 = config.gateway).auth == null) {
+          base4.auth = {};
+        }
+        config.gateway.auth.mode = 'token';
+        config.gateway.auth.token = token;
+        if ((base5 = config.gateway).remote == null) {
+          base5.remote = {};
+        }
+        config.gateway.remote.token = token;
+        console.log('Synced token to OpenClaw config');
+      }
       fs.writeFileSync(configFile, JSON.stringify(config, null, 2));
       console.log('Providers synced to OpenClaw config');
       return true;
@@ -2208,7 +2232,7 @@ You are a helpful AI assistant running on the user's local machine. You are powe
       settingsMtime = fs.statSync(settingsFile).mtime.getTime();
       if (settingsMtime > openclawConfigMtime) {
         console.log('CoffeeClaw settings are newer than OpenClaw config, syncing...');
-        return syncProvidersToOpenClaw(settings.providers, settings.activeProvider);
+        return syncProvidersToOpenClaw(settings.providers, settings.activeProvider, settings.token);
       }
     } catch (error) {
       e = error;
@@ -2229,7 +2253,7 @@ You are a helpful AI assistant running on the user's local machine. You are powe
     // This ensures the OpenClaw agent uses the same API keys configured in the UI
     if (newSettings.providers) {
       activeProvider = newSettings.activeProvider || settings.activeProvider;
-      syncProvidersToOpenClaw(newSettings.providers, activeProvider);
+      syncProvidersToOpenClaw(newSettings.providers, activeProvider, settings.token);
     }
     return true;
   });

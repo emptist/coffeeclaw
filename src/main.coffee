@@ -53,8 +53,9 @@ loadSettings = ->
     if fs.existsSync settingsFile
       data = fs.readFileSync settingsFile, 'utf8'
       settings = JSON.parse data
-      if settings.token and settings.apiKey
-        return settings
+      # Always return the full settings object, even if empty or invalid
+      # Validation should be done separately by isConfigured()
+      return settings if typeof settings is 'object' and settings isnt null
   catch e
     console.error 'Error loading settings:', e
   {}
@@ -675,9 +676,9 @@ createDefaultConfig = (apiKey) ->
     agents:
       defaults:
         model:
-          primary: 'glm/GLM-4-Flash'
+          primary: 'glm/glm-4-flash'
         models:
-          'glm/GLM-4-Flash': {}
+          'glm/glm-4-flash': {}
         compaction:
           mode: 'safeguard'
     commands:
@@ -855,8 +856,8 @@ MODELS =
   deepseek:
     name: 'DeepSeek'
     models: [
-      { id: 'deepseek-chat', name: 'DeepSeek Chat' }
-      { id: 'deepseek-coder', name: 'DeepSeek Coder' }
+      { id: 'deepseek/deepseek-chat', name: 'DeepSeek Chat' }
+      { id: 'deepseek/deepseek-coder', name: 'DeepSeek Coder' }
     ]
     baseUrl: 'api.deepseek.com'
     apiPath: '/v1/chat/completions'
@@ -1403,7 +1404,7 @@ backupOpenClawConfig = ->
 # Sync providers from CoffeeClaw settings to OpenClaw's config file
 # This ensures the OpenClaw agent uses the same API keys as the CoffeeClaw UI
 # Returns true if sync was performed, false otherwise
-syncProvidersToOpenClaw = (providers, activeProvider) ->
+syncProvidersToOpenClaw = (providers, activeProvider, token) ->
   return false unless configExists()
   return false unless providers
   
@@ -1432,6 +1433,10 @@ syncProvidersToOpenClaw = (providers, activeProvider) ->
         newPrimary = "#{openClawProviderName}/#{providers[activeProvider]?.model}"
         if currentPrimary isnt newPrimary
           needsSync = true
+    
+    # Check if token needs to be synced
+    if token and existingConfig.gateway?.auth?.token isnt token
+      needsSync = true
     
     return false unless needsSync
     
@@ -1471,6 +1476,16 @@ syncProvidersToOpenClaw = (providers, activeProvider) ->
         config.agents.defaults.model.primary = modelId
         console.log "Set primary model to: #{modelId}"
     
+    # Sync token if provided
+    if token
+      config.gateway ?= {}
+      config.gateway.auth ?= {}
+      config.gateway.auth.mode = 'token'
+      config.gateway.auth.token = token
+      config.gateway.remote ?= {}
+      config.gateway.remote.token = token
+      console.log 'Synced token to OpenClaw config'
+    
     fs.writeFileSync configFile, JSON.stringify(config, null, 2)
     console.log 'Providers synced to OpenClaw config'
     return true
@@ -1494,7 +1509,7 @@ ensureOpenClawConfig = ->
     
     if settingsMtime > openclawConfigMtime
       console.log 'CoffeeClaw settings are newer than OpenClaw config, syncing...'
-      syncProvidersToOpenClaw(settings.providers, settings.activeProvider)
+      syncProvidersToOpenClaw(settings.providers, settings.activeProvider, settings.token)
   catch e
     console.error 'Failed to ensure OpenClaw config:', e
 
@@ -1508,7 +1523,7 @@ ipcMain.handle 'save-settings', (event, newSettings) ->
   # This ensures the OpenClaw agent uses the same API keys configured in the UI
   if newSettings.providers
     activeProvider = newSettings.activeProvider or settings.activeProvider
-    syncProvidersToOpenClaw(newSettings.providers, activeProvider)
+    syncProvidersToOpenClaw(newSettings.providers, activeProvider, settings.token)
   
   true
 
