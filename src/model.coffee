@@ -1,0 +1,162 @@
+# Model class hierarchy for different AI providers
+# Each subclass defines its own provider-specific behavior
+
+class Model
+  # Class properties - defined in subclasses
+  @PROVIDER_NAME: null
+  @OPENCLAW_NAME: null
+  @DEFAULT_API_PATH: null
+  
+  constructor: (@id) ->
+    @provider = @constructor.PROVIDER_NAME
+  
+  # Instance properties
+  rawId: -> @id
+  fullId: -> "#{@provider}/#{@id}"
+  
+  # To be implemented by subclasses
+  apiId: -> throw new Error("Subclass must implement apiId()")
+  openClawId: -> throw new Error("Subclass must implement openClawId()")
+  
+  # Serialization - only instance properties
+  toJSON: ->
+    {
+      __class: @constructor.name
+      id: @id
+      provider: @provider
+    }
+  
+  # Factory method to create correct subclass from JSON
+  @fromJSON: (data) ->
+    switch data.provider
+      when 'zhipu' then ZhipuModel.fromJSON(data)
+      when 'deepseek' then DeepSeekModel.fromJSON(data)
+      when 'openai' then OpenAIModel.fromJSON(data)
+      when 'openrouter' then OpenRouterModel.fromJSON(data)
+      else throw new Error("Unknown provider: #{data.provider}")
+
+# Zhipu AI (智谱AI)
+class ZhipuModel extends Model
+  @PROVIDER_NAME: 'zhipu'
+  @OPENCLAW_NAME: 'glm'
+  @DEFAULT_API_PATH: '/api/paas/v4/chat/completions'
+  
+  constructor: (id) ->
+    super(id)
+    @apiPath = @constructor.DEFAULT_API_PATH
+  
+  # Zhipu API uses model ID without prefix
+  apiId: -> @id
+  
+  # OpenClaw uses glm/ prefix
+  openClawId: -> "#{@constructor.OPENCLAW_NAME}/#{@id}"
+  
+  toJSON: ->
+    {
+      __class: 'ZhipuModel'
+      id: @id
+      provider: @provider
+      apiPath: @apiPath
+    }
+  
+  @fromJSON: (data) ->
+    model = new ZhipuModel(data.id)
+    model.apiPath = data.apiPath if data.apiPath
+    model
+
+# DeepSeek
+class DeepSeekModel extends Model
+  @PROVIDER_NAME: 'deepseek'
+  @OPENCLAW_NAME: 'deepseek'
+  @DEFAULT_API_PATH: '/v1/chat/completions'
+  
+  constructor: (id) ->
+    super(id)
+    @apiPath = @constructor.DEFAULT_API_PATH
+  
+  apiId: -> @id
+  openClawId: -> "#{@constructor.OPENCLAW_NAME}/#{@id}"
+  
+  toJSON: ->
+    {
+      __class: 'DeepSeekModel'
+      id: @id
+      provider: @provider
+      apiPath: @apiPath
+    }
+  
+  @fromJSON: (data) ->
+    model = new DeepSeekModel(data.id)
+    model.apiPath = data.apiPath if data.apiPath
+    model
+
+# OpenAI
+class OpenAIModel extends Model
+  @PROVIDER_NAME: 'openai'
+  @OPENCLAW_NAME: 'openai'
+  @DEFAULT_API_PATH: '/v1/chat/completions'
+  
+  constructor: (id) ->
+    super(id)
+    @apiPath = @constructor.DEFAULT_API_PATH
+    @organization = null
+  
+  apiId: -> @id
+  openClawId: -> "#{@constructor.OPENCLAW_NAME}/#{@id}"
+  
+  toJSON: ->
+    {
+      __class: 'OpenAIModel'
+      id: @id
+      provider: @provider
+      apiPath: @apiPath
+      organization: @organization
+    }
+  
+  @fromJSON: (data) ->
+    model = new OpenAIModel(data.id)
+    model.apiPath = data.apiPath if data.apiPath
+    model.organization = data.organization if data.organization
+    model
+
+# OpenRouter
+class OpenRouterModel extends Model
+  @PROVIDER_NAME: 'openrouter'
+  @OPENCLAW_NAME: 'openrouter'
+  @DEFAULT_API_PATH: '/api/v1/chat/completions'
+  
+  constructor: (id) ->
+    super(id)
+    @apiPath = @constructor.DEFAULT_API_PATH
+    @siteUrl = null
+    @siteName = null
+  
+  # OpenRouter API requires full path with provider prefix
+  apiId: -> "#{@provider}/#{@id}"
+  openClawId: -> "#{@constructor.OPENCLAW_NAME}/#{@id}"
+  
+  toJSON: ->
+    {
+      __class: 'OpenRouterModel'
+      id: @id
+      provider: @provider
+      apiPath: @apiPath
+      siteUrl: @siteUrl
+      siteName: @siteName
+    }
+  
+  @fromJSON: (data) ->
+    model = new OpenRouterModel(data.id)
+    model.apiPath = data.apiPath if data.apiPath
+    model.siteUrl = data.siteUrl if data.siteUrl
+    model.siteName = data.siteName if data.siteName
+    model
+
+# Export classes
+module.exports = {
+  Model
+  ZhipuModel
+  DeepSeekModel
+  OpenAIModel
+  OpenRouterModel
+}
