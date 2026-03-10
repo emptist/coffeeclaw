@@ -255,95 +255,18 @@ getLicenseStatus = ->
     showIndicator: true
     currency: license.currency
 
-# Global session manager instance
-sessionManagerInstance = null
-
-loadSessions = ->
-  try
-    if fs.existsSync sessionsFile
-      data = fs.readFileSync sessionsFile, 'utf8'
-      parsed = JSON.parse data
-      # Check if already using new class format
-      if parsed?.__class == 'SessionManager'
-        sessionManagerInstance = SessionManager.fromJSON(parsed)
-      else
-        # Migrate from legacy format (object with sessionId keys)
-        sessionManagerInstance = migrateLegacySessions(parsed)
-        saveSessions()  # Save in new format immediately
-      return sessionManagerInstance
-  catch e
-    console.error 'Error loading sessions:', e
-  
-  # Create new session manager
-  sessionManagerInstance = new SessionManager()
-  return sessionManagerInstance
-
-migrateLegacySessions = (legacyData) ->
-  manager = new SessionManager()
-  
-  if legacyData and typeof legacyData == 'object'
-    for sessionId, legacySession of legacyData
-      try
-        # Convert legacy session to Session instance
-        session = new Session(sessionId)
-        session.title = legacySession.title or ''
-        session.messages = legacySession.messages or []
-        session.createdAt = legacySession.createdAt or Date.now()
-        session.updatedAt = legacySession.updatedAt or Date.now()
-        session.botId = legacySession.botId if legacySession.botId
-        manager.addSession(session)
-      catch e
-        console.error 'Error migrating session:', e
-  
-  manager
-
-saveSessions = (manager = null) ->
-  try
-    fs.mkdirSync secreteDir, { recursive: true }
-    # Use provided manager or global instance
-    managerToSave = manager or sessionManagerInstance
-    if managerToSave?.toJSON
-      fs.writeFileSync sessionsFile, JSON.stringify(managerToSave.toJSON(), null, 2)
-    else
-      fs.writeFileSync sessionsFile, JSON.stringify(managerToSave, null, 2)
-  catch e
-    console.error 'Error saving sessions:', e
-
-getSession = (sessionId) ->
-  manager = loadSessions()
-  session = manager.getSession(sessionId)
-  if not session
-    # Create new session if not exists
-    session = new Session(sessionId)
-    manager.addSession(session)
-    saveSessions()
-  session
-
+# Sessions - using TypedStorage
+loadSessions = -> storage.getSessions()
+saveSessions = (sessions = null) -> storage.saveSessions(sessions)
+getSession = (sessionId) -> storage.getSession(sessionId)
 saveSession = (sessionId, session) ->
-  manager = loadSessions()
-  # Ensure messages don't exceed MAX_HISTORY
   if session.messages?.length > MAX_HISTORY
     session.messages = session.messages.slice(-MAX_HISTORY)
-  manager.addSession(session)
-  # Enforce MAX_SESSIONS limit
-  manager.enforceMaxSessions(MAX_SESSIONS)
-  saveSessions()
-
-addToSession = (sessionId, role, content) ->
-  session = getSession(sessionId)
-  session.addMessage(role, content)
-  if not session.title and role == 'user'
-    session.title = content.substring(0, 50)
-  saveSession(sessionId, session)
-  session
-
-createSession = ->
-  sessionId = generateId()
-  session = new Session(sessionId)
-  manager = loadSessions()
-  manager.addSession(session)
-  saveSessions()
-  session
+  storage.saveSessions()
+addToSession = (sessionId, role, content) -> storage.addMessage(sessionId, role, content)
+createSession = -> storage.createSession()
+deleteSession = (sessionId) -> storage.deleteSession(sessionId)
+listSessions = -> storage.listSessions()
 
 loadAgentSessions = ->
   try
