@@ -835,26 +835,6 @@ callAPIWithMessages = (sessionId, messages, settings, bot, apiKey) ->
     req.write postData
     req.end()
 
-sendToOpenClaw = (sessionId, message) ->
-  settings = loadSettings()
-  apiKey = settings.apiKey
-  
-  unless apiKey
-    throw new Error 'No API key configured'
-  
-  bot = getActiveBot()
-  isAgent = bot?.isAgent or bot?.model == 'openclaw-agent'
-  
-  if isAgent
-    addToAgentSession sessionId, 'user', message
-    response = await callAPI sessionId, message, settings, bot
-    addToAgentSession sessionId, 'assistant', response
-  else
-    addToSession sessionId, 'user', message
-    response = await callAPI sessionId, message, settings, bot
-    addToSession sessionId, 'assistant', response
-  response
-
 mainWindow = null
 
 createWindow = ->
@@ -1203,26 +1183,6 @@ syncProvidersToOpenClaw = (providers, activeProvider, token) ->
   catch e
     console.error 'Failed to sync providers to OpenClaw:', e
     return false
-
-# Ensure OpenClaw config is in sync with CoffeeClaw settings
-# Only syncs if CoffeeClaw settings are newer than OpenClaw config
-# Called at startup to handle cases where settings were modified outside the app
-ensureOpenClawConfig = ->
-  settings = loadSettings()
-  return unless settings.providers
-  
-  return unless configExists()
-  return unless fs.existsSync(settingsFile)
-  
-  try
-    openclawConfigMtime = fs.statSync(configFile).mtime.getTime()
-    settingsMtime = fs.statSync(settingsFile).mtime.getTime()
-    
-    if settingsMtime > openclawConfigMtime
-      console.log 'CoffeeClaw settings are newer than OpenClaw config, syncing...'
-      syncProvidersToOpenClaw(settings.providers, settings.activeProvider, settings.token)
-  catch e
-    console.error 'Failed to ensure OpenClaw config:', e
 
 ipcMain.handle 'save-settings', (event, newSettings) ->
   settings = loadSettings()

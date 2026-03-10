@@ -183,7 +183,22 @@ class OpenClawManager
     settings = @storage.getSettings()
     bot = @storage.getActiveBot()
     
-    @callAPI(sessionId, message, settings, bot)
+    apiKey = settings.apiKey
+    unless apiKey
+      throw new Error 'No API key configured'
+    
+    isAgent = bot?.isAgent or bot?.model == 'openclaw-agent'
+    
+    if isAgent
+      @storage.addAgentMessage(sessionId, 'user', message)
+      response = await @callAPI(sessionId, message, settings, bot)
+      @storage.addAgentMessage(sessionId, 'assistant', response)
+    else
+      @storage.addMessage(sessionId, 'user', message)
+      response = await @callAPI(sessionId, message, settings, bot)
+      @storage.addMessage(sessionId, 'assistant', response)
+    
+    response
   
   callAPI: (sessionId, message, settings, bot = null) ->
     rawModel = bot?.model or settings.model or 'glm-4-flash'
