@@ -426,31 +426,83 @@ BOT_TEMPLATES = [
 
 getBotTemplates = -> BOT_TEMPLATES
 
+# Global bots data instance
+botsDataInstance = null
+
 loadBots = ->
   try
     if fs.existsSync botsFile
       data = fs.readFileSync botsFile, 'utf8'
-      return JSON.parse data
+      parsed = JSON.parse data
+      # Check if already using new class format
+      if parsed?.bots?[0]?.__class == 'Bot'
+        botsDataInstance = 
+          bots: parsed.bots.map (b) -> Bot.fromJSON(b)
+          activeBotId: parsed.activeBotId
+      else
+        # Migrate from legacy format
+        botsDataInstance = migrateLegacyBots(parsed)
+        saveBots()  # Save in new format immediately
+      return botsDataInstance
   catch e
     console.error 'Error loading bots:', e
-  {
-    bots: [
-      id: 'default'
-      name: 'General Assistant'
-      description: 'A helpful general-purpose assistant'
-      model: 'glm-4-flash'
-      systemPrompt: 'You are a helpful assistant. Be concise and helpful.'
-      skills: ['*']
-      enabled: true
-      createdAt: new Date().toISOString()
-    ]
-    activeBotId: 'default'
-  }
+  
+  # Create default bot
+  defaultBot = Bot.createDefaultBot()
+  botsDataInstance = 
+    bots: [defaultBot]
+    activeBotId: defaultBot.id
+  saveBots()
+  return botsDataInstance
 
-saveBots = (botsData) ->
+migrateLegacyBots = (legacyData) ->
+  bots = []
+  activeBotId = legacyData?.activeBotId
+  
+  if legacyData?.bots and Array.isArray(legacyData.bots)
+    for legacyBot in legacyData.bots
+      try
+        # Create model from legacy model string
+        modelId = legacyBot.model or 'glm-4-flash'
+        model = Model.create(modelId, 'zhipu')
+        
+        bot = new Bot(
+          legacyBot.id or generateId()
+          legacyBot.name
+          legacyBot.description
+          model
+          legacyBot.systemPrompt
+          legacyBot.skills or ['*']
+        )
+        bot.enabled = legacyBot.enabled ? true
+        bot.createdAt = legacyBot.createdAt or new Date().toISOString()
+        bot.isAgent = legacyBot.isAgent if legacyBot.isAgent
+        bots.push bot
+        
+        # Set active bot ID if not set
+        activeBotId ?= bot.id
+      catch e
+        console.error 'Error migrating bot:', e
+  
+  # If no bots migrated, create default
+  if bots.length == 0
+    defaultBot = Bot.createDefaultBot()
+    bots.push defaultBot
+    activeBotId = defaultBot.id
+  
+  { bots, activeBotId }
+
+saveBots = (botsData = null) ->
   try
     fs.mkdirSync secreteDir, { recursive: true }
-    fs.writeFileSync botsFile, JSON.stringify(botsData, null, 2)
+    # Use provided data or global instance
+    dataToSave = botsData or botsDataInstance
+    if dataToSave
+      # Serialize bots if they have toJSON method
+      serialized = 
+        bots: dataToSave.bots.map (b) -> if b.toJSON then b.toJSON() else b
+        activeBotId: dataToSave.activeBotId
+      fs.writeFileSync botsFile, JSON.stringify(serialized, null, 2)
   catch e
     console.error 'Error saving bots:', e
 
