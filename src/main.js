@@ -1059,10 +1059,10 @@
       agents: {
         defaults: {
           model: {
-            primary: 'glm/GLM-4-Flash'
+            primary: 'glm/glm-4-flash'
           },
           models: {
-            'glm/GLM-4-Flash': {}
+            'glm/glm-4-flash': {}
           },
           compaction: {
             mode: 'safeguard'
