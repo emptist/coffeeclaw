@@ -900,22 +900,20 @@ app.on 'window-all-closed', ->
 
 ipcMain.handle 'send-message', (event, sessionId, message) ->
   try
-    result = await sendToOpenClaw sessionId, message
+    result = await openClawManager.sendMessage(sessionId, message)
     return result
   catch e
     throw e.message or e
 
 ipcMain.handle 'check-status', ->
-  running = await checkOpenClawPromise()
-  configured = isConfigured()
+  running = await openClawManager.checkRunning()
+  configured = openClawManager.isConfigured()
   settings = loadSettings()
   
-  # Ensure OpenClaw config is in sync with CoffeeClaw settings
-  # This handles cases where settings were modified or app was updated
-  ensureOpenClawConfig()
+  openClawManager.ensureConfig()
   
   if not running and configured
-    startOpenClaw()
+    openClawManager.start()
     return { running: false, starting: true, configured: true, hasApiKey: !!settings.apiKey }
   
   { running, starting: false, configured, hasApiKey: !!settings.apiKey }
@@ -1100,10 +1098,10 @@ ipcMain.handle 'run-setup', (event, apiKey) ->
       throw new Error 'Failed to install OpenClaw: ' + e.message
   
   result.configuring = true
-  token = createDefaultConfig apiKey
+  token = openClawManager.createDefaultConfig(apiKey)
   
   result.starting = true
-  started = await startOpenClaw()
+  started = await openClawManager.start()
   if not started
     throw new Error 'Failed to start OpenClaw gateway'
   
@@ -1232,11 +1230,9 @@ ipcMain.handle 'save-settings', (event, newSettings) ->
     settings[key] = value
   saveSettings settings
   
-  # When providers are saved in CoffeeClaw settings, also sync them to OpenClaw's config
-  # This ensures the OpenClaw agent uses the same API keys configured in the UI
   if newSettings.providers
     activeProvider = newSettings.activeProvider or settings.activeProvider
-    syncProvidersToOpenClaw(newSettings.providers, activeProvider, settings.token)
+    openClawManager.syncProviders(newSettings.providers, activeProvider, settings.token)
   
   true
 
@@ -1401,7 +1397,7 @@ configureFeishu = (appId, appSecret, botName, enabled = true) ->
 
 ipcMain.handle 'call-openclaw-agent', (event, sessionId, message) ->
   try
-    result = await callOpenClawAgent sessionId, message
+    result = await openClawManager.callAgent(sessionId, message)
     return result
   catch e
     throw e.message or e
