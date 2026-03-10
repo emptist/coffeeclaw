@@ -2,11 +2,119 @@
 
 ## Overview
 
-This document describes the class hierarchy introduced to solve the model ID format confusion and improve code organization.
+This document describes the class hierarchy for CoffeeClaw, including model classes, storage classes, and domain classes.
 
 ## Class List
 
-### 1. Model Classes (`src/model.coffee`)
+### 1. Storage Classes (`src/core/`)
+
+#### StorageManager (`src/core/storage.coffee`)
+
+Wraps electron-store with caching and dirty tracking.
+
+```coffee
+class StorageManager extends EventEmitter
+  @instance = null
+  
+  @getInstance: -> @instance ?= new StorageManager()
+  
+  constructor: ->
+    @store = new Store
+      name: 'coffeeclaw-data'
+      cwd: '.secrete'
+      defaults:
+        settings: null
+        bots: null
+        sessions: null
+        license: null
+        agentSessions: null
+        identity: null
+        agentModels: null
+        backups: []
+    
+    @_cache = new Map()
+    @_dirty = new Set()
+  
+  get: (key, defaultValue = null) ->
+  set: (key, value) ->
+  save: (key) ->
+  saveAll: ->
+  delete: (key) ->
+  clear: ->
+  has: (key) ->
+  isDirty: (key) ->
+  getDirtyKeys: ->
+```
+
+#### TypedStorage (`src/core/typed-storage.coffee`)
+
+Type-safe API for all application data.
+
+```coffee
+class TypedStorage
+  @instance = null
+  
+  @getInstance: -> @instance ?= new TypedStorage()
+  
+  # Settings
+  getSettings: ->
+  saveSettings: (settings) ->
+  
+  # Bots
+  getBots: ->
+  saveBots: (bots) ->
+  getBot: (botId) ->
+  getActiveBot: ->
+  createBot: (config) ->
+  updateBot: (botId, updates) ->
+  deleteBot: (botId) ->
+  setActiveBot: (botId) ->
+  
+  # Sessions
+  getSessions: ->
+  saveSessions: (sessions) ->
+  getSession: (sessionId) ->
+  createSession: ->
+  addMessage: (sessionId, role, content) ->
+  deleteSession: (sessionId) ->
+  listSessions: ->
+  
+  # License
+  getLicense: ->
+  saveLicense: (license) ->
+  getLicenseStatus: ->
+  addPayment: (paymentData) ->
+  
+  # Identity
+  getIdentity: ->
+  saveIdentity: (identity) ->
+  
+  # Agent Sessions
+  getAgentSessions: ->
+  saveAgentSessions: (sessions) ->
+  getAgentSession: (sessionId) ->
+  addAgentMessage: (sessionId, role, content) ->
+  listAgentSessions: ->
+  deleteAgentSession: (sessionId) ->
+  
+  # Agent Models
+  getAgentModels: ->
+  saveAgentModels: (config) ->
+  createDefaultAgentModels: (apiKey) ->
+  
+  # Backups
+  getBackups: ->
+  saveBackups: (backups) ->
+  createBackup: (data) ->
+  getBackup: (backupId) ->
+  deleteBackup: (backupId) ->
+  
+  # Export/Import
+  exportAll: ->
+  importAll: (data, options) ->
+```
+
+### 2. Model Classes (`src/model.coffee`)
 
 Base class and subclasses for different AI providers.
 
@@ -39,7 +147,7 @@ class Model
 - `apiId()`: `openrouter/google/gemini-2.0-flash` (full path)
 - `openClawId()`: `openrouter/google/gemini-2.0-flash`
 
-### 2. Bot Class (`src/bot.coffee`)
+### 3. Bot Class (`src/bot.coffee`)
 
 Manages AI assistants.
 
@@ -53,7 +161,7 @@ class Bot
   getDisplayName: -> "#{@name} (#{@model.fullId()})"
 ```
 
-### 3. Session Classes (`src/session.coffee`)
+### 4. Session Classes (`src/session.coffee`)
 
 Manages chat conversations.
 
@@ -78,7 +186,7 @@ class SessionManager
   getAllSessions: () ->
 ```
 
-### 4. Settings Class (`src/settings.coffee`)
+### 5. Settings Class (`src/settings.coffee`)
 
 Manages application configuration.
 
@@ -95,7 +203,7 @@ class Settings
   @fromLegacy: (data) ->  # Migration from old format
 ```
 
-### 5. FeishuConfig Class (`src/feishu-config.coffee`)
+### 6. FeishuConfig Class (`src/feishu-config.coffee`)
 
 Manages Feishu (Lark) integration.
 
@@ -111,7 +219,7 @@ class FeishuConfig
   validate: () ->
 ```
 
-### 6. OpenClawConfig Class (`src/openclaw-config.coffee`)
+### 7. OpenClawConfig Class (`src/openclaw-config.coffee`)
 
 Manages OpenClaw agent configuration.
 
@@ -134,7 +242,7 @@ class OpenClawConfig
   backup: () ->
 ```
 
-### 7. License Class (`src/license.coffee`)
+### 8. License Class (`src/license.coffee`)
 
 Manages user license.
 
@@ -152,7 +260,7 @@ class License
   hasFeature: (feature) ->
 ```
 
-### 8. Identity Class (`src/identity.coffee`)
+### 9. Identity Class (`src/identity.coffee`)
 
 Manages machine identity.
 
@@ -164,7 +272,7 @@ class Identity
   getShortId: () ->
 ```
 
-### 9. BackupManager Class (`src/backup-manager.coffee`)
+### 10. BackupManager Class (`src/backup-manager.coffee`)
 
 Manages data backup and restore.
 
@@ -181,7 +289,7 @@ class BackupManager
   cleanupOldBackups: (keep) ->
 ```
 
-### 10. AgentModel Classes (`src/agent-model.coffee`)
+### 11. AgentModel Classes (`src/agent-model.coffee`)
 
 Manages AI agent configurations.
 

@@ -58,7 +58,20 @@ StorageManager (electron-store wrapper)
 └── TypedStorage (type-safe API)
 ```
 
-**Purpose**: Unified storage for settings, bots, sessions, license.
+**Purpose**: Unified storage for all application data.
+
+**Supported Data Types**:
+| Type | Methods |
+|------|---------|
+| Settings | `getSettings()`, `saveSettings()` |
+| Bots | `getBots()`, `saveBots()`, `getBot()`, `getActiveBot()`, `createBot()`, `updateBot()`, `deleteBot()`, `setActiveBot()` |
+| Sessions | `getSessions()`, `saveSessions()`, `getSession()`, `createSession()`, `addMessage()`, `deleteSession()`, `listSessions()` |
+| License | `getLicense()`, `saveLicense()`, `getLicenseStatus()`, `addPayment()` |
+| Identity | `getIdentity()`, `saveIdentity()` |
+| AgentSessions | `getAgentSessions()`, `saveAgentSessions()`, `getAgentSession()`, `addAgentMessage()`, `listAgentSessions()`, `deleteAgentSession()` |
+| AgentModels | `getAgentModels()`, `saveAgentModels()`, `createDefaultAgentModels()` |
+| Backups | `getBackups()`, `saveBackups()`, `createBackup()`, `getBackup()`, `deleteBackup()` |
+| Export/Import | `exportAll()`, `importAll()` |
 
 **Usage**:
 ```coffeescript
@@ -170,14 +183,29 @@ addPayment(data)   → Adds payment
 ## Configuration Files
 
 ### User Data (`.secrete/`)
+All application data is now stored in a single `coffeeclaw-data.json` file managed by electron-store:
+
 ```
 .secrete/
-├── settings.json     # App settings
-├── bots.json        # Bot configurations
-├── sessions.json    # Chat history
-├── license.json    # License info
-└── agent-sessions.json  # OpenClaw agent sessions
+├── coffeeclaw-data.json   # All app data (electron-store)
+│   ├── settings           # App settings
+│   ├── bots               # Bot configurations
+│   ├── sessions           # Chat history
+│   ├── license            # License info
+│   ├── identity           # Machine identity
+│   ├── agentSessions      # OpenClaw agent sessions
+│   ├── agentModels        # Agent model configs
+│   └── backups            # Backup history
+│
+└── (legacy files - no longer used)
+    ├── settings.json
+    ├── bots.json
+    ├── sessions.json
+    ├── license.json
+    └── agent-sessions.json
 ```
+
+**Note**: The legacy JSON files are no longer used. Data is automatically migrated to the new format on first run.
 
 ### OpenClaw (`.openclaw/`)
 ```
@@ -228,15 +256,13 @@ npm run build      # Build for distribution
 
 ## Known Limitations
 
-1. **main.coffee size** - Still ~1555 lines, could be modularized
-2. **Mixed .coffee/.js** - Both source and compiled exist
-3. **Some direct fs access** - Agent sessions, backups still use direct file ops
-4. **No tests** - No test infrastructure
+1. **main.coffee size** - Still ~1400 lines, could be modularized further
+2. **Mixed .coffee/.js** - Both source and compiled exist (build artifact)
+3. **No tests** - No test infrastructure
 
-## Future Improvements
+## Recent Improvements
 
-1. Extract IPC handlers to separate module
-2. Add comprehensive test suite
-3. Consider ESM migration (see COFFEESCRIPT_COMPILATION_GUIDE.md)
-4. Add logging framework
-5. Add error reporting/telemetry
+1. ✅ **Unified Storage** - All data now uses TypedStorage with electron-store
+2. ✅ **Removed DeepSeek** - Provider removed due to lack of free tier
+3. ✅ **Provider Strategy** - Clear separation: GLM-4-Flash for chat, OpenRouter for agents
+4. ✅ **Agent Capable Flag** - Models now have `agentCapable` flag for OpenClaw execution
