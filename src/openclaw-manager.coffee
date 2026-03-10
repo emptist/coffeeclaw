@@ -322,6 +322,18 @@ class OpenClawManager
           api: 'openai-completions'
           models: @getProviderModels(providerId)
       
+      if providers?.openrouter?.apiKey
+        primaryModel = 'openrouter/auto'
+      else if providers?.openai?.apiKey
+        primaryModel = 'openai/gpt-4o'
+      else
+        primaryModel = 'glm/GLM-4-Flash'
+      
+      config.agents ?= {}
+      config.agents.defaults ?= {}
+      config.agents.defaults.model ?= {}
+      config.agents.defaults.model.primary = primaryModel
+      
       if token
         config.gateway ?= {}
         config.gateway.auth ?= {}
