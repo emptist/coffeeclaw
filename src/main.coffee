@@ -256,8 +256,8 @@ initLicense = ->
     return license
   
   licenseInstance = new License()
-    saveLicense()
-    licenseInstance
+  saveLicense()
+  licenseInstance
 
 getLicenseStatus = ->
   license = loadLicense()
@@ -712,12 +712,24 @@ deleteSession = (sessionId) ->
   saveSessions sessions
 
 listSessions = ->
-  sessions = loadSessions()
-  result = []
-  for key, session of sessions
-    result.push session
-  result.sort (a, b) -> (b.updatedAt or 0) - (a.updatedAt or 0)
-  result
+  manager = loadSessions()
+  # SessionManager returns array of Session instances
+  if manager?.getAllSessions
+    sessions = manager.getAllSessions()
+  else if typeof manager == 'object'
+    # Legacy format: object with sessionId keys
+    sessions = []
+    for key, session of manager
+      sessions.push session
+  else
+    sessions = []
+  
+  # Sort by updatedAt, handling both Session instances and plain objects
+  sessions.sort (a, b) ->
+    aTime = a.updatedAt or a.getLastUpdated?() or 0
+    bTime = b.updatedAt or b.getLastUpdated?() or 0
+    bTime - aTime
+  sessions
 
 checkOpenClaw = (callback) ->
   req = http.get 'http://127.0.0.1:18789/health', (res) ->
@@ -1574,7 +1586,15 @@ syncProvidersToOpenClaw = (providers, activeProvider, token) ->
       if providerData and providerData.model
         # For openrouter models, the id might be "openrouter/auto" so we use it directly
         # For others like glm, it's "glm-4-flash" so we format as "provider/model"
-        modelId = providerData.model
+        # Model can be a string (legacy) or a Model instance (new format)
+        if typeof providerData.model == 'string'
+          modelId = providerData.model
+        else if providerData.model?.openClawId
+          # Model is a Model instance, use openClawId() for OpenClaw format
+          modelId = providerData.model.openClawId()
+        else
+          modelId = providerData.model.id or 'glm-4-flash'
+        
         unless modelId.startsWith(openClawProvider)
           modelId = "#{openClawProvider}/#{modelId}"
         config.agents ?= {}
