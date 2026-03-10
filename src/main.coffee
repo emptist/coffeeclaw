@@ -1062,10 +1062,14 @@ callAPI = (sessionId, message, settings, bot = null) ->
     if settings.providers and settings.providers[provider]
       providerConfig = settings.providers[provider]
       apiKey = providerConfig.apiKey
-      model = bot?.model or providerConfig.model or 'glm-4-flash'
+      # Handle both Model instances and strings
+      rawModel = bot?.model or providerConfig.model or 'glm-4-flash'
+      model = if typeof rawModel == 'string' then rawModel else (rawModel?.id or 'glm-4-flash')
     else
       apiKey = settings.apiKey
-      model = bot?.model or settings.model or 'glm-4-flash'
+      # Handle both Model instances and strings
+      rawModel = bot?.model or settings.model or 'glm-4-flash'
+      model = if typeof rawModel == 'string' then rawModel else (rawModel?.id or 'glm-4-flash')
     
     config = MODELS[provider]
     unless config
@@ -1158,9 +1162,11 @@ callAPIWithMessages = (sessionId, messages, settings, bot, apiKey) ->
     
     if settings.providers and settings.providers[provider]
       providerConfig = settings.providers[provider]
-      model = bot?.model or providerConfig.model or 'glm-4-flash'
+      rawModel = bot?.model or providerConfig.model or 'glm-4-flash'
+      model = if typeof rawModel == 'string' then rawModel else (rawModel?.id or 'glm-4-flash')
     else
-      model = bot?.model or settings.model or 'glm-4-flash'
+      rawModel = bot?.model or settings.model or 'glm-4-flash'
+      model = if typeof rawModel == 'string' then rawModel else (rawModel?.id or 'glm-4-flash')
     
     config = MODELS[provider]
     
