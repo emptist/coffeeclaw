@@ -5,6 +5,7 @@
 { Bot } = require '../bot'
 { Session, SessionManager } = require '../session'
 { License } = require '../license'
+{ Identity } = require '../identity'
 { Model } = require '../model'
 
 class TypedStorage
@@ -273,6 +274,197 @@ class TypedStorage
     
     @saveLicense(license)
     { success: true, balance: license.balance }
+  
+  # Identity
+  getIdentity: ->
+    return @_cache.identity if @_cache.identity
+    
+    data = @storage.get('identity')
+    if data?.__class == 'Identity'
+      @_cache.identity = Identity.fromJSON(data)
+    else if data
+      @_cache.identity = Identity.fromString(data)
+    else
+      @_cache.identity = new Identity()
+      @saveIdentity()
+    
+    @_cache.identity
+  
+  saveIdentity: (identity = null) ->
+    @_cache.identity = identity ? @_cache.identity
+    @storage.set('identity', @_cache.identity)
+    @storage.save('identity')
+    @
+  
+  # Agent Sessions
+  getAgentSessions: ->
+    return @_cache.agentSessions if @_cache.agentSessions
+    
+    data = @storage.get('agentSessions', {})
+    @_cache.agentSessions = data ? {}
+    @_cache.agentSessions
+  
+  saveAgentSessions: (sessions = null) ->
+    @_cache.agentSessions = sessions ? @_cache.agentSessions
+    @storage.set('agentSessions', @_cache.agentSessions)
+    @storage.save('agentSessions')
+    @
+  
+  getAgentSession: (sessionId) ->
+    sessions = @getAgentSessions()
+    sessions[sessionId] or { 
+      id: sessionId, 
+      messages: [], 
+      openclawSessionId: sessionId, 
+      createdAt: Date.now() 
+    }
+  
+  addAgentMessage: (sessionId, role, content) ->
+    sessions = @getAgentSessions()
+    session = sessions[sessionId] or { 
+      id: sessionId, 
+      messages: [], 
+      openclawSessionId: sessionId 
+    }
+    session.messages.push
+      role: role
+      content: content
+      timestamp: Date.now()
+      source: 'openclaw-agent'
+    if not session.title and role == 'user'
+      session.title = content.substring(0, 50)
+    unless session.createdAt
+      session.createdAt = Date.now()
+    session.updatedAt = Date.now()
+    sessions[sessionId] = session
+    @saveAgentSessions(sessions)
+    session
+  
+  listAgentSessions: ->
+    sessions = @getAgentSessions()
+    Object.values(sessions).sort (a, b) -> 
+      (b.updatedAt or 0) - (a.updatedAt or 0)
+  
+  deleteAgentSession: (sessionId) ->
+    sessions = @getAgentSessions()
+    delete sessions[sessionId]
+    @saveAgentSessions(sessions)
+    @
+  
+  # Agent Models Config
+  getAgentModels: ->
+    return @_cache.agentModels if @_cache.agentModels
+    
+    data = @storage.get('agentModels', null)
+    @_cache.agentModels = data
+    @_cache.agentModels
+  
+  saveAgentModels: (config = null) ->
+    @_cache.agentModels = config ? @_cache.agentModels
+    @storage.set('agentModels', @_cache.agentModels)
+    @storage.save('agentModels')
+    @
+  
+  createDefaultAgentModels: (apiKey) ->
+    key = apiKey or ''
+    
+    agentModels =
+      providers: {}
+    
+    if key
+      agentModels.providers.glm =
+        baseUrl: 'https://open.bigmodel.cn/api/paas/v4'
+        apiKey: key
+        api: 'openai-completions'
+        models: [
+          id: 'GLM-4-Flash'
+          name: 'GLM 4 Flash'
+          reasoning: false
+          input: ['text']
+          cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 }
+          contextWindow: 200000
+          maxTokens: 8192
+          api: 'openai-completions'
+        ]
+    
+    @saveAgentModels(agentModels)
+    agentModels
+  
+  # Backups
+  getBackups: ->
+    @storage.get('backups', [])
+  
+  saveBackups: (backups) ->
+    @storage.set('backups', backups)
+    @storage.save('backups')
+    @
+  
+  createBackup: (data) ->
+    backups = @getBackups()
+    backup = {
+      id: Date.now().toString(36)
+      createdAt: new Date().toISOString()
+      data: data
+    }
+    backups.unshift(backup)
+    if backups.length > 10
+      backups = backups.slice(0, 10)
+    @saveBackups(backups)
+    backup
+  
+  getBackup: (backupId) ->
+    backups = @getBackups()
+    backups.find (b) -> b.id == backupId
+  
+  deleteBackup: (backupId) ->
+    backups = @getBackups()
+    backups = backups.filter (b) -> b.id != backupId
+    @saveBackups(backups)
+    @
+  
+  # Export/Import
+  exportAll: ->
+    {
+      version: '1.0'
+      exportedAt: new Date().toISOString()
+      settings: @getSettings().toJSON()
+      bots: @getBots()
+      sessions: @getSessions().toJSON()
+      license: @getLicense().toJSON()
+      identity: @getIdentity().toJSON()
+    }
+  
+  importAll: (data, options = {}) ->
+    try
+      importSettings = options.settings ? true
+      importBots = options.bots ? true
+      importSessions = options.sessions ? true
+      importLicense = options.license ? true
+      importIdentity = options.identity ? true
+      
+      if data.settings and importSettings
+        settings = Settings.fromJSON(data.settings)
+        @saveSettings(settings)
+      
+      if data.bots and importBots
+        @saveBots(data.bots)
+      
+      if data.sessions and importSessions
+        sessions = SessionManager.fromJSON(data.sessions)
+        @saveSessions(sessions)
+      
+      if data.license and importLicense
+        license = License.fromJSON(data.license)
+        @saveLicense(license)
+      
+      if data.identity and importIdentity
+        identity = Identity.fromJSON(data.identity)
+        @saveIdentity(identity)
+      
+      { success: true }
+    catch e
+      console.error 'Error importing data:', e
+      { success: false, error: e.message }
   
   # Utility
   clear: ->

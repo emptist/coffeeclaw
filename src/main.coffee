@@ -70,119 +70,69 @@ saveSettings = (settings = null) -> storage.saveSettings(settings)
 
 backupSettings = ->
   try
-    timestamp = new Date().toISOString().replace(/[:.]/g, '-')
-    backupFile = path.join secreteDir, "backup.#{timestamp}.json"
-    
     backupData =
       version: '1.0'
       backedUpAt: new Date().toISOString()
-      settings: if fs.existsSync(settingsFile) then JSON.parse(fs.readFileSync settingsFile, 'utf8') else {}
-      sessions: if fs.existsSync(sessionsFile) then JSON.parse(fs.readFileSync sessionsFile, 'utf8') else { sessions: [] }
+      settings: loadSettings().toJSON()
       bots: loadBots()
-      license: loadLicense()
+      sessions: loadSessions().toJSON()
+      license: loadLicense().toJSON()
+      identity: loadIdentity().toJSON()
     
-    fs.writeFileSync backupFile, JSON.stringify(backupData, null, 2)
-    
-    backups = fs.readdirSync(secreteDir)
-      .filter (f) -> f.startsWith('backup.') and f.endsWith('.json') and f isnt 'bots.json'
-      .sort()
-      .reverse()
-    
-    for backup, i in backups when i >= 5
-      fs.unlinkSync path.join(secreteDir, backup)
-    
-    console.log "Full backup created: #{backupFile}"
+    backup = storage.createBackup(backupData)
+    console.log "Backup created: #{backup.id}"
     true
   catch e
     console.error 'Error backing up:', e
     false
 
-restoreSettings = (backupName, options = {}) ->
+restoreSettings = (backupId, options = {}) ->
   try
-    backupPath = path.join secreteDir, backupName
-    if fs.existsSync backupPath
-      data = JSON.parse fs.readFileSync backupPath, 'utf8'
-      
-      restoreSettings = if options.settings? then options.settings else true
-      restoreSessions = if options.sessions? then options.sessions else true
-      restoreBots = if options.bots? then options.bots else true
-      restoreLicense = if options.license? then options.license else true
-      
-      if data.settings and restoreSettings
-        fs.writeFileSync settingsFile, JSON.stringify(data.settings, null, 2)
-      if data.sessions and restoreSessions
-        fs.writeFileSync sessionsFile, JSON.stringify(data.sessions, null, 2)
-      if data.bots and restoreBots
-        fs.writeFileSync botsFile, JSON.stringify(data.bots, null, 2)
-      if data.license and restoreLicense
-        fs.writeFileSync licenseFile, JSON.stringify(data.license, null, 2)
-      
-      console.log "Backup restored from: #{backupName}"
-      return true
-    false
+    backup = storage.getBackup(backupId)
+    return false unless backup?.data
+    
+    data = backup.data
+    restoreSettings = options.settings ? true
+    restoreSessions = options.sessions ? true
+    restoreBots = options.bots ? true
+    restoreLicense = options.license ? true
+    restoreIdentity = options.identity ? true
+    
+    if data.settings and restoreSettings
+      settings = Settings.fromJSON(data.settings)
+      saveSettings(settings)
+    if data.sessions and restoreSessions
+      sessions = SessionManager.fromJSON(data.sessions)
+      saveSessions(sessions)
+    if data.bots and restoreBots
+      storage.saveBots(data.bots)
+    if data.license and restoreLicense
+      license = License.fromJSON(data.license)
+      saveLicense(license)
+    if data.identity and restoreIdentity
+      identity = Identity.fromJSON(data.identity)
+      saveIdentity(identity)
+    
+    console.log "Backup restored: #{backupId}"
+    true
   catch e
     console.error 'Error restoring backup:', e
     false
 
-getBackupData = (backupName) ->
-  try
-    backupPath = path.join secreteDir, backupName
-    if fs.existsSync backupPath
-      JSON.parse fs.readFileSync backupPath, 'utf8'
-    else
-      null
-  catch e
-    console.error 'Error reading backup:', e
-    null
+getBackupData = (backupId) ->
+  backup = storage.getBackup(backupId)
+  backup?.data ? null
 
 listSettingsBackups = ->
-  try
-    fs.readdirSync(secreteDir)
-      .filter (f) -> f.startsWith('backup.') and f.endsWith('.json') and f isnt 'bots.json'
-      .sort()
-      .reverse()
-  catch
-    []
+  storage.getBackups().map (b) ->
+    id: b.id
+    createdAt: b.createdAt
 
 exportAllSettings = ->
-  try
-    settings = loadSettings()
-    sessions = if fs.existsSync sessionsFile then JSON.parse(fs.readFileSync sessionsFile, 'utf8') else { sessions: [] }
-    bots = loadBots()
-    license = loadLicense()
-    
-    exportData =
-      version: '1.0'
-      exportedAt: new Date().toISOString()
-      settings: settings
-      sessions: sessions
-      bots: bots
-      license: license
-    
-    exportData
-  catch e
-    console.error 'Error exporting settings:', e
-    null
+  storage.exportAll()
 
 importAllSettings = (data, options = {}) ->
-  try
-    importSettings = if options.settings? then options.settings else true
-    importSessions = if options.sessions? then options.sessions else true
-    importBots = if options.bots? then options.bots else true
-    importLicense = if options.license? then options.license else true
-    
-    if data.settings and importSettings
-      saveSettings data.settings
-    if data.sessions and importSessions
-      fs.writeFileSync sessionsFile, JSON.stringify(data.sessions, null, 2)
-    if data.bots and importBots
-      fs.writeFileSync botsFile, JSON.stringify(data.bots, null, 2)
-    if data.license and importLicense
-      saveLicense data.license
-    true
-  catch e
-    console.error 'Error importing settings:', e
-    false
+  storage.importAll(data, options)
 
 # License - using TypedStorage
 loadLicense = -> storage.getLicense()
@@ -202,42 +152,13 @@ createSession = -> storage.createSession()
 deleteSession = (sessionId) -> storage.deleteSession(sessionId)
 listSessions = -> storage.listSessions()
 
-loadAgentSessions = ->
-  try
-    if fs.existsSync agentSessionsFile
-      data = fs.readFileSync agentSessionsFile, 'utf8'
-      return JSON.parse data
-  catch e
-    console.error 'Error loading agent sessions:', e
-  {}
-
-saveAgentSessions = (sessions) ->
-  try
-    fs.mkdirSync secreteDir, { recursive: true }
-    fs.writeFileSync agentSessionsFile, JSON.stringify(sessions, null, 2)
-  catch e
-    console.error 'Error saving agent sessions:', e
-
-getAgentSession = (sessionId) ->
-  sessions = loadAgentSessions()
-  sessions[sessionId] or { id: sessionId, messages: [], openclawSessionId: sessionId, createdAt: Date.now() }
-
-addToAgentSession = (sessionId, role, content) ->
-  sessions = loadAgentSessions()
-  session = sessions[sessionId] or { id: sessionId, messages: [], openclawSessionId: sessionId }
-  session.messages.push
-    role: role
-    content: content
-    timestamp: Date.now()
-    source: 'openclaw-agent'
-  if not session.title and role == 'user'
-    session.title = content.substring(0, 50)
-  unless session.createdAt
-    session.createdAt = Date.now()
-  session.updatedAt = Date.now()
-  sessions[sessionId] = session
-  saveAgentSessions sessions
-  session
+# Agent Sessions - using TypedStorage
+loadAgentSessions = -> storage.getAgentSessions()
+saveAgentSessions = (sessions = null) -> storage.saveAgentSessions(sessions)
+getAgentSession = (sessionId) -> storage.getAgentSession(sessionId)
+addToAgentSession = (sessionId, role, content) -> storage.addAgentMessage(sessionId, role, content)
+listAgentSessions = -> storage.listAgentSessions()
+deleteAgentSession = (sessionId) -> storage.deleteAgentSession(sessionId)
 
 BOT_TEMPLATES = [
   {
@@ -547,66 +468,28 @@ createDefaultConfig = (apiKey) ->
 identityInstance = null
 
 createIdentity = ->
-  return if fs.existsSync identityFile
+  identityInstance = storage.getIdentity()
+  if fs.existsSync identityFile
+    console.log 'Identity already exists at:', identityFile
+    return
   
   console.log 'Creating identity...'
-  identityInstance = new Identity()
   fs.writeFileSync identityFile, identityInstance.getContent()
   console.log 'Identity created at:', identityFile
 
 loadIdentity = ->
-  try
-    if fs.existsSync identityFile
-      content = fs.readFileSync identityFile, 'utf8'
-      # Try to parse as JSON (new format)
-      try
-        data = JSON.parse(content)
-        if data?.__class == 'Identity'
-          identityInstance = Identity.fromJSON(data)
-        else
-          # Legacy: plain markdown text
-          identityInstance = Identity.fromString(content)
-      catch
-        # Legacy: plain markdown text
-        identityInstance = Identity.fromString(content)
-      return identityInstance
-  catch e
-    console.error 'Error loading identity:', e
-  
-  # Create default identity
-  identityInstance = new Identity()
-  return identityInstance
+  return identityInstance if identityInstance
+  identityInstance = storage.getIdentity()
+  identityInstance
 
-saveIdentity = ->
-  try
-    if identityInstance
-      fs.writeFileSync identityFile, identityInstance.getContent()
-  catch e
-    console.error 'Error saving identity:', e
+saveIdentity = (identity = null) ->
+  identityInstance = identity ? identityInstance
+  storage.saveIdentity(identityInstance)
+  if identityInstance
+    fs.writeFileSync identityFile, identityInstance.getContent()
 
 createAgentConfig = (apiKey) ->
-  key = apiKey or ''
-  
-  agentModels =
-    providers: {}
-  
-  if key
-    agentModels.providers.glm =
-      baseUrl: 'https://open.bigmodel.cn/api/paas/v4'
-      apiKey: key
-      api: 'openai-completions'
-      models: [
-        id: 'GLM-4-Flash'
-        name: 'GLM 4 Flash'
-        reasoning: false
-        input: ['text']
-        cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 }
-        contextWindow: 200000
-        maxTokens: 8192
-        api: 'openai-completions'
-      ]
-  
-  fs.writeFileSync agentModelsFile, JSON.stringify(agentModels, null, 2)
+  storage.createDefaultAgentModels(apiKey)
   
   agentMd = """# Agent Configuration
 
@@ -1168,21 +1051,15 @@ ipcMain.handle 'get-agent-session', (event, sessionId) ->
   getAgentSession sessionId
 
 ipcMain.handle 'list-agent-sessions', ->
-  loadAgentSessions()
+  listAgentSessions()
 
 ipcMain.handle 'get-history', ->
   listSessions()
 
 ipcMain.handle 'clear-history', ->
   manager = loadSessions()
-  # Clear all sessions using SessionManager
   if manager?.clearAllSessions
     manager.clearAllSessions()
-    saveSessions(manager)
-  else
-    # Legacy fallback
-    for key of manager
-      delete manager[key]
     saveSessions(manager)
   true
 
@@ -1349,8 +1226,6 @@ ipcMain.handle 'get-license-prices', ->
 
 ipcMain.handle 'activate-license', (event, plan, paymentInfo) ->
   license = loadLicense()
-  unless license
-    license = initLicense()
   
   license.paid = true
   license.plan = plan
@@ -1369,44 +1244,8 @@ ipcMain.handle 'activate-license', (event, plan, paymentInfo) ->
 
 ipcMain.handle 'add-payment', (event, paymentData) ->
   try
-    license = loadLicense()
-    unless license
-      license = initLicense()
-    
-    { amount, method, email, currency } = paymentData
-    
-    unless amount and amount > 0
-      return { success: false, error: 'Invalid amount' }
-    
-    currency = currency or 'usd'
-    
-    unless license.currency
-      license.currency = currency
-    
-    if license.currency != currency
-      return { success: false, error: "Currency mismatch. Your account uses #{license.currency}" }
-    
-    license.balance = (license.balance or 0) + amount
-    license.paid = true
-    
-    lifetimeThreshold = if currency == 'cny' then 216 else 36
-    if amount >= lifetimeThreshold
-      license.plan = 'lifetime'
-    
-    license.paymentInfo = license.paymentInfo or []
-    license.paymentInfo.push {
-      amount: amount
-      method: method
-      email: email
-      currency: currency
-      timestamp: new Date().toISOString()
-    }
-    
-    saveLicense license
-    { success: true, balance: license.balance }
-  catch e
-    console.error 'Error adding payment:', e
-    { success: false, error: e.message }
+    result = storage.addPayment(paymentData)
+    result
 
 ipcMain.handle 'get-models', ->
   MODELS
