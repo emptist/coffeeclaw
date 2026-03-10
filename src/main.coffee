@@ -294,61 +294,94 @@ getLicenseStatus = ->
     showIndicator: true
     currency: license.currency or 'usd'
 
+# Global session manager instance
+sessionManagerInstance = null
+
 loadSessions = ->
   try
     if fs.existsSync sessionsFile
       data = fs.readFileSync sessionsFile, 'utf8'
-      return JSON.parse data
+      parsed = JSON.parse data
+      # Check if already using new class format
+      if parsed?.__class == 'SessionManager'
+        sessionManagerInstance = SessionManager.fromJSON(parsed)
+      else
+        # Migrate from legacy format (object with sessionId keys)
+        sessionManagerInstance = migrateLegacySessions(parsed)
+        saveSessions()  # Save in new format immediately
+      return sessionManagerInstance
   catch e
     console.error 'Error loading sessions:', e
-  {}
+  
+  # Create new session manager
+  sessionManagerInstance = new SessionManager()
+  return sessionManagerInstance
 
-saveSessions = (sessions) ->
+migrateLegacySessions = (legacyData) ->
+  manager = new SessionManager()
+  
+  if legacyData and typeof legacyData == 'object'
+    for sessionId, legacySession of legacyData
+      try
+        # Convert legacy session to Session instance
+        session = new Session(sessionId)
+        session.title = legacySession.title or ''
+        session.messages = legacySession.messages or []
+        session.createdAt = legacySession.createdAt or Date.now()
+        session.updatedAt = legacySession.updatedAt or Date.now()
+        session.botId = legacySession.botId if legacySession.botId
+        manager.addSession(session)
+      catch e
+        console.error 'Error migrating session:', e
+  
+  manager
+
+saveSessions = (manager = null) ->
   try
     fs.mkdirSync secreteDir, { recursive: true }
-    fs.writeFileSync sessionsFile, JSON.stringify(sessions, null, 2)
+    # Use provided manager or global instance
+    managerToSave = manager or sessionManagerInstance
+    if managerToSave?.toJSON
+      fs.writeFileSync sessionsFile, JSON.stringify(managerToSave.toJSON(), null, 2)
+    else
+      fs.writeFileSync sessionsFile, JSON.stringify(managerToSave, null, 2)
   catch e
     console.error 'Error saving sessions:', e
 
 getSession = (sessionId) ->
-  sessions = loadSessions()
-  sessions[sessionId] or { id: sessionId, messages: [], createdAt: Date.now() }
+  manager = loadSessions()
+  session = manager.getSession(sessionId)
+  if not session
+    # Create new session if not exists
+    session = new Session(sessionId)
+    manager.addSession(session)
+    saveSessions()
+  session
 
 saveSession = (sessionId, session) ->
-  sessions = loadSessions()
-  session.messages = session.messages.slice -MAX_HISTORY
-  sessions[sessionId] = session
-  sessionIds = Object.keys(sessions)
-  if sessionIds.length > MAX_SESSIONS
-    oldest = sessionIds.sort((a, b) -> sessions[a].createdAt - sessions[b].createdAt)[0]
-    delete sessions[oldest]
-  saveSessions sessions
+  manager = loadSessions()
+  # Ensure messages don't exceed MAX_HISTORY
+  if session.messages?.length > MAX_HISTORY
+    session.messages = session.messages.slice(-MAX_HISTORY)
+  manager.addSession(session)
+  # Enforce MAX_SESSIONS limit
+  manager.enforceMaxSessions(MAX_SESSIONS)
+  saveSessions()
 
 addToSession = (sessionId, role, content) ->
-  session = getSession sessionId
-  unless session.messages
-    session.messages = []
-  session.messages.push
-    role: role
-    content: content
-    timestamp: Date.now()
+  session = getSession(sessionId)
+  session.addMessage(role, content)
   if not session.title and role == 'user'
     session.title = content.substring(0, 50)
-  unless session.createdAt
-    session.createdAt = Date.now()
-  session.updatedAt = Date.now()
-  saveSession sessionId, session
+  saveSession(sessionId, session)
   session
 
 createSession = ->
   sessionId = generateId()
-  session =
-    id: sessionId
-    title: ''
-    messages: []
-    createdAt: Date.now()
-    updatedAt: Date.now()
-  saveSession sessionId, session
+  session = new Session(sessionId)
+  manager = loadSessions()
+  manager.addSession(session)
+  saveSessions()
   session
 
 loadAgentSessions = ->
