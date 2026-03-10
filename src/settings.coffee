@@ -20,6 +20,7 @@ class Settings
     @activeProvider = Settings.getDefaultProvider()
     @providers = {}
     @feishu = new FeishuConfig()
+    @userEmail = null
     @_lastUpdated = new Date().toISOString()
   
   # Provider management
@@ -108,12 +109,11 @@ class Settings
     settings.token = data.token if data.token
     settings.apiKey = data.apiKey if data.apiKey
     settings.activeProvider = data.activeProvider ? Settings.getDefaultProvider()
+    settings.userEmail = data.userEmail if data.userEmail
     
-    # Migrate providers
     if data.providers
       for id, providerData of data.providers
         try
-          # Try to determine model from legacy data
           modelId = providerData.model ? 'glm-4-flash'
           model = switch id
             when 'zhipu' then new ZhipuModel(modelId)
@@ -125,7 +125,6 @@ class Settings
         catch e
           console.error "Failed to migrate provider #{id}:", e.message
     
-    # Migrate Feishu config
     if data.feishu
       settings.feishu = FeishuConfig.fromLegacy(data.feishu)
     
@@ -148,6 +147,7 @@ class Settings
       activeProvider: @activeProvider
       providers: @providers
       feishu: feishuData
+      userEmail: @userEmail
     }
   
   @fromJSON: (data) ->
@@ -157,6 +157,7 @@ class Settings
     settings.apiKey = data.apiKey
     settings.activeProvider = data.activeProvider ? Settings.getDefaultProvider()
     settings.providers = data.providers ? {}
+    settings.userEmail = data.userEmail ? null
     
     if data.feishu
       settings.feishu = FeishuConfig.fromJSON(data.feishu)

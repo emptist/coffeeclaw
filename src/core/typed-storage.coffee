@@ -523,11 +523,14 @@ class TypedStorage
   
   # Export/Import
   exportAll: ->
+    botsData = @getBots()
     {
       version: '1.0'
       exportedAt: new Date().toISOString()
       settings: @getSettings().toJSON()
-      bots: @getBots()
+      bots:
+        bots: botsData.bots.map (b) -> b.toJSON()
+        activeBotId: botsData.activeBotId
       sessions: @getSessions().toJSON()
       license: @getLicense().toJSON()
       identity: @getIdentity().toJSON()
@@ -546,7 +549,12 @@ class TypedStorage
         @saveSettings(settings)
       
       if data.bots and importBots
-        @saveBots(data.bots)
+        botsData = if data.bots.bots and data.bots.bots[0]?.__class == 'Bot'
+          bots: data.bots.bots.map (b) -> Bot.fromJSON(b)
+          activeBotId: data.bots.activeBotId
+        else
+          data.bots
+        @saveBots(botsData)
       
       if data.sessions and importSessions
         sessions = SessionManager.fromJSON(data.sessions)
