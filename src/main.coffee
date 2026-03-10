@@ -25,6 +25,11 @@ crypto = require 'crypto'
 { TypedStorage } = require './core/typed-storage'
 storage = TypedStorage.getInstance()
 
+# Import OOP managers
+{ IPCHandlers } = require './ipc-handlers'
+{ OpenClawManager } = require './openclaw-manager'
+{ APIClient } = require './api-client'
+
 openclawDir = path.join process.env.HOME, '.openclaw'
 configFile = path.join openclawDir, 'openclaw.json'
 workspaceDir = path.join openclawDir, 'workspace'
