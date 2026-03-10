@@ -27,6 +27,19 @@ class OpenClawManager
     @storage = options.storage
     @MODELS = options.models
   
+  selectProvider: (settings, bot) ->
+    isAgent = bot?.isAgent?() or bot?.model?.rawId?() == 'openclaw-agent'
+    
+    if isAgent
+      if settings.providers?.openrouter?.apiKey
+        return 'openrouter'
+      else if settings.providers?.openai?.apiKey
+        return 'openai'
+      else
+        return 'zhipu'
+    else
+      return 'zhipu'
+  
   checkRunning: ->
     new Promise (resolve) ->
       req = http.get 'http://127.0.0.1:18789/health', (res) ->
@@ -207,12 +220,15 @@ class OpenClawManager
       return await @callAgent(sessionId, message)
     
     new Promise (resolve, reject) =>
-      provider = settings.activeProvider or settings.provider or 'zhipu'
+      provider = @selectProvider(settings, bot)
       
       if settings.providers and settings.providers[provider]
         providerConfig = settings.providers[provider]
         apiKey = providerConfig.apiKey
-        rawModel = bot?.model or providerConfig.model or 'glm-4-flash'
+        if provider == 'zhipu' and not bot?.model?
+          rawModel = 'glm-4-flash'
+        else
+          rawModel = bot?.model or providerConfig.model or 'glm-4-flash'
       else
         apiKey = settings.apiKey
         rawModel = bot?.model or settings.model or 'glm-4-flash'
