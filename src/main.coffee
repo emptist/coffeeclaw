@@ -584,6 +584,23 @@ MODELS =
     baseUrl: 'api.openai.com'
     apiPath: '/v1/chat/completions'
 
+# Initialize managers now that MODELS is defined
+openClawManager = OpenClawManager.getInstance
+  openclawDir: openclawDir
+  configFile: configFile
+  workspaceDir: workspaceDir
+  identityFile: identityFile
+  agentDir: agentDir
+  agentMdFile: agentMdFile
+  agentModelsFile: agentModelsFile
+  storage: storage
+  models: MODELS
+
+apiClient = APIClient.getInstance
+  models: MODELS
+  storage: storage
+  skills: {}
+
 callOpenClawAgent = (sessionId, message) ->
   new Promise (resolve, reject) ->
     unless /^[a-zA-Z0-9_-]+$/.test sessionId
