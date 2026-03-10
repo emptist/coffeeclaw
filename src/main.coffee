@@ -1458,10 +1458,16 @@ ipcMain.handle 'get-history', ->
   listSessions()
 
 ipcMain.handle 'clear-history', ->
-  sessions = loadSessions()
-  for key of sessions
-    delete sessions[key]
-  saveSessions sessions
+  manager = loadSessions()
+  # Clear all sessions using SessionManager
+  if manager?.clearAllSessions
+    manager.clearAllSessions()
+    saveSessions(manager)
+  else
+    # Legacy fallback
+    for key of manager
+      delete manager[key]
+    saveSessions(manager)
   true
 
 ipcMain.handle 'run-setup', (event, apiKey) ->
