@@ -2,7 +2,7 @@
 
 ## Overview
 
-CoffeeClaw is an Electron-based desktop application that provides a chat interface for AI models, with integration to OpenClaw for agent capabilities.
+CoffeeClaw is an Electron-based desktop application that provides a chat interface for AI models, with integration to OpenClaw for agent capabilities and a suite of tool panels.
 
 ## Architecture
 
@@ -10,13 +10,13 @@ CoffeeClaw is an Electron-based desktop application that provides a chat interfa
 - **Frontend**: Vanilla JavaScript + HTML/CSS (in `index.html`)
 - **Backend**: Electron + CoffeeScript (in `src/`)
 - **Build**: CoffeeScript → JavaScript compilation
-- **AI Integration**: OpenClaw framework
+- **AI Integration**: OpenClaw framework with multiple providers
 
 ### File Structure
 
 ```
 coffeeclaw/
-├── index.html           # Main UI (frontend)
+├── index.html           # Main UI (frontend) - includes tool panels
 ├── src/
 │   ├── main.coffee      # Electron main process (CoffeeScript)
 │   ├── main.js          # Compiled JavaScript (generated)
@@ -26,6 +26,50 @@ coffeeclaw/
 │   └── settings.json    # CoffeeClaw's settings (API keys, etc.)
 ├── documents/           # Developer documentation
 └── AGENT_COLLAB_PLAN.md # Agent collaboration plan
+```
+
+## Tool Panels
+
+CoffeeClaw includes integrated tool panels with familiar UI designs:
+
+| Panel | Design Style | CSS Class | Features |
+|-------|--------------|-----------|----------|
+| Web Search | Google homepage | `.google-search-container` | Centered search, "I'm Feeling Lucky" |
+| GitHub | Dashboard cards | `.tool-cards-grid` | Issues, PRs, Create, Branches |
+| Feishu | Workbench grid | `.tool-cards-grid` | Messages, Docs, Drive, Wiki |
+| File | Card layout | `.tool-cards-grid` | Read, Write, Edit, Create |
+| System | Card grid | `.tool-cards-grid` | Commands, Cron, Weather, etc. |
+
+### View Switching
+
+```javascript
+// Show tool panel
+function showToolView(viewName) {
+  document.getElementById('chatContainer').style.display = 'none';
+  document.querySelectorAll('.tool-view').forEach(v => v.classList.remove('active'));
+  document.getElementById(viewName + 'View').classList.add('active');
+}
+
+// Return to chat
+function showChatView() {
+  document.getElementById('chatContainer').style.display = 'block';
+  document.querySelectorAll('.tool-view').forEach(v => v.classList.remove('active'));
+}
+```
+
+### Sidebar Structure
+
+```html
+<div class="sidebar-tabs">
+  <button class="sidebar-tab active" data-tab="sessions">💬 会话</button>
+  <button class="sidebar-tab" data-tab="tools">🧰 工具</button>
+</div>
+
+<div class="tools-list">
+  <button class="tool-btn-sidebar" data-view="search">🔍 Web 搜索</button>
+  <button class="tool-btn-sidebar" data-view="github">🐙 GitHub</button>
+  <!-- ... more tools -->
+</div>
 ```
 
 ## Startup Flow
@@ -182,6 +226,39 @@ The `save-api-key` IPC handler (now commented out) was dead code:
 ```
 config.agents.defaults.model.primary = "openrouter/auto"
 ```
+
+### OpenClaw JSON Output Parsing (v1.2.0)
+
+**Problem**: OpenClaw's `--json` output includes plugin loading logs before the JSON:
+```
+[plugins] feishu_doc: Registered feishu_doc...
+[plugins] feishu_chat: Registered feishu_chat tool...
+{"payloads": [...], "meta": {...}}
+```
+
+This caused `JSON.parse()` to fail because the output wasn't pure JSON.
+
+**Solution**: Extract JSON using regex in both frontend and backend:
+
+```javascript
+// Frontend (index.html)
+function extractOpenClawResponse(stdout) {
+  const jsonMatch = stdout.match(/\{[\s\S]*"payloads"[\s\S]*\}/);
+  if (jsonMatch) {
+    return JSON.parse(jsonMatch[0]);
+  }
+  return null;
+}
+
+// Backend (main.coffee)
+jsonMatch = stdout.match /\{[\s\S]*"payloads"[\s\S]*\}/
+if jsonMatch
+  result = JSON.parse jsonMatch[0]
+```
+
+**Affected locations**:
+- `callOpenClawAgent()` in `main.coffee` - Main chat window
+- `performSearch()`, `showFeishuMessage()`, `showFileRead()`, etc. in `index.html` - Tool panels
 
 ## Contributing
 

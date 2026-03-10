@@ -1,11 +1,13 @@
 # ☕ CoffeeClaw
 
-A desktop AI assistant powered by OpenClaw and Zhipu GLM models.
+A desktop AI assistant powered by OpenClaw and multiple AI providers.
 
 ## Features
 
 - 🖥️ Native desktop app for macOS, Windows, and Linux
 - 💬 Multi-session chat management
+- 🧰 Integrated tool panels (GitHub, Feishu, File, Web Search, etc.)
+- 🎨 Familiar UI designs (Google-style search, GitHub dashboard)
 - 🌍 Multi-language support (English, 中文, Esperanto)
 - 🔒 Secure local storage for API keys
 - 🚀 Easy setup wizard with platform detection
@@ -32,7 +34,7 @@ npm start
 
 1. Launch CoffeeClaw
 2. Click "Check System" to verify prerequisites
-3. Enter your Zhipu API key (get one free at [open.bigmodel.cn](https://open.bigmodel.cn))
+3. Enter your API key (get one free at [open.bigmodel.cn](https://open.bigmodel.cn) or use [OpenRouter](https://openrouter.ai))
 4. Start chatting!
 
 ### Prerequisites
@@ -50,14 +52,30 @@ wsl --install
 
 ## Usage
 
-### New Chat
-Click the ➕ button in the input bar to start a new conversation.
+### Chat Interface
+- Click ➕ to start a new conversation
+- Click any conversation in the sidebar to load its history
+- Press `Cmd/Ctrl + Enter` to send message
 
-### Switch Conversations
-Click any conversation in the left sidebar to load its history.
+### Tool Panels
 
-### Delete Conversation
-Click the × button on any conversation to delete it.
+Click the tool buttons in the sidebar to access specialized panels:
+
+| Tool | Design Style | Features |
+|------|--------------|----------|
+| 🔍 Web Search | Google homepage | Centered search box, "I'm Feeling Lucky" |
+| 🐙 GitHub | Dashboard cards | Issues, PRs, Create Issue/PR, Branches |
+| 📧 Feishu Workbench | Workbench grid | Messages, Documents, Drive, Wiki |
+| 📁 File Management | Card layout | Read, Write, Edit, Create files |
+| ⚙️ System Tools | Card grid | Commands, Cron, Weather, Web Fetch, Screenshot, Short URL |
+
+### Keyboard Shortcuts
+
+| Shortcut | Action |
+|----------|--------|
+| `Cmd/Ctrl + Enter` | Send message |
+| `Cmd/Ctrl + N` | New chat |
+| `Escape` | Close settings panel |
 
 ## API Configuration
 
@@ -69,15 +87,17 @@ CoffeeClaw supports multiple AI providers:
 - GLM-4-Air
 - Get API key at [open.bigmodel.cn](https://open.bigmodel.cn)
 
+### OpenRouter (Recommended for variety)
+- Access to 100+ models including Claude, GPT-4, Gemini
+- Free tier available
+- Get API key at [openrouter.ai](https://openrouter.ai)
+
 ### OpenAI
-- GPT-4o Mini
-- GPT-4o
-- GPT-4 Turbo
+- GPT-4o Mini, GPT-4o, GPT-4 Turbo
 - Get API key at [platform.openai.com](https://platform.openai.com/api-keys)
 
 ### DeepSeek
-- DeepSeek Chat
-- DeepSeek Coder
+- DeepSeek Chat, DeepSeek Coder
 - Get API key at [platform.deepseek.com](https://platform.deepseek.com)
 
 Select your preferred provider and model during setup.
@@ -102,7 +122,7 @@ openclaw gateway --dev
 
 - All API keys stored locally in `.secrete/` folder
 - Chat history stored locally in `.secrete/sessions.json`
-- No data sent to third parties except Zhipu API
+- No data sent to third parties except the AI provider API
 
 ## Development
 
@@ -127,7 +147,8 @@ npm run build:all
 
 - Electron
 - CoffeeScript
-- Zhipu GLM API
+- OpenClaw Agent Framework
+- Multiple AI Providers (Zhipu, OpenRouter, OpenAI, DeepSeek)
 
 ## License
 
@@ -137,3 +158,4 @@ MIT License - see [LICENSE](LICENSE)
 
 - [OpenClaw](https://github.com/openclaw/openclaw) - AI agent framework
 - [Zhipu AI](https://open.bigmodel.cn) - GLM language models
+- [OpenRouter](https://openrouter.ai) - Multi-model API gateway
