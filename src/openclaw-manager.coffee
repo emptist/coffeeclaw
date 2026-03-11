@@ -345,15 +345,9 @@ class OpenClawManager
     return unless settings.providers
     
     return unless @configExists()
-    return unless fs.existsSync(@storage.storage.getPath())
     
     try
-      openclawConfigMtime = fs.statSync(@configFile).mtime.getTime()
-      settingsMtime = fs.statSync(@storage.storage.getPath()).mtime.getTime()
-      
-      if settingsMtime > openclawConfigMtime
-        console.log 'CoffeeClaw settings are newer than OpenClaw config, syncing...'
-        @syncProviders(settings.providers, settings.activeProvider, settings.token)
+      @syncProviders(settings.providers, settings.activeProvider, settings.token)
     catch e
       console.error 'Failed to ensure OpenClaw config:', e
   

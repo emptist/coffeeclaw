@@ -237,7 +237,7 @@ class OpenClawConfig
       
       providers[providerId] =
         apiKey: providerData.apiKey
-        model: providerData.models?[0]?.id or 'glm-4-flash'
+        model: providerData.models?[0]?.id or ZhipuModel.DEFAULT_MODEL
     
     primaryModel = @getPrimaryModel()
     if primaryModel
