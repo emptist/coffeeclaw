@@ -4,6 +4,8 @@
 fs = require 'fs'
 path = require 'path'
 
+{ Model, ZhipuModel, OpenRouterModel, OpenAIModel } = require './model'
+
 class OpenClawConfig
   # Class properties
   @CONFIG_DIR: path.join process.env.HOME, '.openclaw'
@@ -113,6 +115,29 @@ class OpenClawConfig
   getPrimaryModel: ->
     @data.agents?.defaults?.model?.primary
   
+  # Check if a provider is configured with API key
+  hasProvider: (providerId) ->
+    openClawName = @getOpenClawName(providerId)
+    @data.models?.providers?[openClawName]?.apiKey?
+  
+  # Get OpenClaw name for a provider
+  getOpenClawName: (providerId) ->
+    switch providerId
+      when ZhipuModel.PROVIDER_NAME then ZhipuModel.OPENCLAW_NAME
+      when OpenRouterModel.PROVIDER_NAME then OpenRouterModel.OPENCLAW_NAME
+      when OpenAIModel.PROVIDER_NAME then OpenAIModel.OPENCLAW_NAME
+      else OpenClawConfig.PROVIDER_NAME_MAP[providerId] or providerId
+  
+  # Determine primary model based on available providers
+  # Always selects a model with function calling capability for agent execution
+  determinePrimaryModel: ->
+    if @hasProvider(OpenRouterModel.PROVIDER_NAME)
+      "#{OpenRouterModel.OPENCLAW_NAME}/#{OpenRouterModel.DEFAULT_MODEL}"
+    else if @hasProvider(OpenAIModel.PROVIDER_NAME)
+      "#{OpenAIModel.OPENCLAW_NAME}/#{OpenAIModel.DEFAULT_MODEL}"
+    else
+      "#{ZhipuModel.OPENCLAW_NAME}/#{ZhipuModel.DEFAULT_MODEL}"
+  
   # Set auth token
   setToken: (token) ->
     @data.gateway ?= {}
@@ -169,32 +194,26 @@ class OpenClawConfig
   syncFromSettings: (settings) ->
     return false unless settings?.providers
     
-    unless @needsSync(
-      settings.providers
-      settings.activeProvider
-      settings.token
-    )
-      return false
-    
     @backup()
     
     for providerId, providerData of settings.providers
       continue unless providerData.apiKey
       
       baseUrl = switch providerId
-        when 'zhipu' then 'https://open.bigmodel.cn/api/paas/v4'
-        when 'openai' then 'https://api.openai.com/v1'
-        when 'openrouter' then 'https://openrouter.ai/api/v1'
+        when ZhipuModel.PROVIDER_NAME then 'https://open.bigmodel.cn/api/paas/v4'
+        when OpenAIModel.PROVIDER_NAME then 'https://api.openai.com/v1'
+        when OpenRouterModel.PROVIDER_NAME then 'https://openrouter.ai/api/v1'
         else null
       
       continue unless baseUrl
       
       @setProvider(providerId, providerData.apiKey, baseUrl)
     
-    if settings.activeProvider and settings.providers[settings.activeProvider]
-      providerData = settings.providers[settings.activeProvider]
-      if providerData.model
-        @setPrimaryModel(settings.activeProvider, providerData.model)
+    primaryModel = @determinePrimaryModel()
+    @data.agents ?= {}
+    @data.agents.defaults ?= {}
+    @data.agents.defaults.model ?= {}
+    @data.agents.defaults.model.primary = primaryModel
     
     if settings.token
       @setToken(settings.token)
