@@ -2429,7 +2429,7 @@
         document.getElementById('botEditorTitle').textContent = '🤖 Edit Bot';
         document.getElementById('botNameInput').value = bot.name;
         document.getElementById('botDescInput').value = bot.description || '';
-        document.getElementById('botModelSelect').value = bot.model;
+        document.getElementById('botModelSelect').value = bot.model?.rawId ? bot.model.rawId() : bot.model;
         document.getElementById('botPromptInput').value = bot.systemPrompt;
         document.getElementById('botSkillsInput').value = bot.skills.join(', ');
         document.getElementById('deleteBotBtn').style.display = 'inline-block';

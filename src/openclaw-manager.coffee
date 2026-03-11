@@ -204,14 +204,13 @@ class OpenClawManager
     
     isAgent = bot?.isAgent?() or bot?.model?.rawId?() == 'openclaw-agent'
     
-    if isAgent
-      @storage.addAgentMessage(sessionId, 'user', message)
-      response = await @callAPI(sessionId, message, settings, bot)
-      @storage.addAgentMessage(sessionId, 'assistant', response)
-    else
-      @storage.addMessage(sessionId, 'user', message)
-      response = await @callAPI(sessionId, message, settings, bot)
-      @storage.addMessage(sessionId, 'assistant', response)
+    # Use regular session storage for all messages (including agent)
+    # Add metadata to distinguish agent messages
+    metadata = if isAgent then { source: 'openclaw-agent' } else {}
+    
+    @storage.addMessage(sessionId, 'user', message, metadata)
+    response = await @callAPI(sessionId, message, settings, bot)
+    @storage.addMessage(sessionId, 'assistant', response, metadata)
     
     response
   

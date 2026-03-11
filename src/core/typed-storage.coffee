@@ -302,9 +302,9 @@ class TypedStorage
     @saveSessions(manager)
     session
   
-  addMessage: (sessionId, role, content) ->
+  addMessage: (sessionId, role, content, metadata = {}) ->
     session = @getSession(sessionId)
-    session.addMessage(role, content)
+    session.addMessage(role, content, metadata)
     session.title = content.substring(0, 50) if role == 'user' and not session.title
     manager = @getSessions()
     @saveSessions(manager)

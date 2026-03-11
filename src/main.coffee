@@ -1291,8 +1291,7 @@ syncFeishuConfigToOpenClaw = ->
       groupPolicy: settings.feishu.groupPolicy or 'open'
     
     config.plugins ?= {}
-    config.plugins.entries ?= {}
-    config.plugins.entries.feishu = { enabled: true }
+    config.plugins.allow ?= ['feishu']
     
     if settings.apiKey
       config.models ?= {}
