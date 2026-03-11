@@ -8,7 +8,8 @@ http = require 'http'
 https = require 'https'
 crypto = require 'crypto'
 
-{ Model } = require './model'
+{ Model, ZhipuModel, OpenRouterModel, OpenAIModel } = require './model'
+{ OpenClawConfig } = require './openclaw-config'
 
 class OpenClawManager
   @instance = null
@@ -31,14 +32,14 @@ class OpenClawManager
     isAgent = bot?.isAgent?() or bot?.model?.rawId?() == 'openclaw-agent'
     
     if isAgent
-      if settings.providers?.openrouter?.apiKey
-        return 'openrouter'
-      else if settings.providers?.openai?.apiKey
-        return 'openai'
+      if settings.providers?[OpenRouterModel.PROVIDER_NAME]?.apiKey
+        return OpenRouterModel.PROVIDER_NAME
+      else if settings.providers?[OpenAIModel.PROVIDER_NAME]?.apiKey
+        return OpenAIModel.PROVIDER_NAME
       else
-        return 'zhipu'
+        return ZhipuModel.PROVIDER_NAME
     else
-      return 'zhipu'
+      return ZhipuModel.PROVIDER_NAME
   
   checkRunning: ->
     new Promise (resolve) ->
@@ -300,46 +301,13 @@ class OpenClawManager
   
   syncProviders: (providers, activeProvider, token) ->
     try
-      config = {}
-      if fs.existsSync @configFile
-        config = JSON.parse fs.readFileSync @configFile, 'utf8'
+      openClawConfig = new OpenClawConfig()
       
-      config.models ?= {}
-      config.models.providers ?= {}
+      settings =
+        providers: providers
+        token: token
       
-      providerNameMap =
-        zhipu: 'glm'
-        openrouter: 'openrouter'
-        openai: 'openai'
-      
-      for providerId, providerData of providers
-        continue unless providerData.apiKey
-        openClawName = providerNameMap[providerId] or providerId
-        
-        config.models.providers[openClawName] =
-          baseUrl: @getProviderBaseUrl(providerId)
-          apiKey: providerData.apiKey
-          api: 'openai-completions'
-          models: @getProviderModels(providerId)
-      
-      if providers?.openrouter?.apiKey
-        primaryModel = 'openrouter/auto'
-      else if providers?.openai?.apiKey
-        primaryModel = 'openai/gpt-4o'
-      else
-        primaryModel = 'glm/GLM-4-Flash'
-      
-      config.agents ?= {}
-      config.agents.defaults ?= {}
-      config.agents.defaults.model ?= {}
-      config.agents.defaults.model.primary = primaryModel
-      
-      if token
-        config.gateway ?= {}
-        config.gateway.auth ?= {}
-        config.gateway.auth.token = token
-      
-      fs.writeFileSync @configFile, JSON.stringify(config, null, 2)
+      openClawConfig.syncFromSettings(settings)
       console.log 'Providers synced to OpenClaw config'
       true
     catch e
@@ -347,27 +315,30 @@ class OpenClawManager
       false
   
   getProviderBaseUrl: (providerId) ->
-    urls =
-      zhipu: 'https://open.bigmodel.cn/api/paas/v4'
-      openrouter: 'https://openrouter.ai/api/v1'
-      openai: 'https://api.openai.com/v1'
-    urls[providerId] or ''
+    switch providerId
+      when ZhipuModel.PROVIDER_NAME then 'https://open.bigmodel.cn/api/paas/v4'
+      when OpenRouterModel.PROVIDER_NAME then 'https://openrouter.ai/api/v1'
+      when OpenAIModel.PROVIDER_NAME then 'https://api.openai.com/v1'
+      else ''
   
   getProviderModels: (providerId) ->
-    models =
-      zhipu: [
-        { id: 'GLM-4-Flash', name: 'GLM 4 Flash' }
-        { id: 'GLM-4.5-air', name: 'GLM 4.5 air' }
-        { id: 'GLM-4.7', name: 'GLM 4.7' }
-      ]
-      openrouter: [
-        { id: 'auto', name: 'Auto' }
-      ]
-      openai: [
-        { id: 'gpt-4o', name: 'GPT-4o' }
-        { id: 'gpt-4o-mini', name: 'GPT-4o Mini' }
-      ]
-    models[providerId] or []
+    switch providerId
+      when ZhipuModel.PROVIDER_NAME
+        [
+          { id: ZhipuModel.DEFAULT_MODEL, name: 'GLM 4 Flash' }
+          { id: 'GLM-4.5-air', name: 'GLM 4.5 air' }
+          { id: 'GLM-4.7', name: 'GLM 4.7' }
+        ]
+      when OpenRouterModel.PROVIDER_NAME
+        [
+          { id: OpenRouterModel.DEFAULT_MODEL, name: 'Auto' }
+        ]
+      when OpenAIModel.PROVIDER_NAME
+        [
+          { id: OpenAIModel.DEFAULT_MODEL, name: 'GPT-4o' }
+          { id: 'gpt-4o-mini', name: 'GPT-4o Mini' }
+        ]
+      else []
   
   ensureConfig: ->
     settings = @storage.getSettings()
