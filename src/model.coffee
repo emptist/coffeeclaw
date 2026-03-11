@@ -68,6 +68,7 @@ class ZhipuModel extends Model
   @PROVIDER_NAME: 'zhipu'
   @OPENCLAW_NAME: 'glm'
   @DEFAULT_API_PATH: '/api/paas/v4/chat/completions'
+  @DEFAULT_MODEL: 'GLM-4-Flash'
   
   constructor: (id) ->
     super(id)
@@ -97,6 +98,7 @@ class OpenAIModel extends Model
   @PROVIDER_NAME: 'openai'
   @OPENCLAW_NAME: 'openai'
   @DEFAULT_API_PATH: '/v1/chat/completions'
+  @DEFAULT_MODEL: 'gpt-4o'
   
   constructor: (id) ->
     super(id)
@@ -126,6 +128,7 @@ class OpenRouterModel extends Model
   @PROVIDER_NAME: 'openrouter'
   @OPENCLAW_NAME: 'openrouter'
   @DEFAULT_API_PATH: '/api/v1/chat/completions'
+  @DEFAULT_MODEL: 'auto'
   
   constructor: (id) ->
     super(id)
