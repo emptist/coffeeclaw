@@ -168,7 +168,11 @@ Replace all hardcoded 'zhipu', 'openrouter', 'openai' with Model class constants
 - [x] Step 4: Update OpenClawManager.syncProviders()
 - [x] Step 5: Keep selectProvider(bot) in OpenClawManager
 - [x] Step 6: Remove hardcoded strings
-- [ ] Testing
+- [x] Testing - Verified:
+  - Only one backup created on startup (no repeated syncing)
+  - Primary model correctly set to openrouter/auto
+  - Providers synced correctly from OpenClaw config
+  - No hardcoded provider names or model IDs remain
 
 ---
 

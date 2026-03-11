@@ -4,7 +4,7 @@
 https = require 'https'
 http = require 'http'
 
-{ Model } = require './model'
+{ Model, ZhipuModel, OpenRouterModel } = require './model'
 
 class APIClient
   @instance = null
@@ -18,20 +18,20 @@ class APIClient
     @skills = options.skills or {}
   
   call: (sessionId, message, settings, bot = null) ->
-    rawModel = bot?.model or settings.model or 'glm-4-flash'
+    rawModel = bot?.model or settings.model or ZhipuModel.DEFAULT_MODEL
     
     if rawModel == 'modelclaw-agent' or bot?.isAgent
       throw new Error 'Use OpenClawManager.callAgent for agent calls'
     
-    provider = settings.activeProvider or settings.provider or 'zhipu'
+    provider = settings.activeProvider or settings.provider or ZhipuModel.PROVIDER_NAME
     
     if settings.providers and settings.providers[provider]
       providerConfig = settings.providers[provider]
       apiKey = providerConfig.apiKey
-      rawModel = bot?.model or providerConfig.model or 'glm-4-flash'
+      rawModel = bot?.model or providerConfig.model or ZhipuModel.DEFAULT_MODEL
     else
       apiKey = settings.apiKey
-      rawModel = bot?.model or settings.model or 'glm-4-flash'
+      rawModel = bot?.model or settings.model or ZhipuModel.DEFAULT_MODEL
     
     modelInstance = if typeof rawModel == 'object' and rawModel?.apiId
       rawModel
@@ -88,7 +88,7 @@ class APIClient
           'Authorization': "Bearer #{apiKey}"
           'Content-Length': Buffer.byteLength(postDataStr)
       
-      if provider == 'openrouter'
+      if provider == OpenRouterModel.PROVIDER_NAME
         options.headers['HTTP-Referer'] = 'https://coffeeclaw.app'
         options.headers['X-Title'] = 'CoffeeClaw'
 
@@ -128,13 +128,13 @@ class APIClient
       req.end()
   
   callWithMessages: (sessionId, messages, settings, bot, apiKey) ->
-    provider = settings.activeProvider or settings.provider or 'zhipu'
+    provider = settings.activeProvider or settings.provider or ZhipuModel.PROVIDER_NAME
     
     if settings.providers and settings.providers[provider]
       providerConfig = settings.providers[provider]
       apiKey = providerConfig.apiKey
     
-    rawModel = bot?.model or settings.model or 'glm-4-flash'
+    rawModel = bot?.model or settings.model or ZhipuModel.DEFAULT_MODEL
     modelInstance = if typeof rawModel == 'object' and rawModel?.apiId
       rawModel
     else

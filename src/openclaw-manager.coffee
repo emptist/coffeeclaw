@@ -103,9 +103,9 @@ class OpenClawManager
       agents:
         defaults:
           model:
-            primary: 'glm/glm-4-flash'
+            primary: "#{ZhipuModel.OPENCLAW_NAME}/#{ZhipuModel.DEFAULT_MODEL}"
           models:
-            'glm/glm-4-flash': {}
+            "#{ZhipuModel.OPENCLAW_NAME}/#{ZhipuModel.DEFAULT_MODEL}": {}
           compaction:
             mode: 'safeguard'
       commands:
@@ -216,7 +216,7 @@ class OpenClawManager
     response
   
   callAPI: (sessionId, message, settings, bot = null) ->
-    rawModel = bot?.model or settings.model or 'glm-4-flash'
+    rawModel = bot?.model or settings.model or ZhipuModel.DEFAULT_MODEL
     
     if (typeof rawModel == 'string' and rawModel == 'openclaw-agent') or bot?.isAgent?()
       return await @callAgent(sessionId, message)
@@ -227,13 +227,13 @@ class OpenClawManager
       if settings.providers and settings.providers[provider]
         providerConfig = settings.providers[provider]
         apiKey = providerConfig.apiKey
-        if provider == 'zhipu' and not bot?.model?
-          rawModel = 'glm-4-flash'
+        if provider == ZhipuModel.PROVIDER_NAME and not bot?.model?
+          rawModel = ZhipuModel.DEFAULT_MODEL
         else
-          rawModel = bot?.model or providerConfig.model or 'glm-4-flash'
+          rawModel = bot?.model or providerConfig.model or ZhipuModel.DEFAULT_MODEL
       else
         apiKey = settings.apiKey
-        rawModel = bot?.model or settings.model or 'glm-4-flash'
+        rawModel = bot?.model or settings.model or ZhipuModel.DEFAULT_MODEL
       
       modelInstance = if typeof rawModel == 'object' and rawModel?.apiId
         rawModel
@@ -276,7 +276,7 @@ class OpenClawManager
           'Authorization': "Bearer #{apiKey}"
           'Content-Length': Buffer.byteLength(postData)
       
-      if provider == 'openrouter'
+      if provider == OpenRouterModel.PROVIDER_NAME
         options.headers['HTTP-Referer'] = 'https://coffeeclaw.app'
         options.headers['X-Title'] = 'CoffeeClaw'
 

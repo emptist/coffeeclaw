@@ -179,7 +179,7 @@ BOT_TEMPLATES = [
     id: 'code-helper'
     name: 'Code Helper'
     description: 'Expert assistant for Swift, CoffeeScript, and Python development'
-    model: 'glm-4-flash'
+    model: ZhipuModel.DEFAULT_MODEL
     systemPrompt: 'You are an expert software developer specializing in Swift, CoffeeScript, and Python. When asked about files or code, ALWAYS use your available tools FIRST: use list_files to explore directories, read_file to read source code, and execute for shell commands. Do not give generic answers - read the actual files and provide specific insights. Help with coding tasks, debugging, code review, and best practices. Always provide clean, well-commented code examples.'
     skills: ['fs', 'code', 'git']
   }
@@ -187,7 +187,7 @@ BOT_TEMPLATES = [
     id: 'writer'
     name: 'Creative Writer'
     description: 'Creative writing assistant for content creation'
-    model: 'glm-4-flash'
+    model: ZhipuModel.DEFAULT_MODEL
     systemPrompt: 'You are a creative writing assistant. You help with blog posts, articles, stories, and other content. You have excellent grammar and style. You can adapt to different tones and audiences. Always be creative and engaging.'
     skills: ['*']
   }
@@ -195,7 +195,7 @@ BOT_TEMPLATES = [
     id: 'translator'
     name: 'Translator'
     description: 'Multilingual translation assistant'
-    model: 'glm-4-flash'
+    model: ZhipuModel.DEFAULT_MODEL
     systemPrompt: 'You are a professional translator. You translate text accurately while preserving meaning, tone, and cultural context. You support English, Chinese, and Esperanto. Always ask for clarification if the source text is ambiguous.'
     skills: ['*']
   }
@@ -422,9 +422,9 @@ createDefaultConfig = (apiKey) ->
     agents:
       defaults:
         model:
-          primary: 'glm/glm-4-flash'
+          primary: "#{ZhipuModel.OPENCLAW_NAME}/#{ZhipuModel.DEFAULT_MODEL}"
         models:
-          'glm/glm-4-flash': {}
+          "#{ZhipuModel.OPENCLAW_NAME}/#{ZhipuModel.DEFAULT_MODEL}": {}
         compaction:
           mode: 'safeguard'
     commands:
@@ -559,7 +559,7 @@ MODELS =
   zhipu:
     name: 'Zhipu GLM'
     models: [
-      { id: 'glm-4-flash', name: 'GLM-4-Flash (Free)', free: true, functionCalling: true, agentCapable: false }
+      { id: ZhipuModel.DEFAULT_MODEL, name: 'GLM-4-Flash (Free)', free: true, functionCalling: true, agentCapable: false }
       { id: 'glm-4-plus', name: 'GLM-4-Plus', agentCapable: false }
       { id: 'glm-4-air', name: 'GLM-4-Air', agentCapable: false }
     ]
@@ -568,7 +568,7 @@ MODELS =
   openrouter:
     name: 'OpenRouter'
     models: [
-      { id: 'openrouter/auto', name: 'Auto (Free: 50 req/day)', free: true, freeLimit: '50/day', agentCapable: true }
+      { id: OpenRouterModel.DEFAULT_MODEL, name: 'Auto (Free: 50 req/day)', free: true, freeLimit: '50/day', agentCapable: true }
       { id: 'google/gemini-2.0-flash-001', name: 'Gemini 2.0 Flash', free: true, freeLimit: '50/day', agentCapable: true }
       { id: 'meta-llama/llama-3.3-70b-instruct', name: 'Llama 3.3 70B', free: true, freeLimit: '50/day', agentCapable: true }
     ]
@@ -578,7 +578,7 @@ MODELS =
     name: 'OpenAI'
     models: [
       { id: 'gpt-4o-mini', name: 'GPT-4o Mini', agentCapable: true }
-      { id: 'gpt-4o', name: 'GPT-4o', agentCapable: true }
+      { id: OpenAIModel.DEFAULT_MODEL, name: 'GPT-4o', agentCapable: true }
       { id: 'gpt-4-turbo', name: 'GPT-4 Turbo', agentCapable: true }
     ]
     baseUrl: 'api.openai.com'
@@ -648,21 +648,21 @@ callOpenClawAgent = (sessionId, message) ->
         reject new Error "Command exited with code #{code}: #{stderr}"
 
 callAPI = (sessionId, message, settings, bot = null) ->
-  rawModel = bot?.model or settings.model or 'glm-4-flash'
+  rawModel = bot?.model or settings.model or ZhipuModel.DEFAULT_MODEL
   
   if rawModel == 'openclaw-agent' or bot?.isAgent
     return await callOpenClawAgent(sessionId, message)
   
   new Promise (resolve, reject) ->
-    provider = settings.activeProvider or settings.provider or 'zhipu'
+    provider = settings.activeProvider or settings.provider or ZhipuModel.PROVIDER_NAME
     
     if settings.providers and settings.providers[provider]
       providerConfig = settings.providers[provider]
       apiKey = providerConfig.apiKey
-      rawModel = bot?.model or providerConfig.model or 'glm-4-flash'
+      rawModel = bot?.model or providerConfig.model or ZhipuModel.DEFAULT_MODEL
     else
       apiKey = settings.apiKey
-      rawModel = bot?.model or settings.model or 'glm-4-flash'
+      rawModel = bot?.model or settings.model or ZhipuModel.DEFAULT_MODEL
     
     # Convert to Model instance and use apiId() for correct format
     modelInstance = if typeof rawModel == 'object' and rawModel?.apiId
@@ -714,7 +714,7 @@ callAPI = (sessionId, message, settings, bot = null) ->
         'Authorization': "Bearer #{apiKey}"
         'Content-Length': Buffer.byteLength(postData)
     
-    if provider == 'openrouter'
+    if provider == OpenRouterModel.PROVIDER_NAME
       options.headers['HTTP-Referer'] = 'https://coffeeclaw.app'
       options.headers['X-Title'] = 'CoffeeClaw'
 
@@ -758,13 +758,13 @@ callAPI = (sessionId, message, settings, bot = null) ->
 
 callAPIWithMessages = (sessionId, messages, settings, bot, apiKey) ->
   new Promise (resolve, reject) ->
-    provider = settings.activeProvider or settings.provider or 'zhipu'
+    provider = settings.activeProvider or settings.provider or ZhipuModel.PROVIDER_NAME
     
     if settings.providers and settings.providers[provider]
       providerConfig = settings.providers[provider]
-      rawModel = bot?.model or providerConfig.model or 'glm-4-flash'
+      rawModel = bot?.model or providerConfig.model or ZhipuModel.DEFAULT_MODEL
     else
-      rawModel = bot?.model or settings.model or 'glm-4-flash'
+      rawModel = bot?.model or settings.model or ZhipuModel.DEFAULT_MODEL
     
     # Convert to Model instance and use apiId() for correct format
     modelInstance = if typeof rawModel == 'object' and rawModel?.apiId
@@ -793,7 +793,7 @@ callAPIWithMessages = (sessionId, messages, settings, bot, apiKey) ->
         'Authorization': "Bearer #{apiKey}"
         'Content-Length': Buffer.byteLength(postData)
     
-    if provider == 'openrouter'
+    if provider == OpenRouterModel.PROVIDER_NAME
       options.headers['HTTP-Referer'] = 'https://coffeeclaw.app'
       options.headers['X-Title'] = 'CoffeeClaw'
 
@@ -1091,13 +1091,12 @@ ipcMain.handle 'get-settings', ->
   loadSettings()
 
 # Mapping from CoffeeClaw provider names to OpenClaw provider names
-# CoffeeClaw uses: zhipu, openrouter, openai, deepseek
-# OpenClaw uses: glm, openrouter, openai, deepseek (same except zhipu→glm)
-PROVIDER_NAME_MAP =
-  zhipu: 'glm'
-  openrouter: 'openrouter'
-  openai: 'openai'
-  deepseek: 'deepseek'
+# CoffeeClaw uses: zhipu, openrouter, openai
+# OpenClaw uses: glm, openrouter, openai (same except zhipu→glm)
+PROVIDER_NAME_MAP = {}
+PROVIDER_NAME_MAP[ZhipuModel.PROVIDER_NAME] = ZhipuModel.OPENCLAW_NAME
+PROVIDER_NAME_MAP[OpenRouterModel.PROVIDER_NAME] = OpenRouterModel.OPENCLAW_NAME
+PROVIDER_NAME_MAP[OpenAIModel.PROVIDER_NAME] = OpenAIModel.OPENCLAW_NAME
 
 # Get the OpenClaw-compatible provider config from MODELS
 getOpenClawProviderConfig = (providerId, apiKey) ->
@@ -1114,7 +1113,7 @@ getOpenClawProviderConfig = (providerId, apiKey) ->
       name: m.name
   
   # Special handling for zhipu (glm) - use full API path
-  if providerId is 'zhipu'
+  if providerId is ZhipuModel.PROVIDER_NAME
     providerConfig.baseUrl = "https://open.bigmodel.cn/api/paas/v4"
   
   providerConfig

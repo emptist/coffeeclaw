@@ -10,10 +10,13 @@ class OpenClawConfig
   # Class properties
   @CONFIG_DIR: path.join process.env.HOME, '.openclaw'
   @CONFIG_FILE: path.join process.env.HOME, '.openclaw', 'openclaw.json'
-  @PROVIDER_NAME_MAP:
-    zhipu: 'glm'
-    openrouter: 'openrouter'
-    openai: 'openai'
+  
+  @getProviderNameMap: ->
+    map = {}
+    map[ZhipuModel.PROVIDER_NAME] = ZhipuModel.OPENCLAW_NAME
+    map[OpenRouterModel.PROVIDER_NAME] = OpenRouterModel.OPENCLAW_NAME
+    map[OpenAIModel.PROVIDER_NAME] = OpenAIModel.OPENCLAW_NAME
+    map
   
   constructor: ->
     @data = @load()
@@ -65,14 +68,14 @@ class OpenClawConfig
   
   # Get provider config for OpenClaw
   getProviderConfig: (providerId) ->
-    openClawName = OpenClawConfig.PROVIDER_NAME_MAP[providerId]
+    openClawName = OpenClawConfig.getProviderNameMap()[providerId]
     return null unless openClawName
     
     @data.models?.providers?[openClawName]
   
   # Set provider config
   setProvider: (providerId, apiKey, baseUrl, api = 'openai-completions') ->
-    openClawName = OpenClawConfig.PROVIDER_NAME_MAP[providerId]
+    openClawName = OpenClawConfig.getProviderNameMap()[providerId]
     return false unless openClawName
     
     @data.models ?= {}
@@ -88,7 +91,7 @@ class OpenClawConfig
   
   # Set primary model
   setPrimaryModel: (providerId, modelId) ->
-    openClawName = OpenClawConfig.PROVIDER_NAME_MAP[providerId]
+    openClawName = OpenClawConfig.getProviderNameMap()[providerId]
     return false unless openClawName
     
     # Handle both string and Model instance
@@ -126,7 +129,7 @@ class OpenClawConfig
       when ZhipuModel.PROVIDER_NAME then ZhipuModel.OPENCLAW_NAME
       when OpenRouterModel.PROVIDER_NAME then OpenRouterModel.OPENCLAW_NAME
       when OpenAIModel.PROVIDER_NAME then OpenAIModel.OPENCLAW_NAME
-      else OpenClawConfig.PROVIDER_NAME_MAP[providerId] or providerId
+      else OpenClawConfig.getProviderNameMap()[providerId] or providerId
   
   # Determine primary model based on available providers
   # Always selects a model with function calling capability for agent execution
@@ -158,9 +161,11 @@ class OpenClawConfig
   needsSync: (providers, activeProvider, token) ->
     return true unless @exists()
     
+    nameMap = OpenClawConfig.getProviderNameMap()
+    
     # Check providers
     for providerId, providerData of providers
-      openClawName = OpenClawConfig.PROVIDER_NAME_MAP[providerId]
+      openClawName = nameMap[providerId]
       continue unless openClawName
       
       existing = @data.models?.providers?[openClawName]
@@ -170,7 +175,7 @@ class OpenClawConfig
     # Check active provider / primary model
     if activeProvider and providers[activeProvider]
       currentPrimary = @getPrimaryModel()
-      openClawName = OpenClawConfig.PROVIDER_NAME_MAP[activeProvider]
+      openClawName = nameMap[activeProvider]
       if openClawName
         rawModelId = providers[activeProvider].model
         # Handle both string and Model instance
@@ -231,10 +236,10 @@ class OpenClawConfig
     providers = {}
     activeProvider = null
     
-    providerNameMap =
-      glm: 'zhipu'
-      openrouter: 'openrouter'
-      openai: 'openai'
+    providerNameMap = {}
+    providerNameMap[ZhipuModel.OPENCLAW_NAME] = ZhipuModel.PROVIDER_NAME
+    providerNameMap[OpenRouterModel.OPENCLAW_NAME] = OpenRouterModel.PROVIDER_NAME
+    providerNameMap[OpenAIModel.OPENCLAW_NAME] = OpenAIModel.PROVIDER_NAME
     
     for openClawName, providerData of @data.models?.providers or {}
       providerId = providerNameMap[openClawName]

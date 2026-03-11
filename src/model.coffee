@@ -44,9 +44,9 @@ class Model
   # Factory method to create correct subclass from JSON
   @fromJSON: (data) ->
     switch data.provider
-      when 'zhipu' then ZhipuModel.fromJSON(data)
-      when 'openai' then OpenAIModel.fromJSON(data)
-      when 'openrouter' then OpenRouterModel.fromJSON(data)
+      when ZhipuModel.PROVIDER_NAME then ZhipuModel.fromJSON(data)
+      when OpenAIModel.PROVIDER_NAME then OpenAIModel.fromJSON(data)
+      when OpenRouterModel.PROVIDER_NAME then OpenRouterModel.fromJSON(data)
       else throw new Error("Unknown provider: #{data.provider}")
   
   # Factory method to create model instance from model ID and provider
@@ -58,9 +58,9 @@ class Model
       cleanId = parts[parts.length - 1]
     
     switch provider
-      when 'zhipu' then new ZhipuModel(cleanId)
-      when 'openai' then new OpenAIModel(cleanId)
-      when 'openrouter' then new OpenRouterModel(cleanId)
+      when ZhipuModel.PROVIDER_NAME then new ZhipuModel(cleanId)
+      when OpenAIModel.PROVIDER_NAME then new OpenAIModel(cleanId)
+      when OpenRouterModel.PROVIDER_NAME then new OpenRouterModel(cleanId)
       else throw new Error("Unknown provider: #{provider}")
 
 # Zhipu AI (智谱AI)

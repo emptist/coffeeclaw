@@ -1,7 +1,7 @@
 # Bot class for managing AI assistants
 # Each bot has a specific model and configuration
 
-{ Model } = require './model'
+{ Model, ZhipuModel } = require './model'
 
 class Bot
   # Class properties
@@ -33,12 +33,11 @@ class Bot
     true
   
   @createDefaultBot: ->
-    { ZhipuModel } = require './model'
     new Bot(
       'default'
       'Assistant'
       'A helpful AI assistant'
-      new ZhipuModel('glm-4-flash')
+      new ZhipuModel(ZhipuModel.DEFAULT_MODEL)
       'You are a helpful assistant.'
       Bot.DEFAULT_SKILLS
     )
@@ -59,7 +58,7 @@ class Bot
           @[key] = value
         when 'model'
           if typeof value == 'string'
-            @[key] = Model.create(value, @model?.provider ? 'zhipu')
+            @[key] = Model.create(value, @model?.provider ? ZhipuModel.PROVIDER_NAME)
           else if value?.toJSON
             @[key] = value
           else if value?.id

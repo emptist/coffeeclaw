@@ -9,7 +9,7 @@ path = require 'path'
 { Session, SessionManager } = require '../session'
 { License } = require '../license'
 { Identity } = require '../identity'
-{ Model } = require '../model'
+{ Model, ZhipuModel } = require '../model'
 { OpenClawConfig } = require '../openclaw-config'
 
 class TypedStorage
@@ -156,7 +156,7 @@ class TypedStorage
     if data?.bots and Array.isArray(data.bots)
       for botData in data.bots
         try
-          model = Model.create(botData.model ? 'glm-4-flash', 'zhipu')
+          model = Model.create(botData.model ? ZhipuModel.DEFAULT_MODEL, ZhipuModel.PROVIDER_NAME)
           bot = new Bot(
             botData.id
             botData.name
@@ -204,7 +204,7 @@ class TypedStorage
     
     bots = @getBots()
     id = Date.now().toString(36) + Math.random().toString(36).substr(2, 9)
-    model = config.model ? Model.create('glm-4-flash', 'zhipu')
+    model = config.model ? Model.create(ZhipuModel.DEFAULT_MODEL, ZhipuModel.PROVIDER_NAME)
     
     bot = new Bot(
       id

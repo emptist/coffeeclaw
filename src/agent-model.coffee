@@ -113,7 +113,7 @@ class AgentModel
     { ZhipuModel } = require './model'
     
     # Determine model from legacy data
-    modelId = data.model ? 'glm-4-flash'
+    modelId = data.model ? ZhipuModel.DEFAULT_MODEL
     model = new ZhipuModel(modelId)
     
     agent = new AgentModel(data.id, data.name, data.description, model)

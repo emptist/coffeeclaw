@@ -114,11 +114,11 @@ class Settings
     if data.providers
       for id, providerData of data.providers
         try
-          modelId = providerData.model ? 'glm-4-flash'
+          modelId = providerData.model ? ZhipuModel.DEFAULT_MODEL
           model = switch id
-            when 'zhipu' then new ZhipuModel(modelId)
-            when 'openai' then new OpenAIModel(modelId)
-            when 'openrouter' then new OpenRouterModel(modelId)
+            when ZhipuModel.PROVIDER_NAME then new ZhipuModel(modelId)
+            when OpenAIModel.PROVIDER_NAME then new OpenAIModel(modelId)
+            when OpenRouterModel.PROVIDER_NAME then new OpenRouterModel(modelId)
             else new ZhipuModel(modelId)
           
           settings.setProvider(id, providerData.apiKey, model)

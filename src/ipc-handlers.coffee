@@ -6,6 +6,8 @@
 fs = require 'fs'
 path = require 'path'
 
+{ ZhipuModel } = require './model'
+
 class IPCHandlers
   constructor: (@dependencies) ->
     @storage = @dependencies.storage
@@ -321,7 +323,7 @@ class IPCHandlers
         id: 'code-helper'
         name: 'Code Helper'
         description: 'Expert assistant for Swift, CoffeeScript, and Python development'
-        model: 'glm-4-flash'
+        model: ZhipuModel.DEFAULT_MODEL
         systemPrompt: 'You are an expert software developer specializing in Swift, CoffeeScript, and Python. When asked about files or code, ALWAYS use your available tools FIRST: use list_files to explore directories, read_file to read source code, and execute for shell commands. Do not give generic answers - read the actual files and provide specific insights. Help with coding tasks, debugging, code review, and best practices. Always provide clean, well-commented code examples.'
         skills: ['fs', 'code', 'git']
       }
@@ -329,7 +331,7 @@ class IPCHandlers
         id: 'writer'
         name: 'Creative Writer'
         description: 'Creative writing assistant for content creation'
-        model: 'glm-4-flash'
+        model: ZhipuModel.DEFAULT_MODEL
         systemPrompt: 'You are a creative writing assistant. You help with blog posts, articles, stories, and other content. You have excellent grammar and style. You can adapt to different tones and audiences. Always be creative and engaging.'
         skills: ['*']
       }
@@ -337,7 +339,7 @@ class IPCHandlers
         id: 'translator'
         name: 'Translator'
         description: 'Multilingual translation assistant'
-        model: 'glm-4-flash'
+        model: ZhipuModel.DEFAULT_MODEL
         systemPrompt: 'You are a professional translator. You translate text accurately while preserving meaning, tone, and cultural context. You support English, Chinese, and Esperanto. Always ask for clarification if the source text is ambiguous.'
         skills: ['*']
       }
