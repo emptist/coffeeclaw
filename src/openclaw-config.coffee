@@ -194,6 +194,12 @@ class OpenClawConfig
   syncFromSettings: (settings) ->
     return false unless settings?.providers
     
+    currentPrimary = @getPrimaryModel()
+    newPrimary = @determinePrimaryModel()
+    
+    if currentPrimary == newPrimary
+      return false
+    
     @backup()
     
     for providerId, providerData of settings.providers
@@ -209,11 +215,10 @@ class OpenClawConfig
       
       @setProvider(providerId, providerData.apiKey, baseUrl)
     
-    primaryModel = @determinePrimaryModel()
     @data.agents ?= {}
     @data.agents.defaults ?= {}
     @data.agents.defaults.model ?= {}
-    @data.agents.defaults.model.primary = primaryModel
+    @data.agents.defaults.model.primary = newPrimary
     
     if settings.token
       @setToken(settings.token)

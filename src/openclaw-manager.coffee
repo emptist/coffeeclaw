@@ -27,6 +27,7 @@ class OpenClawManager
     @agentModelsFile = options.agentModelsFile or path.join(@agentDir, 'models.json')
     @storage = options.storage
     @MODELS = options.models
+    @_synced = false
   
   selectProvider: (settings, bot) ->
     isAgent = bot?.isAgent?() or bot?.model?.rawId?() == 'openclaw-agent'
@@ -341,6 +342,8 @@ class OpenClawManager
       else []
   
   ensureConfig: ->
+    return if @_synced
+    
     settings = @storage.getSettings()
     return unless settings.providers
     
@@ -348,6 +351,7 @@ class OpenClawManager
     
     try
       @syncProviders(settings.providers, settings.activeProvider, settings.token)
+      @_synced = true
     catch e
       console.error 'Failed to ensure OpenClaw config:', e
   
