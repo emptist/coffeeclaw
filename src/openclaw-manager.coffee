@@ -308,9 +308,10 @@ class OpenClawManager
         providers: providers
         token: token
       
-      openClawConfig.syncFromSettings(settings)
-      console.log 'Providers synced to OpenClaw config'
-      true
+      result = openClawConfig.syncFromSettings(settings)
+      if result
+        console.log 'Providers synced to OpenClaw config'
+      result
     catch e
       console.error 'Failed to sync providers to OpenClaw:', e
       false
@@ -350,8 +351,8 @@ class OpenClawManager
     return unless @configExists()
     
     try
-      @syncProviders(settings.providers, settings.activeProvider, settings.token)
-      @_synced = true
+      result = @syncProviders(settings.providers, settings.activeProvider, settings.token)
+      @_synced = true if result
     catch e
       console.error 'Failed to ensure OpenClaw config:', e
   
