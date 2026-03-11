@@ -162,12 +162,12 @@ Replace all hardcoded 'zhipu', 'openrouter', 'openai' with Model class constants
 
 ## Status
 
-- [ ] Step 1: Add constants to Model classes
-- [ ] Step 2: Add determinePrimaryModel() to OpenClawConfig
-- [ ] Step 3: Update syncFromSettings()
-- [ ] Step 4: Update OpenClawManager.syncProviders()
-- [ ] Step 5: Keep selectProvider(bot) in OpenClawManager
-- [ ] Step 6: Remove hardcoded strings
+- [x] Step 1: Add constants to Model classes
+- [x] Step 2: Add determinePrimaryModel() to OpenClawConfig
+- [x] Step 3: Update syncFromSettings()
+- [x] Step 4: Update OpenClawManager.syncProviders()
+- [x] Step 5: Keep selectProvider(bot) in OpenClawManager
+- [x] Step 6: Remove hardcoded strings
 - [ ] Testing
 
 ---
