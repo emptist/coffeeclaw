@@ -1118,31 +1118,7 @@ getOpenClawProviderConfig = (providerId, apiKey) ->
   
   providerConfig
 
-# Backup OpenClaw config before modifying
-# Creates a timestamped backup in the same directory
-# Global backup manager instance
-backupManagerInstance = null
 
-getBackupManager = ->
-  unless backupManagerInstance
-    backupManagerInstance = new BackupManager()
-  backupManagerInstance
-
-backupOpenClawConfig = ->
-  return unless configExists()
-  
-  try
-    manager = getBackupManager()
-    # Read OpenClaw config and create backup
-    configData = JSON.parse(fs.readFileSync(configFile, 'utf8'))
-    result = manager.createBackup(configData)
-    
-    if result.success
-      console.log "Backed up OpenClaw config to: #{result.filepath}"
-    else
-      console.error 'Failed to create backup:', result.error
-  catch e
-    console.error 'Failed to backup OpenClaw config:', e
 
 # Sync providers from CoffeeClaw settings to OpenClaw's config file
 # This ensures the OpenClaw agent uses the same API keys as the CoffeeClaw UI
@@ -1167,7 +1143,7 @@ syncProvidersToOpenClaw = (providers, activeProvider, token) ->
       return false
     
     # Backup before writing
-    backupOpenClawConfig()
+    config.backup()
     
     # Use OpenClawConfig class to sync
     # Create settings-like object for syncFromSettings
