@@ -226,7 +226,7 @@ Path uses `.secrete` instead of `.secret`. If this is intentional to hide the fo
 
 `Model.fromJSON` references `ZhipuModel`, `OpenAIModel`, `OpenRouterModel` before they're defined in the file. While CoffeeScript hoists declarations, this creates tight coupling and potential circular dependency issues.
 
-**Status**: Not yet fixed
+**Status**: ✅ FIXED - Use registry-based provider lookup instead of direct class references
 
 ---
 
