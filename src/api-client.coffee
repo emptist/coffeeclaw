@@ -20,7 +20,7 @@ class APIClient
   call: (sessionId, message, settings, bot = null) ->
     rawModel = bot?.model or settings.model or ZhipuModel.DEFAULT_MODEL
     
-    if rawModel == 'modelclaw-agent' or bot?.isAgent
+    if rawModel == 'modelclaw-agent' or bot?.isAgent()
       throw new Error 'Use OpenClawManager.callAgent for agent calls'
     
     provider = settings.activeProvider or settings.provider or ZhipuModel.PROVIDER_NAME
@@ -113,10 +113,9 @@ class APIClient
                     role: 'tool'
                     content: JSON.stringify funcResult
                     tool_call_id: toolCall.id
-                  @callWithMessages(sessionId, messages, settings, bot, apiKey)
+                  return @callWithMessages(sessionId, messages, settings, bot, apiKey)
                     .then resolve
                     .catch reject
-                  return
               resolve choice.message.content
             else
               reject new Error 'Unknown response format'
