@@ -333,31 +333,6 @@ executeSkillFunction = (name, args, botSkills) ->
         return skill[name].handler args
   { success: false, error: "Unknown function: #{name}" }
 
-deleteSession = (sessionId) ->
-  sessions = loadSessions()
-  delete sessions[sessionId]
-  saveSessions sessions
-
-listSessions = ->
-  manager = loadSessions()
-  # SessionManager returns array of Session instances
-  if manager?.getAllSessions
-    sessions = manager.getAllSessions()
-  else if typeof manager == 'object'
-    # Legacy format: object with sessionId keys
-    sessions = []
-    for key, session of manager
-      sessions.push session
-  else
-    sessions = []
-  
-  # Sort by updatedAt, handling both Session instances and plain objects
-  sessions.sort (a, b) ->
-    aTime = a.updatedAt or a.getLastUpdated?() or 0
-    bTime = b.updatedAt or b.getLastUpdated?() or 0
-    bTime - aTime
-  sessions
-
 checkOpenClaw = (callback) ->
   req = http.get 'http://127.0.0.1:18789/health', (res) ->
     callback true
