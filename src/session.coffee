@@ -106,6 +106,7 @@ class Session
     }
   
   @fromJSON: (data) ->
+    return new Session(null, null, 'Untitled') unless data
     session = new Session(data.id, data.botId, data.title)
     session.messages = data.messages ? []
     session.createdAt = data.createdAt

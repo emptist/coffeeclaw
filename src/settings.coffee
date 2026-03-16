@@ -148,9 +148,11 @@ class Settings
       providers: @providers
       feishu: feishuData
       userEmail: @userEmail
+      _lastUpdated: @_lastUpdated
     }
   
   @fromJSON: (data) ->
+    return new Settings() unless data
     settings = new Settings()
     settings.version = data.version ? Settings.VERSION
     settings.token = data.token
@@ -158,6 +160,7 @@ class Settings
     settings.activeProvider = data.activeProvider ? Settings.getDefaultProvider()
     settings.providers = data.providers ? {}
     settings.userEmail = data.userEmail ? null
+    settings._lastUpdated = data._lastUpdated ? null
     
     if data.feishu
       settings.feishu = FeishuConfig.fromJSON(data.feishu)

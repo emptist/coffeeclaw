@@ -1,7 +1,7 @@
 # Agent Model class for managing AI agent configurations
 # Each agent has specific capabilities and model settings
 
-{ Model } = require './model'
+{ Model, ZhipuModel } = require './model'
 
 class AgentModel
   # Class properties
@@ -110,8 +110,6 @@ class AgentModel
   
   # Create from legacy format
   @fromLegacy: (data) ->
-    { ZhipuModel } = require './model'
-    
     # Determine model from legacy data
     modelId = data.model ? ZhipuModel.DEFAULT_MODEL
     model = new ZhipuModel(modelId)

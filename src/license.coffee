@@ -97,10 +97,12 @@ class License
       paid: @paid
       plan: @plan
       lastDeduction: @lastDeduction
+      activatedAt: @activatedAt
     }
   
   # Deserialize from JSON
   @fromJSON: (data) ->
+    return new License() unless data
     license = new License()
     license.createdAt = data.createdAt
     license.balance = data.balance ? License.INITIAL_BALANCE
@@ -108,8 +110,9 @@ class License
     license.paid = data.paid ? false
     license.plan = data.plan ? null
     license.lastDeduction = data.lastDeduction ? null
+    license.activatedAt = data.activatedAt ? null
     license
-  
+
   # Migrate from legacy format
   @fromLegacy: (data) ->
     license = new License()
@@ -120,6 +123,7 @@ class License
       license.paid = data.paid ? false
       license.plan = data.plan ? null
       license.lastDeduction = data.lastDeduction ? null
+      license.activatedAt = data.activatedAt ? null
     license
 
 module.exports = { License }

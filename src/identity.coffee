@@ -39,6 +39,7 @@ I can help you with various tasks and answer your questions.
   
   # Deserialize from JSON
   @fromJSON: (data) ->
+    return new Identity() unless data
     identity = new Identity(data.content)
     identity.createdAt = data.createdAt ? new Date().toISOString()
     identity

@@ -203,7 +203,7 @@ class TypedStorage
     return { error: 'Bot name is required' } unless config.name?.trim()
     
     bots = @getBots()
-    id = Date.now().toString(36) + Math.random().toString(36).substr(2, 9)
+    id = Date.now().toString(36) + Math.random().toString(36).substring(2, 11)
     model = config.model ? Model.create(ZhipuModel.DEFAULT_MODEL, ZhipuModel.PROVIDER_NAME)
     
     bot = new Bot(
@@ -295,7 +295,7 @@ class TypedStorage
     session
   
   createSession: ->
-    id = Date.now().toString(36) + Math.random().toString(36).substr(2, 9)
+    id = Date.now().toString(36) + Math.random().toString(36).substring(2, 11)
     session = new Session(id)
     manager = @getSessions()
     manager.addSession(session)

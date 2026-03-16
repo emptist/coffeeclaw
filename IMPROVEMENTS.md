@@ -12,6 +12,8 @@
 
 These duplicate definitions will cause the second definition to overwrite the first, making the first set of code unreachable.
 
+**Status**: Not yet fixed
+
 ---
 
 ### 2. Duplicate Function Definitions in `main.coffee`
@@ -28,6 +30,8 @@ These duplicate definitions will cause the second definition to overwrite the fi
 
 This causes the second definition to shadow the first, breaking the intended functionality.
 
+**Status**: Not yet fixed
+
 ---
 
 ### 3. Missing `_lastUpdated` in Settings Serialization
@@ -35,6 +39,8 @@ This causes the second definition to shadow the first, breaking the intended fun
 **File:** `src/settings.coffee`
 
 The `_lastUpdated` field is set throughout the Settings class (lines 24, 37, 45, 59, 64, 74) but is **not included** in the `toJSON()` method (lines 134-151). This means the last updated timestamp is lost when saving/loading settings.
+
+**Status**: ✅ FIXED - Added _lastUpdated to toJSON() and fromJSON()
 
 ---
 
@@ -46,6 +52,8 @@ The `activatedAt` field is set when activating a license (line 1185 in main.coff
 - `toJSON()` (lines 91-100)
 - `fromJSON()` (lines 103-111)
 - `fromLegacy()` (lines 114-123)
+
+**Status**: ✅ FIXED - Added activatedAt to toJSON(), fromJSON(), and fromLegacy()
 
 ---
 
@@ -61,6 +69,8 @@ Line 113 imports `ZhipuModel` inside the `fromLegacy` static method:
 
 This works but is inefficient - the import should be at the top of the file with other imports.
 
+**Status**: ✅ FIXED - Moved ZhipuModel import to top of file
+
 ---
 
 ### 6. Settings Cache Not Invalidated on External Changes
@@ -68,6 +78,8 @@ This works but is inefficient - the import should be at the top of the file with
 **File:** `src/core/typed-storage.coffee`
 
 The `getSettings()` method caches settings (line 88) but never checks if the underlying storage was modified externally. If another process updates the settings file, the cache won't reflect those changes.
+
+**Status**: Not yet fixed
 
 ---
 
@@ -77,6 +89,8 @@ The `getSettings()` method caches settings (line 88) but never checks if the und
 
 The `callAPI` method (lines 217-300) doesn't handle tool calling functionality, unlike the original implementation in `main.coffee` which supports tools/functions. The OpenClawManager version simplifies this but loses functionality.
 
+**Status**: Not yet fixed
+
 ---
 
 ### 8. Bot ID Generation Uses Deprecated Method
@@ -85,6 +99,8 @@ The `callAPI` method (lines 217-300) doesn't handle tool calling functionality, 
 
 Line 206 uses `Math.random().toString(36).substr(2, 9)` which uses the deprecated `substr()` method. Should use `substring()` instead.
 
+**Status**: ✅ FIXED - Replaced substr() with substring() in all files
+
 ---
 
 ### 9. Missing Error Handling in Some IPC Handlers
@@ -92,8 +108,10 @@ Line 206 uses `Math.random().toString(36).substr(2, 9)` which uses the deprecate
 **File:** `src/main.coffee`
 
 Several IPC handlers don't have proper try-catch blocks:
-- `ipcMain.handle 'check-status'` (line 888) - error could crash the app
-- `ipcMain.handle 'save-settings'` (line 1162) - errors not handled
+- `ipcMain.handle 'check-status'` (line 863) - error could crash the app
+- `ipcMain.handle 'save-settings'` (line 1141) - errors not handled
+
+**Status**: ✅ FIXED - Added try-catch to check-status and save-settings handlers
 
 ---
 
@@ -104,6 +122,8 @@ Several IPC handlers don't have proper try-catch blocks:
 The `callAPI` function (line 650) and `callAPIWithMessages` (line 759) have similar code but:
 - Both don't handle HTTP timeout errors properly
 - Error messages could leak sensitive information
+
+**Status**: Not yet fixed
 
 ---
 
@@ -122,6 +142,8 @@ if rawModel == 'modelclaw-agent' or bot?.isAgent
 # Should be:
 if rawModel == 'modelclaw-agent' or bot?.isAgent()
 ```
+
+**Status**: ✅ FIXED - Changed to bot?.isAgent()
 
 ---
 
@@ -144,6 +166,8 @@ return @callWithMessages(sessionId, messages, settings, bot, apiKey)
   .catch reject
 ```
 
+**Status**: ✅ FIXED - Return promise directly from recursive call
+
 ---
 
 ### 13. Session - Unsafe fromJSON (ROBUSTNESS)
@@ -151,6 +175,8 @@ return @callWithMessages(sessionId, messages, settings, bot, apiKey)
 **File:** `src/session.coffee:108-114`
 
 `Session.fromJSON` doesn't handle null/undefined data, causing crashes on malformed data.
+
+**Status**: ✅ FIXED - Added null/undefined check
 
 ---
 
@@ -160,6 +186,8 @@ return @callWithMessages(sessionId, messages, settings, bot, apiKey)
 
 `Identity.fromJSON` doesn't handle null/undefined data parameter.
 
+**Status**: ✅ FIXED - Added null/undefined check
+
 ---
 
 ### 15. License - Unsafe fromJSON (ROBUSTNESS)
@@ -167,6 +195,8 @@ return @callWithMessages(sessionId, messages, settings, bot, apiKey)
 **File:** `src/license.coffee:103-111`
 
 `License.fromJSON` doesn't handle null/undefined data.
+
+**Status**: ✅ FIXED - Added null/undefined check
 
 ---
 
@@ -176,6 +206,8 @@ return @callWithMessages(sessionId, messages, settings, bot, apiKey)
 
 `Settings.fromJSON` doesn't handle null/undefined data.
 
+**Status**: ✅ FIXED - Added null/undefined check
+
 ---
 
 ### 17. Storage - Typo in Path (POTENTIAL SECURITY)
@@ -184,6 +216,8 @@ return @callWithMessages(sessionId, messages, settings, bot, apiKey)
 
 Path uses `.secrete` instead of `.secret`. If this is intentional to hide the folder, consider using a more standard approach.
 
+**Status**: Not yet fixed
+
 ---
 
 ### 18. Model - Forward References (MAINTENANCE)
@@ -191,6 +225,8 @@ Path uses `.secrete` instead of `.secret`. If this is intentional to hide the fo
 **File:** `src/model.coffee:46-50`
 
 `Model.fromJSON` references `ZhipuModel`, `OpenAIModel`, `OpenRouterModel` before they're defined in the file. While CoffeeScript hoists declarations, this creates tight coupling and potential circular dependency issues.
+
+**Status**: Not yet fixed
 
 ---
 

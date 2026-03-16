@@ -114,8 +114,6 @@ class APIClient
                     content: JSON.stringify funcResult
                     tool_call_id: toolCall.id
                   return @callWithMessages(sessionId, messages, settings, bot, apiKey)
-                    .then resolve
-                    .catch reject
               resolve choice.message.content
             else
               reject new Error 'Unknown response format'

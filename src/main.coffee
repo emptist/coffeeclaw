@@ -67,7 +67,7 @@ generateToken = ->
   crypto.randomBytes(24).toString 'hex'
 
 generateId = ->
-  Date.now().toString(36) + Math.random().toString(36).substr(2, 9)
+  Date.now().toString(36) + Math.random().toString(36).substring(2, 11)
 
 # Settings - using TypedStorage
 loadSettings = -> storage.getSettings()
@@ -861,17 +861,21 @@ ipcMain.handle 'send-message', (event, sessionId, message) ->
     throw e.message or e
 
 ipcMain.handle 'check-status', ->
-  running = await openClawManager.checkRunning()
-  configured = openClawManager.isConfigured()
-  settings = loadSettings()
-  
-  openClawManager.ensureConfig()
-  
-  if not running and configured
-    openClawManager.start()
-    return { running: false, starting: true, configured: true, hasApiKey: !!settings.apiKey }
-  
-  { running, starting: false, configured, hasApiKey: !!settings.apiKey }
+  try
+    running = await openClawManager.checkRunning()
+    configured = openClawManager.isConfigured()
+    settings = loadSettings()
+    
+    openClawManager.ensureConfig()
+    
+    if not running and configured
+      openClawManager.start()
+      return { running: false, starting: true, configured: true, hasApiKey: !!settings.apiKey }
+    
+    { running, starting: false, configured, hasApiKey: !!settings.apiKey }
+  catch e
+    console.error 'Error in check-status:', e
+    { running: false, starting: false, configured: false, hasApiKey: false, error: e.message }
 
 ipcMain.handle 'check-prerequisites', ->
   platform: getPlatform()
@@ -1135,16 +1139,20 @@ syncProvidersToOpenClaw = (providers, activeProvider, token) ->
     return false
 
 ipcMain.handle 'save-settings', (event, newSettings) ->
-  settings = loadSettings()
-  for key, value of newSettings
-    settings[key] = value
-  saveSettings settings
-  
-  if newSettings.providers
-    activeProvider = newSettings.activeProvider or settings.activeProvider
-    openClawManager.syncProviders(newSettings.providers, activeProvider, settings.token)
-  
-  true
+  try
+    settings = loadSettings()
+    for key, value of newSettings
+      settings[key] = value
+    saveSettings settings
+    
+    if newSettings.providers
+      activeProvider = newSettings.activeProvider or settings.activeProvider
+      openClawManager.syncProviders(newSettings.providers, activeProvider, settings.token)
+    
+    { success: true }
+  catch e
+    console.error 'Error saving settings:', e
+    { success: false, error: e.message }
 
 ipcMain.handle 'get-license', ->
   getLicenseStatus()

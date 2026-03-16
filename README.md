@@ -11,6 +11,7 @@ A desktop AI assistant powered by OpenClaw and multiple AI providers.
 - 🌍 Multi-language support (English, 中文, Esperanto)
 - 🔒 Secure local storage for API keys
 - 🚀 Easy setup wizard with platform detection
+- 🧠 AI-powered learning system (learns from interactions)
 
 ## Installation
 
@@ -154,6 +155,22 @@ npm run build:all
 - CoffeeScript
 - OpenClaw Agent Framework
 - Multiple AI Providers (Zhipu, OpenRouter, OpenAI)
+
+## Troubleshooting
+
+### Common Issues
+
+**API Key not working**
+- Ensure you're using the correct provider's API key format
+- Check that your API key has sufficient credits/quota
+
+**Gateway connection failed**
+- Make sure OpenClaw is installed: `npm install -g openclaw`
+- Try: `openclaw gateway --dev`
+
+**Session not loading**
+- Check `.secrete/sessions.json` for corruption
+- Try creating a new session
 
 ## License
 

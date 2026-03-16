@@ -44,17 +44,21 @@ class IPCHandlers
   
   registerStatusHandlers: ->
     ipcMain.handle 'check-status', async =>
-      running = await @openClaw.checkRunning()
-      configured = @openClaw.isConfigured()
-      settings = @storage.getSettings()
-      
-      @openClaw.ensureConfig()
-      
-      if not running and configured
-        @openClaw.start()
-        return { running: false, starting: true, configured: true, hasApiKey: !!settings.apiKey }
-      
-      { running, starting: false, configured, hasApiKey: !!settings.apiKey }
+      try
+        running = await @openClaw.checkRunning()
+        configured = @openClaw.isConfigured()
+        settings = @storage.getSettings()
+        
+        @openClaw.ensureConfig()
+        
+        if not running and configured
+          @openClaw.start()
+          return { running: false, starting: true, configured: true, hasApiKey: !!settings.apiKey }
+        
+        { running, starting: false, configured, hasApiKey: !!settings.apiKey }
+      catch e
+        console.error 'Error in check-status:', e
+        { running: false, starting: false, configured: false, hasApiKey: false, error: e.message }
     
     ipcMain.handle 'check-prerequisites', async =>
       platform: process.platform
@@ -162,16 +166,20 @@ class IPCHandlers
     ipcMain.handle 'get-settings', => @storage.getSettings()
     
     ipcMain.handle 'save-settings', (event, newSettings) =>
-      settings = @storage.getSettings()
-      for key, value of newSettings
-        settings[key] = value
-      @storage.saveSettings(settings)
-      
-      if newSettings.providers
-        activeProvider = newSettings.activeProvider or settings.activeProvider
-        @openClaw.syncProviders(newSettings.providers, activeProvider, settings.token)
-      
-      true
+      try
+        settings = @storage.getSettings()
+        for key, value of newSettings
+          settings[key] = value
+        @storage.saveSettings(settings)
+        
+        if newSettings.providers
+          activeProvider = newSettings.activeProvider or settings.activeProvider
+          @openClaw.syncProviders(newSettings.providers, activeProvider, settings.token)
+        
+        true
+      catch e
+        console.error 'Error in save-settings:', e
+        throw e.message or e
     
     ipcMain.handle 'backup-settings', => @backup.create()
     ipcMain.handle 'list-backups', => @backup.list()
