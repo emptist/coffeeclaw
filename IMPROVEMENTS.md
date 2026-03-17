@@ -235,3 +235,31 @@ Path uses `.secrete` instead of `.secret`. If this is intentional to hide the fo
 1. **High**: Issues #1, #2, #11, #12 (duplicate definitions and bugs)
 2. **Medium**: Issues #3, #4, #13, #14, #15, #16 (data loss/robustness bugs)
 3. **Low**: Issues #5, #6, #7, #8, #9, #10, #17, #18 (optimization/consistency)
+
+---
+
+## Testing
+
+Added Vitest testing framework (v4.1.0) for unit tests.
+
+### Running Tests
+
+```bash
+npm test        # Run tests once
+npm run test:watch  # Run tests in watch mode
+```
+
+### Test Structure
+
+- Tests are in `tests/` directory
+- Test files should be named `*.test.js`
+- Tests import compiled `.js` files from `src/`
+
+### Current Test Coverage
+
+- **Session** (31 tests): Session and SessionManager classes
+  - Message creation and management
+  - Serialization/deserialization
+  - Title handling
+  - Message limits
+  - Session manager operations

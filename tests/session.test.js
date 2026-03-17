@@ -1,6 +1,6 @@
 import { describe, test, expect, beforeEach } from 'vitest'
 
-const { Session, SessionManager } = require('../src/session.js')
+const { Session, SessionManager } = await import('../src/session.js')
 
 describe('Session', () => {
   let session

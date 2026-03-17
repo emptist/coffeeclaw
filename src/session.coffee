@@ -155,7 +155,8 @@ class SessionManager
   # Get active session
   getActiveSession: ->
     return null unless @activeSessionId
-    @sessions.get(@activeSessionId)
+    session = @sessions.get(@activeSessionId)
+    if session then session else null
   
   # Clear all sessions
   clear: ->
