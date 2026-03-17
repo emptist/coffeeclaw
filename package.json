@@ -9,9 +9,6 @@
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "compile": "coffee -c -b --transpile src/",
-    "test": "vitest run",
-    "test:watch": "vitest",
-    "test:coverage": "vitest run --coverage",
     "payment-server": "coffee -c src/payment-server.coffee && node src/payment-server.js",
     "build": "npm run compile && electron-builder",
     "build:mac": "npm run compile && electron-builder --mac",
@@ -25,12 +22,9 @@
   "devDependencies": {
     "@babel/core": "^7.29.0",
     "@babel/preset-env": "^7.29.0",
-    "chai": "^6.2.2",
     "coffeescript": "^2.7.0",
     "electron": "^40.8.0",
-    "electron-builder": "^26.8.1",
-    "mocha": "^11.7.5",
-    "vitest": "^4.1.0"
+    "electron-builder": "^26.8.1"
   },
   "dependencies": {
     "cors": "^2.8.5",
@@ -49,7 +43,7 @@
     "files": [
       "**/*",
       "!**/*.coffee",
-      "!.secret/**",
+      "!.secrete/**",
       "!screen.png",
       "!dist/**",
       "!node_modules/.cache/**",

@@ -126,8 +126,8 @@ openclaw gateway --dev
 
 ## Privacy
 
-- All API keys stored locally in `.secret/` folder
-- Chat history stored locally in `.secret/sessions.json`
+- All API keys stored locally in `.secrete/` folder
+- Chat history stored locally in `.secrete/sessions.json`
 - No data sent to third parties except the AI provider API
 
 ## Development
@@ -138,9 +138,6 @@ npm install
 
 # Compile CoffeeScript
 npm run compile
-
-# Run tests
-npm test
 
 # Run in development
 npm start
@@ -172,7 +169,7 @@ npm run build:all
 - Try: `openclaw gateway --dev`
 
 **Session not loading**
-- Check `.secret/sessions.json` for corruption
+- Check `.secrete/sessions.json` for corruption
 - Try creating a new session
 
 ## License
