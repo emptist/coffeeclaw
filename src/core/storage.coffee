@@ -15,7 +15,7 @@ class StorageManager extends EventEmitter
     super()
     @store = new Store
       name: 'coffeeclaw-data'
-      cwd: path.join(path.dirname(__dirname), '..', '.secrete')
+      cwd: path.join(path.dirname(__dirname), '..', '.secret')
       defaults:
         settings: null
         bots: null

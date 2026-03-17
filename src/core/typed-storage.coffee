@@ -21,10 +21,34 @@ class TypedStorage
   constructor: ->
     @storage = StorageManager.getInstance()
     @_cache = {}
+    @_cacheTimestamps = {}
     @_migrated = false
   
+  _getStorageFilePath: ->
+    @storage.getPath()
+  
+  _isCacheValid: (key) ->
+    return true unless @_cacheTimestamps[key]?
+    storagePath = @_getStorageFilePath()
+    return true unless storagePath
+    try
+      stats = fs.statSync(storagePath)
+      currentMtime = stats.mtime.getTime()
+      @_cacheTimestamps[key]? and currentMtime <= @_cacheTimestamps[key]
+    catch e
+      true
+  
+  _updateCacheTimestamp: (key) ->
+    try
+      storagePath = @_getStorageFilePath()
+      if storagePath and fs.existsSync(storagePath)
+        stats = fs.statSync(storagePath)
+        @_cacheTimestamps[key] = stats.mtime.getTime()
+    catch e
+      null
+  
   _getOldFilePath: (name) ->
-    dir = path.join(path.dirname(__dirname), '..', '.secrete')
+    dir = path.join(path.dirname(__dirname), '..', '.secret')
     path.join(dir, "#{name}.json")
   
   _readOldFile: (name) ->
@@ -85,7 +109,8 @@ class TypedStorage
   
   # Settings
   getSettings: ->
-    return @_cache.settings if @_cache.settings
+    if @_cache.settings and @_isCacheValid('settings')
+      return @_cache.settings
     
     @_migrateFromOldFiles()
     
@@ -98,6 +123,7 @@ class TypedStorage
       @_cache.settings = new Settings()
     
     @_syncFromOpenClawConfig()
+    @_updateCacheTimestamp('settings')
     
     @_cache.settings
   
@@ -128,11 +154,13 @@ class TypedStorage
       @_cache.settings = settings
     @storage.set('settings', @_cache.settings)
     @storage.save('settings')
+    @_updateCacheTimestamp('settings')
     @
   
   # Bots
   getBots: ->
-    return @_cache.bots if @_cache.bots
+    if @_cache.bots and @_isCacheValid('bots')
+      return @_cache.bots
     
     data = @storage.get('bots')
     if data?.bots?[0]?.__class == 'Bot'
@@ -147,6 +175,7 @@ class TypedStorage
         bots: [defaultBot]
         activeBotId: defaultBot.id
     
+    @_updateCacheTimestamp('bots')
     @_cache.bots
   
   _migrateBots: (data) ->
@@ -188,6 +217,7 @@ class TypedStorage
     
     @storage.set('bots', data)
     @storage.save('bots')
+    @_updateCacheTimestamp('bots')
     @
   
   getBot: (botId) ->
@@ -250,7 +280,8 @@ class TypedStorage
   
   # Sessions
   getSessions: ->
-    return @_cache.sessions if @_cache.sessions
+    if @_cache.sessions and @_isCacheValid('sessions')
+      return @_cache.sessions
     
     data = @storage.get('sessions')
     if data?.__class == 'SessionManager'
@@ -260,6 +291,7 @@ class TypedStorage
     else
       @_cache.sessions = new SessionManager()
     
+    @_updateCacheTimestamp('sessions')
     @_cache.sessions
   
   _migrateSessions: (data) ->
@@ -268,12 +300,14 @@ class TypedStorage
     
     for sessionId, sessionData of data
       continue unless sessionData
-      session = new Session(sessionId)
-      session.title = sessionData.title ? ''
+      session = new Session(
+        sessionId
+        sessionData.botId ? null
+        sessionData.title ? 'New Chat'
+      )
       session.messages = sessionData.messages ? []
       session.createdAt = sessionData.createdAt ? Date.now()
       session.updatedAt = sessionData.updatedAt ? Date.now()
-      session.botId = sessionData.botId if sessionData.botId
       manager.addSession(session)
     
     manager
@@ -283,6 +317,7 @@ class TypedStorage
       @_cache.sessions = sessions
     @storage.set('sessions', @_cache.sessions)
     @storage.save('sessions')
+    @_updateCacheTimestamp('sessions')
     @
   
   getSession: (sessionId) ->
@@ -294,9 +329,9 @@ class TypedStorage
       @saveSessions(manager)
     session
   
-  createSession: ->
+  createSession: (botId = null) ->
     id = Date.now().toString(36) + Math.random().toString(36).substring(2, 11)
-    session = new Session(id)
+    session = new Session(id, botId)
     manager = @getSessions()
     manager.addSession(session)
     @saveSessions(manager)
@@ -322,7 +357,8 @@ class TypedStorage
   
   # License
   getLicense: ->
-    return @_cache.license if @_cache.license
+    if @_cache.license and @_isCacheValid('license')
+      return @_cache.license
     
     data = @storage.get('license')
     if data?.__class == 'License'
@@ -332,12 +368,14 @@ class TypedStorage
     else
       @_cache.license = new License()
     
+    @_updateCacheTimestamp('license')
     @_cache.license
   
   saveLicense: (license = null) ->
     @_cache.license = license ? @_cache.license
     @storage.set('license', @_cache.license)
     @storage.save('license')
+    @_updateCacheTimestamp('license')
     @
   
   getLicenseStatus: ->
@@ -376,7 +414,8 @@ class TypedStorage
   
   # Identity
   getIdentity: ->
-    return @_cache.identity if @_cache.identity
+    if @_cache.identity and @_isCacheValid('identity')
+      return @_cache.identity
     
     data = @storage.get('identity')
     if data?.__class == 'Identity'
@@ -387,26 +426,31 @@ class TypedStorage
       @_cache.identity = new Identity()
       @saveIdentity()
     
+    @_updateCacheTimestamp('identity')
     @_cache.identity
   
   saveIdentity: (identity = null) ->
     @_cache.identity = identity ? @_cache.identity
     @storage.set('identity', @_cache.identity)
     @storage.save('identity')
+    @_updateCacheTimestamp('identity')
     @
   
   # Agent Sessions
   getAgentSessions: ->
-    return @_cache.agentSessions if @_cache.agentSessions
+    if @_cache.agentSessions and @_isCacheValid('agentSessions')
+      return @_cache.agentSessions
     
     data = @storage.get('agentSessions', {})
     @_cache.agentSessions = data ? {}
+    @_updateCacheTimestamp('agentSessions')
     @_cache.agentSessions
   
   saveAgentSessions: (sessions = null) ->
     @_cache.agentSessions = sessions ? @_cache.agentSessions
     @storage.set('agentSessions', @_cache.agentSessions)
     @storage.save('agentSessions')
+    @_updateCacheTimestamp('agentSessions')
     @
   
   getAgentSession: (sessionId) ->

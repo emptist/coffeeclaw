@@ -27,6 +27,7 @@ class OpenClawManager
     @agentModelsFile = options.agentModelsFile or path.join(@agentDir, 'models.json')
     @storage = options.storage
     @MODELS = options.models
+    @skills = options.skills or {}
     @_synced = false
   
   selectProvider: (settings, bot) ->
@@ -220,6 +221,9 @@ class OpenClawManager
     if (typeof rawModel == 'string' and rawModel == 'openclaw-agent') or bot?.isAgent?()
       return await @callAgent(sessionId, message)
     
+    @_callAPIWithMessages(sessionId, message, settings, bot)
+  
+  _callAPIWithMessages: (sessionId, message, settings, bot, messageHistory = null) ->
     new Promise (resolve, reject) =>
       provider = @selectProvider(settings, bot)
       
@@ -250,7 +254,12 @@ class OpenClawManager
         { role: 'system', content: systemPrompt }
       ]
       
-      if session.messages
+      if messageHistory
+        for msg in messageHistory
+          messages.push
+            role: msg.role
+            content: msg.content
+      else if session.messages
         for msg in session.messages
           messages.push
             role: msg.role
@@ -260,10 +269,18 @@ class OpenClawManager
         role: 'user'
         content: message
       
-      postData = JSON.stringify
+      postData = 
         model: model
         messages: messages
         stream: false
+      
+      functions = @getSkillFunctions(bot?.skills)
+      if functions.length > 0
+        postData.tools = functions.map (f) -> { type: 'function', function: f }
+        postData.tool_choice = 'auto'
+        postData.do_sample = false
+      
+      postDataStr = JSON.stringify postData
 
       options =
         hostname: config.baseUrl
@@ -273,7 +290,7 @@ class OpenClawManager
         headers:
           'Content-Type': 'application/json'
           'Authorization': "Bearer #{apiKey}"
-          'Content-Length': Buffer.byteLength(postData)
+          'Content-Length': Buffer.byteLength(postDataStr)
       
       if provider == OpenRouterModel.PROVIDER_NAME
         options.headers['HTTP-Referer'] = 'https://coffeeclaw.app'
@@ -286,18 +303,66 @@ class OpenClawManager
           try
             result = JSON.parse data
             if result.error
-              reject new Error result.error.message or 'API error'
+              reject new Error 'API request failed'
             else if result.choices and result.choices[0]
               choice = result.choices[0]
+              if choice.message?.tool_calls
+                toolCall = choice.message.tool_calls[0]
+                if toolCall?.type == 'function'
+                  funcName = toolCall.function.name
+                  funcArgs = JSON.parse toolCall.function.arguments
+                  funcResult = @executeSkillFunction(funcName, funcArgs, bot?.skills)
+                  messages.push choice.message
+                  messages.push
+                    role: 'tool'
+                    content: JSON.stringify funcResult
+                    tool_call_id: toolCall.id
+                  @_callAPIWithMessages(sessionId, message, settings, bot, messages)
+                    .then resolve
+                    .catch reject
+                  return
               resolve choice.message.content
             else
               reject new Error 'Unknown response format'
           catch e
             reject e
       
-      req.on 'error', reject
-      req.write postData
+      req.on 'error', (err) ->
+        reject new Error 'API request failed'
+      req.setTimeout 60000, ->
+        req.destroy()
+        reject new Error 'Request timeout'
+      req.write postDataStr
       req.end()
+  
+  getSkillFunctions: (botSkills) ->
+    return [] unless botSkills and botSkills.length > 0
+    
+    allSkills = botSkills.includes('*')
+    
+    functions = []
+    for name, skill of @skills
+      if allSkills or botSkills.includes(name)
+        functions.push
+          name: name
+          description: skill.description
+          parameters: skill.parameters
+    
+    functions
+  
+  executeSkillFunction: (name, args, botSkills) ->
+    skill = @skills[name]
+    unless skill
+      return { error: "Unknown skill: #{name}" }
+    
+    allSkills = botSkills?.includes('*')
+    unless allSkills or botSkills?.includes(name)
+      return { error: "Skill #{name} not enabled for this bot" }
+    
+    try
+      skill.handler(args)
+    catch e
+      { error: e.message }
   
   syncProviders: (providers, activeProvider, token) ->
     try

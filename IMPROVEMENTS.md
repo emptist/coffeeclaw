@@ -12,7 +12,7 @@
 
 These duplicate definitions will cause the second definition to overwrite the first, making the first set of code unreachable.
 
-**Status**: Not yet fixed
+**Status**: ✅ FIXED - Duplicate definitions have been removed
 
 ---
 
@@ -30,7 +30,7 @@ These duplicate definitions will cause the second definition to overwrite the fi
 
 This causes the second definition to shadow the first, breaking the intended functionality.
 
-**Status**: Not yet fixed
+**Status**: ✅ FIXED - Duplicate definitions have been removed
 
 ---
 
@@ -79,7 +79,7 @@ This works but is inefficient - the import should be at the top of the file with
 
 The `getSettings()` method caches settings (line 88) but never checks if the underlying storage was modified externally. If another process updates the settings file, the cache won't reflect those changes.
 
-**Status**: Not yet fixed
+**Status**: ✅ FIXED - Added cache invalidation mechanism that tracks file modification time and invalidates cache when file is modified externally
 
 ---
 
@@ -87,9 +87,9 @@ The `getSettings()` method caches settings (line 88) but never checks if the und
 
 **File:** `src/openclaw-manager.coffee`
 
-The `callAPI` method (lines 217-300) doesn't handle tool calling functionality, unlike the original implementation in `main.coffee` which supports tools/functions. The OpenClawManager version simplifies this but loses functionality.
+The `callAPI` method (lines 217-300) doesn't handle tool calling functionality, unlike the original implementation in `api-client.coffee` which supports tools/functions.
 
-**Status**: Not yet fixed
+**Status**: ✅ FIXED - Added tool calling support with getSkillFunctions and executeSkillFunction methods
 
 ---
 
@@ -117,13 +117,13 @@ Several IPC handlers don't have proper try-catch blocks:
 
 ### 10. Inconsistent Error Handling in API Requests
 
-**File:** `src/main.coffee`
+**File:** `src/openclaw-manager.coffee`
 
-The `callAPI` function (line 650) and `callAPIWithMessages` (line 759) have similar code but:
-- Both don't handle HTTP timeout errors properly
-- Error messages could leak sensitive information
+The `callAPI` function has similar code to `api-client.coffee`:
+- Error messages now don't leak sensitive information
+- Timeout errors are properly handled
 
-**Status**: Not yet fixed
+**Status**: ✅ FIXED - Improved error handling to avoid leaking sensitive info
 
 ---
 
@@ -212,11 +212,11 @@ return @callWithMessages(sessionId, messages, settings, bot, apiKey)
 
 ### 17. Storage - Typo in Path (POTENTIAL SECURITY)
 
-**File:** `src/storage.coffee:18`
+**File:** `src/main.coffee:40`
 
 Path uses `.secrete` instead of `.secret`. If this is intentional to hide the folder, consider using a more standard approach.
 
-**Status**: Not yet fixed
+**Status**: ✅ FIXED - Changed `.secrete` to `.secret` in main.coffee
 
 ---
 
